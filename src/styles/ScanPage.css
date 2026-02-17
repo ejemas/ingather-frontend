@@ -1,0 +1,350 @@
+/* Scan Page Styles - Mobile First */
+
+.scan-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-black) 0%, #1a1819 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+}
+
+.scan-container {
+  width: 100%;
+  max-width: 500px;
+}
+
+/* Loading State */
+.loading-text {
+  text-align: center;
+  color: var(--color-beige);
+  margin-top: var(--spacing-md);
+  font-size: 1.1rem;
+}
+
+/* Message Cards */
+.message-card {
+  background-color: var(--color-beige);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-card.success {
+  border-top: 5px solid #4CAF50;
+}
+
+.message-card.error {
+  border-top: 5px solid #f44336;
+}
+
+.message-card.winner {
+  border-top: 5px solid #FFD700;
+  background: linear-gradient(to bottom, #FFF9E6, var(--color-beige));
+  position: relative;
+  overflow: hidden;
+}
+
+.message-card.no-win {
+  border-top: 5px solid var(--color-pumpkin);
+}
+
+.confetti {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 3rem;
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+.message-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.message-icon.celebration {
+  font-size: 5rem;
+  animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.message-card h2 {
+  color: var(--color-black);
+  font-size: 2rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.message-card h3 {
+  color: var(--color-pumpkin);
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.message-card p {
+  color: var(--color-black);
+  font-size: 1.1rem;
+  line-height: 1.6;
+  margin-bottom: var(--spacing-sm);
+}
+
+.sub-message {
+  color: rgba(9, 8, 9, 0.6);
+  font-size: 0.95rem;
+}
+
+.winner-message {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #F57C00;
+}
+
+.winner-instruction {
+  background-color: rgba(255, 215, 0, 0.2);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  margin: var(--spacing-md) 0;
+}
+
+.church-logo {
+  max-width: 120px;
+  max-height: 120px;
+  margin-bottom: var(--spacing-md);
+}
+
+.church-logo-small {
+  max-width: 80px;
+  max-height: 80px;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Form Header */
+.form-header {
+  background-color: var(--color-beige);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.form-header h1 {
+  color: var(--color-pumpkin);
+  font-size: 1.8rem;
+  margin-bottom: 4px;
+}
+
+.form-header h2 {
+  color: var(--color-black);
+  font-size: 1.3rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.incentive-banner {
+  background: linear-gradient(135deg, var(--color-pumpkin), #e05d00);
+  color: var(--color-beige);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.95rem;
+  animation: pulse-banner 2s infinite;
+}
+
+@keyframes pulse-banner {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* Attendee Form */
+.attendee-form {
+  background-color: var(--color-beige);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.attendee-form .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.attendee-form label {
+  display: block;
+  color: var(--color-black);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+}
+
+.attendee-form input,
+.attendee-form select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  background-color: white;
+  color: var(--color-black);
+  transition: border-color 0.3s ease;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.attendee-form input:focus,
+.attendee-form select:focus {
+  outline: none;
+  border-color: var(--color-pumpkin);
+}
+
+.attendee-form select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23090809' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
+.checkbox-group {
+  margin-top: var(--spacing-md);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  padding: 12px;
+  background-color: white;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.checkbox-label:hover {
+  border-color: var(--color-pumpkin);
+  background-color: rgba(249, 109, 16, 0.05);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-pumpkin);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.checkbox-label span {
+  color: var(--color-black);
+  font-weight: 500;
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+}
+
+.btn-full {
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+  margin-top: var(--spacing-md);
+}
+
+.btn-full:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .scan-page {
+    padding: var(--spacing-sm);
+  }
+
+  .message-card {
+    padding: var(--spacing-md);
+  }
+
+  .message-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .message-icon {
+    font-size: 3rem;
+  }
+
+  .form-header {
+    padding: var(--spacing-md);
+  }
+
+  .form-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .attendee-form {
+    padding: var(--spacing-md);
+  }
+}
+
+/* Landscape phones */
+@media (max-height: 600px) and (orientation: landscape) {
+  .scan-page {
+    padding: var(--spacing-sm);
+  }
+
+  .message-icon {
+    font-size: 2.5rem;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .message-card h2 {
+    font-size: 1.3rem;
+  }
+}
+
+/* Force checkbox visibility */
+.attendee-form input[type="checkbox"] {
+  -webkit-appearance: checkbox;
+  -moz-appearance: checkbox;
+  appearance: checkbox;
+  width: 20px !important;
+  height: 20px !important;
+  cursor: pointer;
+  accent-color: var(--color-pumpkin);
+}

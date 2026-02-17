@@ -1,0 +1,286 @@
+/* Create Program Page Styles */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+}
+
+.page-header h1 {
+  color: var(--color-beige);
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.page-header p {
+  color: rgba(235, 235, 211, 0.6);
+  font-size: 1rem;
+}
+
+/* Form Styling */
+.create-program-form {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.form-card {
+  background-color: var(--color-beige);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.card-title {
+  color: var(--color-black);
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-description {
+  color: rgba(9, 8, 9, 0.6);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.95rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  color: var(--color-black);
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+}
+
+.form-input {
+  padding: 12px 16px;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  background-color: white;
+  color: var(--color-black);
+  transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-pumpkin);
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.field-hint {
+  color: rgba(9, 8, 9, 0.5);
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+/* Tracking Options */
+.tracking-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.tracking-option {
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: white;
+}
+
+.tracking-option:hover {
+  border-color: var(--color-pumpkin);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.tracking-option.selected {
+  border-color: var(--color-pumpkin);
+  background-color: rgba(249, 109, 16, 0.05);
+}
+
+.option-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.radio-circle {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(9, 8, 9, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: border-color 0.3s ease;
+}
+
+.tracking-option.selected .radio-circle {
+  border-color: var(--color-pumpkin);
+}
+
+.radio-dot {
+  width: 12px;
+  height: 12px;
+  background-color: var(--color-pumpkin);
+  border-radius: 50%;
+}
+
+.option-header h3 {
+  color: var(--color-black);
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.option-header p {
+  color: rgba(9, 8, 9, 0.6);
+  font-size: 0.9rem;
+}
+
+.option-detail {
+  color: rgba(9, 8, 9, 0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* Data Fields Grid */
+.data-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 12px;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: white;
+}
+
+.checkbox-card:hover {
+  border-color: var(--color-pumpkin);
+  background-color: rgba(249, 109, 16, 0.05);
+}
+
+.checkbox-card input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-pumpkin);
+}
+
+.checkbox-label {
+  color: var(--color-black);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Toggle Option */
+.toggle-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 16px;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: white;
+  margin-bottom: var(--spacing-md);
+}
+
+.toggle-option:hover {
+  border-color: var(--color-pumpkin);
+  background-color: rgba(249, 109, 16, 0.05);
+}
+
+.toggle-option input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: var(--color-pumpkin);
+}
+
+.toggle-label {
+  color: var(--color-black);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.btn-large {
+  padding: 14px 32px;
+  font-size: 1.1rem;
+}
+
+.btn-large:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Utility Classes */
+.mt-3 {
+  margin-top: var(--spacing-md);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tracking-options {
+    grid-template-columns: 1fr;
+  }
+
+  .data-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-large {
+    width: 100%;
+  }
+}
