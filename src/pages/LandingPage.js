@@ -307,7 +307,7 @@ function LandingPage() {
           <div className="footer-content">
             <div className="footer-left">
               <h3>Ingather</h3>
-              <p>Modern attendance tracking for modern churches.</p>
+              <p>Modern attendance tracking for churches.</p>
             </div>
             <div className="footer-right">
               <p>&copy; 2026 Ingather. All rights reserved.</p>

@@ -13,6 +13,7 @@ const [churchData, setChurchData] = useState({
   logo: null
 });
 const [loading, setLoading] = useState(true);
+const [activeFilter, setActiveFilter] = useState('all'); // ADD THIS LINE
 
 useEffect(() => {
   fetchData();
@@ -114,10 +115,11 @@ if (loading) {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>Ingather</h2>
+
           <div className="church-info">
-            <p className="church-name">{churchData.name}</p>
-            <p className="branch-name">{churchData.branch}</p>
-          </div>
+  <p className="church-name">{churchData.name}</p>
+  <p className="branch-name">{churchData.branch}</p>
+</div>
         </div>
 
         <nav className="sidebar-nav">
@@ -208,13 +210,37 @@ if (loading) {
         <div className="programs-section">
           <div className="section-header">
             <h2>Recent Programs</h2>
+
+
             <div className="filter-tabs">
-              <button className="filter-tab active">All</button>
-              <button className="filter-tab">Active</button>
-              <button className="filter-tab">Upcoming</button>
-              <button className="filter-tab">Completed</button>
-            </div>
-          </div>
+  <button 
+    className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
+    onClick={() => setActiveFilter('all')}
+  >
+    All
+  </button>
+  <button 
+    className={`filter-tab ${activeFilter === 'active' ? 'active' : ''}`}
+    onClick={() => setActiveFilter('active')}
+  >
+    Active
+  </button>
+  <button 
+    className={`filter-tab ${activeFilter === 'upcoming' ? 'active' : ''}`}
+    onClick={() => setActiveFilter('upcoming')}
+  >
+    Upcoming
+  </button>
+  <button 
+    className={`filter-tab ${activeFilter === 'completed' ? 'active' : ''}`}
+    onClick={() => setActiveFilter('completed')}
+  >
+    Completed
+  </button>
+</div>
+</div>
+
+
 
           <div className="programs-table-container">
             <table className="programs-table">
@@ -230,7 +256,10 @@ if (loading) {
                 </tr>
               </thead>
               <tbody>
-                {programs.map(program => (
+                {programs.filter(program => {
+  if (activeFilter === 'all') return true;
+  return program.status === activeFilter;
+}).map(program => (
                   <tr key={program.id}>
                     <td>
                       <strong>{program.title}</strong>

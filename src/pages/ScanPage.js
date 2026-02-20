@@ -467,8 +467,8 @@ if (alreadyScanned) {
       <div className="scan-container">
         <div className="message-card error">
           <div className="message-icon">❌</div>
-          <h2>Error</h2>
-          <p>Something went wrong. Please try scanning again.</p>
+          <h2>Program Already closed</h2>
+          <p>This program may have ended or is no longer active.</p>
         </div>
       </div>
     </div>

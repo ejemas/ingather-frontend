@@ -98,23 +98,92 @@ function ProgramDetail() {
     window.print();
   };
 
-  const handleExportData = () => {
-    // Create CSV content
-    const headers = ['Name', 'Phone Number', 'First Timer', 'Department', 'Winner', 'Scan Time'];
-    const csvContent = [
-      headers.join(','),
-      ...attendees.map(a => 
-        [a.fullName, a.phoneNumber, a.firstTimer ? 'Yes' : 'No', a.department, a.isWinner ? 'Yes' : 'No', a.scanTime].join(',')
-      )
-    ].join('\n');
+  const handleExportData = async () => {
+  try {
+    // Get church info
+    const { getCurrentChurch } = await import('../api/authService');
+    const church = await getCurrentChurch();
+    
+    // Get fresh attendee data
+    const { getAttendees } = await import('../api/programService');
+    const attendeesData = await getAttendees(id);
+    const attendeesList = attendeesData.attendees;
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Create comprehensive CSV with church info
+    const timestamp = new Date().toLocaleString();
+    const csvLines = [
+      '=== CHURCH INFORMATION ===',
+      `Church Name,${church.churchName}`,
+      `Branch,${church.branchName}`,
+      `Location,${church.location}`,
+      `Email,${church.email}`,
+      '',
+      '=== PROGRAM INFORMATION ===',
+      `Program Title,${program.title}`,
+      `Date,${program.date}`,
+      `Time,${program.startTime} - ${program.endTime}`,
+      `Total Scans,${program.totalScans}`,
+      `Data Collection,${program.trackingMode === 'collect-data' ? 'Yes' : 'No'}`,
+      `Exported On,${timestamp}`,
+      '',
+      '=== STATISTICS ===',
+      `Total Attendees,${attendeesList.length}`,
+      `First Timers,${attendeesList.filter(a => a.firstTimer).length}`,
+      `Winners,${attendeesList.filter(a => a.isWinner).length}`,
+      '',
+
+      ];
+
+// Create dynamic CSV headers based on selected fields
+const dataHeaders = [];
+
+if (program.dataFields?.fullName) dataHeaders.push('Name');
+if (program.dataFields?.phoneNumber) dataHeaders.push('Phone Number');
+if (program.dataFields?.address) dataHeaders.push('Address');
+if (program.dataFields?.firstTimer) dataHeaders.push('First Timer');
+if (program.dataFields?.department) dataHeaders.push('Department');
+if (program.dataFields?.fellowship) dataHeaders.push('Fellowship');
+if (program.dataFields?.age) dataHeaders.push('Age');
+if (program.dataFields?.sex) dataHeaders.push('Gender');
+if (program.giftingEnabled) dataHeaders.push('Winner');
+dataHeaders.push('Scan Time');
+
+csvLines.push('=== ATTENDEE DATA ===');
+csvLines.push(dataHeaders.join(','));
+
+// Add attendee rows with dynamic fields
+attendeesList.forEach(a => {
+  const row = [];
+  if (program.dataFields?.fullName) row.push(a.fullName || '');
+  if (program.dataFields?.phoneNumber) row.push(a.phoneNumber || '');
+  if (program.dataFields?.address) row.push(a.address || '');
+  if (program.dataFields?.firstTimer) row.push(a.firstTimer ? 'Yes' : 'No');
+  if (program.dataFields?.department) row.push(a.department || '');
+  if (program.dataFields?.fellowship) row.push(a.fellowship || '');
+  if (program.dataFields?.age) row.push(a.age || '');
+  if (program.dataFields?.sex) row.push(a.sex || '');
+  if (program.giftingEnabled) row.push(a.isWinner ? 'Yes' : 'No');
+  row.push(new Date(a.scanTime).toLocaleString());
+  
+  csvLines.push(row.join(','));
+});
+
+const csvContent = csvLines.join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${program.title}-Attendees.csv`;
-    a.click();
-  };
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${church.churchName}-${program.title}-Report-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    
+    alert('Data exported successfully!');
+  } catch (error) {
+    console.error('Export error:', error);
+    alert('Failed to export data. Please try again.');
+  }
+};
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -407,43 +476,76 @@ function ProgramDetail() {
               </button>
             </div>
 
+
+
             <div className="attendees-table-container">
               <table className="attendees-table">
                 <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Phone Number</th>
-                    <th>First Timer</th>
-                    <th>Department</th>
-                    <th>Winner</th>
-                    <th>Scan Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendees.map(attendee => (
-                    <tr key={attendee.id}>
-                      <td><strong>{attendee.fullName}</strong></td>
-                      <td>{attendee.phoneNumber}</td>
-                      <td>
-                        {attendee.firstTimer ? (
-                          <span className="badge-yes">Yes ⭐</span>
-                        ) : (
-                          <span className="badge-no">No</span>
-                        )}
-                      </td>
-                      <td>{attendee.department}</td>
-                      <td>
-                        {attendee.isWinner ? (
-                          <span className="badge-winner">🎁 Winner</span>
-                        ) : (
-                          <span className="badge-no">-</span>
-                        )}
-                      </td>
-                      <td>{new Date(attendee.scanTime).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
+    <tr>
+      {/* Dynamically show headers based on selected fields */}
+      {program.dataFields?.fullName && <th>Name</th>}
+      {program.dataFields?.phoneNumber && <th>Phone Number</th>}
+      {program.dataFields?.address && <th>Address</th>}
+      {program.dataFields?.firstTimer && <th>First Timer</th>}
+      {program.dataFields?.department && <th>Department</th>}
+      {program.dataFields?.fellowship && <th>Fellowship</th>}
+      {program.dataFields?.age && <th>Age</th>}
+      {program.dataFields?.sex && <th>Gender</th>}
+      {program.giftingEnabled && <th>Winner</th>}
+      <th>Scan Time</th>
+    </tr>
+  </thead>
+   <tbody>
+    {attendees.map(attendee => (
+      <tr key={attendee.id}>
+        {/* Dynamically show data based on selected fields */}
+        {program.dataFields?.fullName && (
+          <td><strong>{attendee.fullName || '-'}</strong></td>
+        )}
+        {program.dataFields?.phoneNumber && (
+          <td>{attendee.phoneNumber || '-'}</td>
+        )}
+        {program.dataFields?.address && (
+          <td>{attendee.address || '-'}</td>
+        )}
+        {program.dataFields?.firstTimer && (
+          <td>
+            {attendee.firstTimer ? (
+              <span className="badge-yes">Yes ⭐</span>
+            ) : (
+              <span className="badge-no">No</span>
+            )}
+          </td>
+        )}
+        {program.dataFields?.department && (
+          <td>{attendee.department || '-'}</td>
+        )}
+        {program.dataFields?.fellowship && (
+          <td>{attendee.fellowship || '-'}</td>
+        )}
+        {program.dataFields?.age && (
+          <td>{attendee.age || '-'}</td>
+        )}
+        {program.dataFields?.sex && (
+          <td>{attendee.sex || '-'}</td>
+        )}
+        {program.giftingEnabled && (
+          <td>
+            {attendee.isWinner ? (
+              <span className="badge-winner">🎁 Winner</span>
+            ) : (
+              <span className="badge-no">-</span>
+            )}
+          </td>
+        )}
+        <td>{new Date(attendee.scanTime).toLocaleString()}</td>
+      </tr>
+    ))}
+  </tbody>
               </table>
+
+
+
             </div>
           </div>
         )}

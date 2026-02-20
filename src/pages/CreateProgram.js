@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+// import React, { useState } from 'react';
 import { createProgram } from '../api/programService';
 import '../styles/CreateProgram.css';
+import React, { useState, useEffect } from 'react';
 
 function CreateProgram() {
   const [formData, setFormData] = useState({
@@ -25,6 +26,24 @@ function CreateProgram() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
+
+useEffect(() => {
+  fetchChurchData();
+}, []);
+
+const fetchChurchData = async () => {
+  try {
+    const { getCurrentChurch } = await import('../api/authService');
+    const church = await getCurrentChurch();
+    setChurchData({
+      name: church.churchName,
+      branch: church.branchName
+    });
+  } catch (error) {
+    console.error('Error fetching church data:', error);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -157,9 +176,10 @@ function CreateProgram() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>Ingather</h2>
+
           <div className="church-info">
-            <p className="church-name">Grace Assembly</p>
-            <p className="branch-name">Lekki Branch</p>
+            <p className="church-name">{churchData.name}</p>
+            <p className="branch-name">{churchData.branch}</p>
           </div>
         </div>
 

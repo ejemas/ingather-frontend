@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Settings from './pages/Settings';
+import AllPrograms from './pages/AllPrograms';
 import LandingPage from './pages/LandingPage';
 import Register from './pages/Register';
 import Login from './pages/Login';
@@ -14,6 +16,8 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/programs" element={<AllPrograms />} />
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
