@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import io from 'socket.io-client';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI } from '../api/programService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/ProgramDetail.css';
@@ -98,7 +100,12 @@ function ProgramDetail() {
     window.print();
   };
 
-  const handleExportData = async () => {
+
+
+
+
+
+  const handleExportPDF = async () => {
   try {
     // Get church info
     const { getCurrentChurch } = await import('../api/authService');
@@ -109,81 +116,319 @@ function ProgramDetail() {
     const attendeesData = await getAttendees(id);
     const attendeesList = attendeesData.attendees;
 
-    // Create comprehensive CSV with church info
-    const timestamp = new Date().toLocaleString();
-    const csvLines = [
-      '=== CHURCH INFORMATION ===',
-      `Church Name,${church.churchName}`,
-      `Branch,${church.branchName}`,
-      `Location,${church.location}`,
-      `Email,${church.email}`,
-      '',
-      '=== PROGRAM INFORMATION ===',
-      `Program Title,${program.title}`,
-      `Date,${program.date}`,
-      `Time,${program.startTime} - ${program.endTime}`,
-      `Total Scans,${program.totalScans}`,
-      `Data Collection,${program.trackingMode === 'collect-data' ? 'Yes' : 'No'}`,
-      `Exported On,${timestamp}`,
-      '',
-      '=== STATISTICS ===',
-      `Total Attendees,${attendeesList.length}`,
-      `First Timers,${attendeesList.filter(a => a.firstTimer).length}`,
-      `Winners,${attendeesList.filter(a => a.isWinner).length}`,
-      '',
+    // Calculate summary statistics
+    const totalScans = program.totalScans || 0;
+    const totalFormsSubmitted = attendeesList.length;
+    const totalFirstTimers = attendeesList.filter(a => a.firstTimer).length;
+    const totalWinners = attendeesList.filter(a => a.isWinner).length;
 
-      ];
+    // Create PDF with better styling
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = 20;
 
-// Create dynamic CSV headers based on selected fields
-const dataHeaders = [];
+    // Add border to page
+    doc.setDrawColor(249, 109, 16);
+    doc.setLineWidth(0.5);
+    doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-if (program.dataFields?.fullName) dataHeaders.push('Name');
-if (program.dataFields?.phoneNumber) dataHeaders.push('Phone Number');
-if (program.dataFields?.address) dataHeaders.push('Address');
-if (program.dataFields?.firstTimer) dataHeaders.push('First Timer');
-if (program.dataFields?.department) dataHeaders.push('Department');
-if (program.dataFields?.fellowship) dataHeaders.push('Fellowship');
-if (program.dataFields?.age) dataHeaders.push('Age');
-if (program.dataFields?.sex) dataHeaders.push('Gender');
-if (program.giftingEnabled) dataHeaders.push('Winner');
-dataHeaders.push('Scan Time');
-
-csvLines.push('=== ATTENDEE DATA ===');
-csvLines.push(dataHeaders.join(','));
-
-// Add attendee rows with dynamic fields
-attendeesList.forEach(a => {
-  const row = [];
-  if (program.dataFields?.fullName) row.push(a.fullName || '');
-  if (program.dataFields?.phoneNumber) row.push(a.phoneNumber || '');
-  if (program.dataFields?.address) row.push(a.address || '');
-  if (program.dataFields?.firstTimer) row.push(a.firstTimer ? 'Yes' : 'No');
-  if (program.dataFields?.department) row.push(a.department || '');
-  if (program.dataFields?.fellowship) row.push(a.fellowship || '');
-  if (program.dataFields?.age) row.push(a.age || '');
-  if (program.dataFields?.sex) row.push(a.sex || '');
-  if (program.giftingEnabled) row.push(a.isWinner ? 'Yes' : 'No');
-  row.push(new Date(a.scanTime).toLocaleString());
-  
-  csvLines.push(row.join(','));
-});
-
-const csvContent = csvLines.join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${church.churchName}-${program.title}-Report-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    // Header with gradient effect (simulated with rectangles)
+    doc.setFillColor(249, 109, 16);
+    doc.rect(15, 15, pageWidth - 30, 25, 'F');
     
-    alert('Data exported successfully!');
+    // Title
+    doc.setFontSize(24);
+    doc.setTextColor(235, 235, 211);
+    doc.setFont(undefined, 'bold');
+    doc.text('ATTENDANCE REPORT', pageWidth / 2, 28, { align: 'center' });
+    
+    // Date stamp on header
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 35, { align: 'center' });
+    
+    yPosition = 50;
+
+    // Church Information Section
+    doc.setFillColor(245, 245, 245);
+    doc.rect(15, yPosition - 5, pageWidth - 30, 35, 'F');
+    
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('CHURCH INFORMATION', 20, yPosition);
+    yPosition += 8;
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    
+    // Two column layout for church info
+    const col1X = 20;
+    const col2X = pageWidth / 2 + 5;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Church Name:', col1X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(church.churchName, col1X + 30, yPosition);
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Email:', col2X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(church.email, col2X + 15, yPosition);
+    yPosition += 6;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Branch:', col1X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(church.branchName, col1X + 30, yPosition);
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Location:', col2X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(church.location, col2X + 15, yPosition);
+    
+    yPosition += 15;
+
+    // Program Information Section
+    doc.setFillColor(245, 245, 245);
+    doc.rect(15, yPosition - 5, pageWidth - 30, 30, 'F');
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('PROGRAM INFORMATION', 20, yPosition);
+    yPosition += 8;
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Program Title:', col1X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(program.title, col1X + 30, yPosition);
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Status:', col2X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(program.isActive ? 76 : 158, program.isActive ? 175 : 158, program.isActive ? 80 : 158);
+    doc.text(program.isActive ? 'Active' : 'Completed', col2X + 15, yPosition);
+    doc.setTextColor(0, 0, 0);
+    yPosition += 6;
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Date:', col1X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(new Date(program.date).toLocaleDateString(), col1X + 30, yPosition);
+    
+    doc.setFont(undefined, 'bold');
+    doc.text('Time:', col2X, yPosition);
+    doc.setFont(undefined, 'normal');
+    doc.text(`${program.startTime} - ${program.endTime}`, col2X + 15, yPosition);
+    
+    yPosition += 15;
+
+    // Summary Statistics - Card Style
+    doc.setFillColor(249, 109, 16);
+    doc.rect(15, yPosition - 5, pageWidth - 30, 40, 'F');
+    
+    doc.setTextColor(235, 235, 211);
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('SUMMARY STATISTICS', 20, yPosition);
+    yPosition += 10;
+    
+    // Statistics in grid layout
+    const statBoxWidth = (pageWidth - 40) / 4;
+    const statY = yPosition;
+    
+    // Stat 1: Total Scans
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(15, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.setTextColor(249, 109, 16);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text(totalScans.toString(), 15 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Total Scans', 15 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    
+    // Stat 2: Forms Submitted
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(15 + statBoxWidth, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.setTextColor(249, 109, 16);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text(totalFormsSubmitted.toString(), 15 + statBoxWidth + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Forms Submitted', 15 + statBoxWidth + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    
+    // Stat 3: First Timers
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(15 + statBoxWidth * 2, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.setTextColor(249, 109, 16);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text(totalFirstTimers.toString(), 15 + statBoxWidth * 2 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('First Timers', 15 + statBoxWidth * 2 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    
+    // Stat 4: Winners
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(15 + statBoxWidth * 3, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.setTextColor(249, 109, 16);
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.text(totalWinners.toString(), 15 + statBoxWidth * 3 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text('Winners', 15 + statBoxWidth * 3 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    
+    yPosition = statY + 25;
+
+    // Attendee Data Table
+    if (attendeesList.length > 0) {
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text('ATTENDEE DATA', 20, yPosition);
+      yPosition += 5;
+
+      // Create dynamic table headers
+      const tableHeaders = [];
+      const tableColumns = [];
+      
+      if (program.dataFields?.fullName) {
+        tableHeaders.push('Name');
+        tableColumns.push('fullName');
+      }
+      if (program.dataFields?.phoneNumber) {
+        tableHeaders.push('Phone');
+        tableColumns.push('phoneNumber');
+      }
+      if (program.dataFields?.address) {
+        tableHeaders.push('Address');
+        tableColumns.push('address');
+      }
+      if (program.dataFields?.firstTimer) {
+        tableHeaders.push('First Timer');
+        tableColumns.push('firstTimer');
+      }
+      if (program.dataFields?.department) {
+        tableHeaders.push('Department');
+        tableColumns.push('department');
+      }
+      if (program.dataFields?.fellowship) {
+        tableHeaders.push('Fellowship');
+        tableColumns.push('fellowship');
+      }
+      if (program.dataFields?.age) {
+        tableHeaders.push('Age');
+        tableColumns.push('age');
+      }
+      if (program.dataFields?.sex) {
+        tableHeaders.push('Gender');
+        tableColumns.push('sex');
+      }
+      if (program.giftingEnabled) {
+        tableHeaders.push('Winner');
+        tableColumns.push('isWinner');
+      }
+      tableHeaders.push('Scan Time');
+      tableColumns.push('scanTime');
+
+      // Create table rows
+      const tableData = attendeesList.map((a, index) => {
+        const row = [];
+        tableColumns.forEach(col => {
+          if (col === 'firstTimer' || col === 'isWinner') {
+            row.push(a[col] ? '✓ Yes' : '✗ No');
+          } else if (col === 'scanTime') {
+            row.push(new Date(a[col]).toLocaleString());
+          } else {
+            row.push(a[col] || '-');
+          }
+        });
+        return row;
+      });
+
+      // Add table with beautiful styling
+      doc.autoTable({
+        startY: yPosition,
+        head: [tableHeaders],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [249, 109, 16],
+          textColor: [235, 235, 211],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          cellPadding: 3
+        },
+        bodyStyles: {
+          fontSize: 8,
+          cellPadding: 2.5,
+          textColor: [0, 0, 0]
+        },
+        alternateRowStyles: {
+          fillColor: [250, 250, 250]
+        },
+        columnStyles: tableColumns.reduce((acc, col, index) => {
+          if (col === 'fullName' || col === 'address') {
+            acc[index] = { cellWidth: 'auto' };
+          } else if (col === 'firstTimer' || col === 'isWinner' || col === 'age') {
+            acc[index] = { halign: 'center', cellWidth: 20 };
+          } else if (col === 'scanTime') {
+            acc[index] = { cellWidth: 35, fontSize: 7 };
+          }
+          return acc;
+        }, {}),
+        styles: {
+          lineColor: [200, 200, 200],
+          lineWidth: 0.1
+        },
+        margin: { left: 15, right: 15 },
+        didDrawPage: function (data) {
+          // Footer on each page
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            `${church.churchName} - ${program.title} | Page ${data.pageNumber}`,
+            pageWidth / 2,
+            pageHeight - 10,
+            { align: 'center' }
+          );
+        }
+      });
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text('No attendee data available for this program.', 20, yPosition);
+    }
+
+    // Save PDF
+    const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    
+    alert('✅ PDF Report exported successfully!');
   } catch (error) {
-    console.error('Export error:', error);
-    alert('Failed to export data. Please try again.');
+    console.error('PDF export error:', error);
+    alert('❌ Failed to export PDF. Please try again.');
   }
 };
+
+
+
+
+
+
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -471,8 +716,8 @@ const csvContent = csvLines.join('\n');
                 <h2 className="section-title">Attendee Data</h2>
                 <p className="section-subtitle">People who submitted the form</p>
               </div>
-              <button className="btn btn-primary" onClick={handleExportData}>
-                📥 Export CSV
+              <button className="btn btn-primary" onClick={handleExportPDF}>
+                 📄 Export Report (PDF)
               </button>
             </div>
 
