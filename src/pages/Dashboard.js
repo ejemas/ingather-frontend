@@ -165,46 +165,42 @@ if (loading) {
           </button>
         </header>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon" style={{backgroundColor: '#F96D10'}}>📊</div>
-            <div className="stat-info">
-              <p className="stat-label">Total Programs</p>
-              <h2 className="stat-value">{programs.length}</h2>
-            </div>
-          </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{backgroundColor: '#4CAF50'}}>✅</div>
-            <div className="stat-info">
-              <p className="stat-label">Active Programs</p>
-              <h2 className="stat-value">
-                {programs.filter(p => p.status === 'active').length}
-              </h2>
-            </div>
-          </div>
+ <div className="stats-grid">
+  <div className="stat-card">
+    <div className="stat-icon">📊</div>
+    <div className="stat-info">
+      <p className="stat-label">Total Programs</p>
+      <h2 className="stat-value">{programs.length}</h2>
+    </div>
+  </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{backgroundColor: '#2196F3'}}>👥</div>
-            <div className="stat-info">
-              <p className="stat-label">Total Attendance</p>
-              <h2 className="stat-value">
-                {programs.reduce((sum, p) => sum + p.totalScans, 0).toLocaleString()}
-              </h2>
-            </div>
-          </div>
+  <div className="stat-card">
+    <div className="stat-icon">✅</div>
+    <div className="stat-info">
+      <p className="stat-label">Active Programs</p>
+      <h2 className="stat-value">{programs.filter(p => p.status === 'active').length}</h2>
+    </div>
+  </div>
 
-          <div className="stat-card">
-            <div className="stat-icon" style={{backgroundColor: '#FF9800'}}>📅</div>
-            <div className="stat-info">
-              <p className="stat-label">Upcoming Programs</p>
-              <h2 className="stat-value">
-                {programs.filter(p => p.status === 'upcoming').length}
-              </h2>
-            </div>
-          </div>
-        </div>
+  <div className="stat-card">
+    <div className="stat-icon">👥</div>
+    <div className="stat-info">
+      <p className="stat-label">Total Attendance</p>
+      <h2 className="stat-value">
+        {programs.reduce((sum, p) => sum + p.totalScans, 0).toLocaleString()}
+      </h2>
+    </div>
+  </div>
+
+  <div className="stat-card">
+    <div className="stat-icon">📅</div>
+    <div className="stat-info">
+      <p className="stat-label">Upcoming Programs</p>
+      <h2 className="stat-value">{programs.filter(p => p.status === 'upcoming').length}</h2>
+    </div>
+  </div>
+</div>
 
         {/* Programs Table */}
         <div className="programs-section">
@@ -279,21 +275,16 @@ if (loading) {
                         {program.dataCollection ? 'Yes' : 'No'}
                       </span>
                     </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="btn-action btn-view"
-                          onClick={() => window.location.href = `/program/${program.id}`}
-                        >
-                          View
-                        </button>
-                        {program.status === 'active' && (
-                          <button className="btn-action btn-stop">
-                            Stop
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                   <td>
+  <div className="action-buttons">
+    <button 
+      className="btn-action btn-view"
+      onClick={() => window.location.href = `/program/${program.id}`}
+    >
+      View
+    </button>
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>

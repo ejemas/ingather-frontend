@@ -137,13 +137,16 @@
 }
 
 .stat-card {
-  background-color: var(--color-beige);
+  background: var(--color-beige);
+  border: 1px solid rgba(9, 8, 9, 0.1);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  padding: var(--spacing-lg);
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .stat-card:hover {
@@ -152,24 +155,48 @@
 }
 
 .stat-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* Different colors for each stat card icon */
+.stat-card:nth-child(1) .stat-icon {
+  background: linear-gradient(135deg, #FF8C42, #FF6B35); /* Orange */
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.stat-card:nth-child(2) .stat-icon {
+  background: linear-gradient(135deg, #4CAF50, #43A047); /* Green */
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.stat-card:nth-child(3) .stat-icon {
+  background: linear-gradient(135deg, #2196F3, #1976D2); /* Blue */
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.stat-card:nth-child(4) .stat-icon {
+  background: linear-gradient(135deg, #FF9800, #F57C00); /* Orange (different shade) */
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+
 
 .stat-info {
   flex: 1;
 }
 
 .stat-label {
-  color: rgba(9, 8, 9, 0.6);
+  color: #000000b2;
   font-size: 0.9rem;
-  margin-bottom: 4px;
+  margin-bottom: 0px;
 }
 
 .stat-value {
@@ -177,6 +204,7 @@
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
+  line-height: 1;
 }
 
 /* Programs Section */

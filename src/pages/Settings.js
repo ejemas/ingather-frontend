@@ -3,6 +3,7 @@ import { getCurrentChurch } from '../api/authService';
 import '../styles/Dashboard.css';
 import '../styles/Auth.css';
 
+
 function Settings() {
   const [churchData, setChurchData] = useState({
     churchName: '',
@@ -67,29 +68,39 @@ function Settings() {
   setMessage('');
 
   try {
-    const { updateChurchInfo } = await import('../api/settingsService');
+    const axios = (await import('axios')).default;
+    const token = localStorage.getItem('token');
     
-    const response = await updateChurchInfo({
-      churchName: formData.churchName,
-      branchName: formData.branchName,
-      location: formData.location
-    });
+    const response = await axios.put(
+      `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/update`,
+      {
+        churchName: formData.churchName,
+        branchName: formData.branchName,
+        location: formData.location
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
     // Update local state
     setChurchData({
       ...churchData,
-      churchName: response.church.churchName,
-      branchName: response.church.branchName,
-      location: response.church.location
+      churchName: response.data.church.churchName,
+      branchName: response.data.church.branchName,
+      location: response.data.church.location
     });
 
     // Update localStorage
     const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
     const updatedChurch = {
       ...storedChurch,
-      churchName: response.church.churchName,
-      branchName: response.church.branchName,
-      location: response.church.location
+      churchName: response.data.church.churchName,
+      branchName: response.data.church.branchName,
+      location: response.data.church.location
     };
     localStorage.setItem('church', JSON.stringify(updatedChurch));
 

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import io from 'socket.io-client';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI } from '../api/programService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import '../styles/ProgramDetail.css';
@@ -16,6 +16,7 @@ function ProgramDetail() {
   const [attendanceData, setAttendanceData] = useState([]);
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
 
   useEffect(() => {
     fetchProgramData();
@@ -42,6 +43,14 @@ function ProgramDetail() {
         window.location.href = '/login';
         return;
       }
+
+      // Get church info
+    const { getCurrentChurch } = await import('../api/authService');
+    const church = await getCurrentChurch();
+    setChurchData({
+      name: church.churchName,
+      branch: church.branchName
+    });
 
       // Get program details
       const programData = await getProgramById(id);
@@ -105,14 +114,14 @@ function ProgramDetail() {
 
 
 
-  const handleExportPDF = async () => {
+  
+const handleExportPDF = async () => {
   try {
     // Get church info
     const { getCurrentChurch } = await import('../api/authService');
     const church = await getCurrentChurch();
     
     // Get fresh attendee data
-    const { getAttendees } = await import('../api/programService');
     const attendeesData = await getAttendees(id);
     const attendeesList = attendeesData.attendees;
 
@@ -122,20 +131,19 @@ function ProgramDetail() {
     const totalFirstTimers = attendeesList.filter(a => a.firstTimer).length;
     const totalWinners = attendeesList.filter(a => a.isWinner).length;
 
-    // Create PDF with better styling
+    // Create PDF
     const doc = new jsPDF('p', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    let yPosition = 20;
-
-    // Add border to page
+    
+    // Add decorative border
     doc.setDrawColor(249, 109, 16);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(1);
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-    // Header with gradient effect (simulated with rectangles)
+    // Header Banner
     doc.setFillColor(249, 109, 16);
-    doc.rect(15, 15, pageWidth - 30, 25, 'F');
+    doc.rect(14, 14, pageWidth - 28, 30, 'F');
     
     // Title
     doc.setFontSize(24);
@@ -143,286 +151,288 @@ function ProgramDetail() {
     doc.setFont(undefined, 'bold');
     doc.text('ATTENDANCE REPORT', pageWidth / 2, 28, { align: 'center' });
     
-    // Date stamp on header
     doc.setFontSize(9);
     doc.setFont(undefined, 'normal');
-    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 35, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 37, { align: 'center' });
     
-    yPosition = 50;
+    let yPos = 55;
 
     // Church Information Section
-    doc.setFillColor(245, 245, 245);
-    doc.rect(15, yPosition - 5, pageWidth - 30, 35, 'F');
+    doc.setFillColor(248, 248, 248);
+    doc.rect(14, yPos - 5, pageWidth - 28, 38, 'F');
     
     doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont(undefined, 'bold');
-    doc.text('CHURCH INFORMATION', 20, yPosition);
-    yPosition += 8;
+    doc.text('CHURCH INFORMATION', 18, yPos);
+    yPos += 8;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
-    
-    // Two column layout for church info
-    const col1X = 20;
-    const col2X = pageWidth / 2 + 5;
+    const col1 = 18;
+    const col2 = pageWidth / 2 + 5;
     
     doc.setFont(undefined, 'bold');
-    doc.text('Church Name:', col1X, yPosition);
+    doc.text('Church Name:', col1, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(church.churchName, col1X + 30, yPosition);
+    doc.text(church.churchName, col1 + 32, yPos);
     
     doc.setFont(undefined, 'bold');
-    doc.text('Email:', col2X, yPosition);
+    doc.text('Email:', col2, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(church.email, col2X + 15, yPosition);
-    yPosition += 6;
+    doc.text(church.email, col2 + 15, yPos);
+    yPos += 6;
     
     doc.setFont(undefined, 'bold');
-    doc.text('Branch:', col1X, yPosition);
+    doc.text('Branch:', col1, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(church.branchName, col1X + 30, yPosition);
+    doc.text(church.branchName, col1 + 32, yPos);
     
     doc.setFont(undefined, 'bold');
-    doc.text('Location:', col2X, yPosition);
+    doc.text('Location:', col2, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(church.location, col2X + 15, yPosition);
-    
-    yPosition += 15;
+    doc.text(church.location, col2 + 15, yPos);
+    yPos += 15;
 
     // Program Information Section
-    doc.setFillColor(245, 245, 245);
-    doc.rect(15, yPosition - 5, pageWidth - 30, 30, 'F');
+    doc.setFillColor(248, 248, 248);
+    doc.rect(14, yPos - 5, pageWidth - 28, 32, 'F');
     
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont(undefined, 'bold');
-    doc.text('PROGRAM INFORMATION', 20, yPosition);
-    yPosition += 8;
+    doc.setTextColor(0, 0, 0);
+    doc.text('PROGRAM INFORMATION', 18, yPos);
+    yPos += 8;
     
     doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text('Title:', col1, yPos);
     doc.setFont(undefined, 'normal');
+    doc.text(program.title, col1 + 32, yPos);
     
     doc.setFont(undefined, 'bold');
-    doc.text('Program Title:', col1X, yPosition);
-    doc.setFont(undefined, 'normal');
-    doc.text(program.title, col1X + 30, yPosition);
-    
+    doc.text('Status:', col2, yPos);
+    doc.setTextColor(program.isActive ? 76 : 100, program.isActive ? 175 : 100, program.isActive ? 80 : 100);
     doc.setFont(undefined, 'bold');
-    doc.text('Status:', col2X, yPosition);
-    doc.setFont(undefined, 'normal');
-    doc.setTextColor(program.isActive ? 76 : 158, program.isActive ? 175 : 158, program.isActive ? 80 : 158);
-    doc.text(program.isActive ? 'Active' : 'Completed', col2X + 15, yPosition);
+    doc.text(program.isActive ? 'ACTIVE' : 'COMPLETED', col2 + 15, yPos);
     doc.setTextColor(0, 0, 0);
-    yPosition += 6;
+    yPos += 6;
     
     doc.setFont(undefined, 'bold');
-    doc.text('Date:', col1X, yPosition);
+    doc.text('Date:', col1, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(new Date(program.date).toLocaleDateString(), col1X + 30, yPosition);
+    doc.text(new Date(program.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }), col1 + 32, yPos);
     
     doc.setFont(undefined, 'bold');
-    doc.text('Time:', col2X, yPosition);
+    doc.text('Time:', col2, yPos);
     doc.setFont(undefined, 'normal');
-    doc.text(`${program.startTime} - ${program.endTime}`, col2X + 15, yPosition);
-    
-    yPosition += 15;
+    doc.text(`${program.startTime} - ${program.endTime}`, col2 + 15, yPos);
+    yPos += 15;
 
-    // Summary Statistics - Card Style
+    // Summary Statistics Banner - WITH PADDING
     doc.setFillColor(249, 109, 16);
-    doc.rect(15, yPosition - 5, pageWidth - 30, 40, 'F');
+    doc.rect(14, yPos - 5, pageWidth - 28, 50, 'F'); // Increased height for padding
     
     doc.setTextColor(235, 235, 211);
-    doc.setFontSize(14);
+    doc.setFontSize(13);
     doc.setFont(undefined, 'bold');
-    doc.text('SUMMARY STATISTICS', 20, yPosition);
-    yPosition += 10;
+    doc.text('SUMMARY STATISTICS', 18, yPos);
+    yPos += 12; // More space after title
     
-    // Statistics in grid layout
-    const statBoxWidth = (pageWidth - 40) / 4;
-    const statY = yPosition;
+    // Statistics Cards in Grid - WITH PADDING
+    const cardWidth = (pageWidth - 44) / 4; // Reduced width for padding
+    const cardHeight = 22;
+    const cardGap = 3; // Increased gap
+    const cardStartX = 18; // Padding from left edge
     
-    // Stat 1: Total Scans
+    // Card 1: Total Scans
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(15, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.roundedRect(cardStartX, yPos, cardWidth, cardHeight, 3, 3, 'F');
     doc.setTextColor(249, 109, 16);
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(totalScans.toString(), 15 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.text(totalScans.toString(), cardStartX + cardWidth / 2, yPos + 10, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Total Scans', 15 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    doc.setTextColor(80, 80, 80);
+    doc.text('Total Scans', cardStartX + cardWidth / 2, yPos + 17, { align: 'center' });
     
-    // Stat 2: Forms Submitted
+    // Card 2: Forms Submitted
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(15 + statBoxWidth, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.roundedRect(cardStartX + cardWidth + cardGap, yPos, cardWidth, cardHeight, 3, 3, 'F');
     doc.setTextColor(249, 109, 16);
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(totalFormsSubmitted.toString(), 15 + statBoxWidth + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.text(totalFormsSubmitted.toString(), cardStartX + cardWidth + cardGap + cardWidth / 2, yPos + 10, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Forms Submitted', 15 + statBoxWidth + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    doc.setTextColor(80, 80, 80);
+    doc.text('Forms Submitted', cardStartX + cardWidth + cardGap + cardWidth / 2, yPos + 17, { align: 'center' });
     
-    // Stat 3: First Timers
+    // Card 3: First Timers
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(15 + statBoxWidth * 2, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.roundedRect(cardStartX + (cardWidth + cardGap) * 2, yPos, cardWidth, cardHeight, 3, 3, 'F');
     doc.setTextColor(249, 109, 16);
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(totalFirstTimers.toString(), 15 + statBoxWidth * 2 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.text(totalFirstTimers.toString(), cardStartX + (cardWidth + cardGap) * 2 + cardWidth / 2, yPos + 10, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('First Timers', 15 + statBoxWidth * 2 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    doc.setTextColor(80, 80, 80);
+    doc.text('First Timers', cardStartX + (cardWidth + cardGap) * 2 + cardWidth / 2, yPos + 17, { align: 'center' });
     
-    // Stat 4: Winners
+    // Card 4: Winners
     doc.setFillColor(255, 255, 255);
-    doc.roundedRect(15 + statBoxWidth * 3, statY, statBoxWidth - 2, 18, 2, 2, 'F');
+    doc.roundedRect(cardStartX + (cardWidth + cardGap) * 3, yPos, cardWidth, cardHeight, 3, 3, 'F');
     doc.setTextColor(249, 109, 16);
-    doc.setFontSize(18);
+    doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text(totalWinners.toString(), 15 + statBoxWidth * 3 + (statBoxWidth - 2) / 2, statY + 8, { align: 'center' });
+    doc.text(totalWinners.toString(), cardStartX + (cardWidth + cardGap) * 3 + cardWidth / 2, yPos + 10, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.setTextColor(100, 100, 100);
-    doc.text('Winners', 15 + statBoxWidth * 3 + (statBoxWidth - 2) / 2, statY + 14, { align: 'center' });
+    doc.setTextColor(80, 80, 80);
+    doc.text('Winners', cardStartX + (cardWidth + cardGap) * 3 + cardWidth / 2, yPos + 17, { align: 'center' });
     
-    yPosition = statY + 25;
+    yPos += cardHeight + 18; // More space after stats
 
-    // Attendee Data Table
+    // Attendee Data Section Header
     if (attendeesList.length > 0) {
       doc.setTextColor(0, 0, 0);
-      doc.setFontSize(14);
+      doc.setFontSize(13);
       doc.setFont(undefined, 'bold');
-      doc.text('ATTENDEE DATA', 20, yPosition);
-      yPosition += 5;
+      doc.text('ATTENDEE DATA', 18, yPos);
+      yPos += 10; // More space after title
 
-      // Create dynamic table headers
-      const tableHeaders = [];
-      const tableColumns = [];
+      // Collect ALL fields that were selected
+      const headers = [];
+      const fields = [];
       
-      if (program.dataFields?.fullName) {
-        tableHeaders.push('Name');
-        tableColumns.push('fullName');
+      if (program.dataFields?.fullName) { 
+        headers.push('Name'); 
+        fields.push('fullName'); 
       }
-      if (program.dataFields?.phoneNumber) {
-        tableHeaders.push('Phone');
-        tableColumns.push('phoneNumber');
+      if (program.dataFields?.phoneNumber) { 
+        headers.push('Phone'); 
+        fields.push('phoneNumber'); 
       }
-      if (program.dataFields?.address) {
-        tableHeaders.push('Address');
-        tableColumns.push('address');
+      if (program.dataFields?.address) { 
+        headers.push('Address'); 
+        fields.push('address'); 
       }
-      if (program.dataFields?.firstTimer) {
-        tableHeaders.push('First Timer');
-        tableColumns.push('firstTimer');
+      if (program.dataFields?.firstTimer) { 
+        headers.push('First Timer'); 
+        fields.push('firstTimer'); 
       }
-      if (program.dataFields?.department) {
-        tableHeaders.push('Department');
-        tableColumns.push('department');
+      if (program.dataFields?.department) { 
+        headers.push('Department'); 
+        fields.push('department'); 
       }
-      if (program.dataFields?.fellowship) {
-        tableHeaders.push('Fellowship');
-        tableColumns.push('fellowship');
+      if (program.dataFields?.fellowship) { 
+        headers.push('Fellowship'); 
+        fields.push('fellowship'); 
       }
-      if (program.dataFields?.age) {
-        tableHeaders.push('Age');
-        tableColumns.push('age');
+      if (program.dataFields?.age) { 
+        headers.push('Age'); 
+        fields.push('age'); 
       }
-      if (program.dataFields?.sex) {
-        tableHeaders.push('Gender');
-        tableColumns.push('sex');
+      if (program.dataFields?.sex) { 
+        headers.push('Gender'); 
+        fields.push('sex'); 
       }
-      if (program.giftingEnabled) {
-        tableHeaders.push('Winner');
-        tableColumns.push('isWinner');
+      if (program.giftingEnabled) { 
+        headers.push('Winner'); 
+        fields.push('isWinner'); 
       }
-      tableHeaders.push('Scan Time');
-      tableColumns.push('scanTime');
+      headers.push('Scan Time');
+      fields.push('scanTime');
 
-      // Create table rows
-      const tableData = attendeesList.map((a, index) => {
-        const row = [];
-        tableColumns.forEach(col => {
-          if (col === 'firstTimer' || col === 'isWinner') {
-            row.push(a[col] ? '✓ Yes' : '✗ No');
-          } else if (col === 'scanTime') {
-            row.push(new Date(a[col]).toLocaleString());
-          } else {
-            row.push(a[col] || '-');
-          }
-        });
-        return row;
+      // Calculate column width based on number of columns
+      const tableWidth = pageWidth - 32;
+      const colWidth = tableWidth / headers.length;
+
+      // Draw header background
+      doc.setFillColor(249, 109, 16);
+      doc.rect(16, yPos, tableWidth, 8, 'F');
+      
+      doc.setTextColor(235, 235, 211);
+      doc.setFontSize(8);
+      doc.setFont(undefined, 'bold');
+      
+      // Draw headers
+      let xPos = 18;
+      headers.forEach((header, index) => {
+        doc.text(header, xPos, yPos + 5);
+        xPos += colWidth;
       });
-
-      // Add table with beautiful styling
-      doc.autoTable({
-        startY: yPosition,
-        head: [tableHeaders],
-        body: tableData,
-        theme: 'grid',
-        headStyles: {
-          fillColor: [249, 109, 16],
-          textColor: [235, 235, 211],
-          fontStyle: 'bold',
-          fontSize: 9,
-          halign: 'center',
-          cellPadding: 3
-        },
-        bodyStyles: {
-          fontSize: 8,
-          cellPadding: 2.5,
-          textColor: [0, 0, 0]
-        },
-        alternateRowStyles: {
-          fillColor: [250, 250, 250]
-        },
-        columnStyles: tableColumns.reduce((acc, col, index) => {
-          if (col === 'fullName' || col === 'address') {
-            acc[index] = { cellWidth: 'auto' };
-          } else if (col === 'firstTimer' || col === 'isWinner' || col === 'age') {
-            acc[index] = { halign: 'center', cellWidth: 20 };
-          } else if (col === 'scanTime') {
-            acc[index] = { cellWidth: 35, fontSize: 7 };
-          }
-          return acc;
-        }, {}),
-        styles: {
-          lineColor: [200, 200, 200],
-          lineWidth: 0.1
-        },
-        margin: { left: 15, right: 15 },
-        didDrawPage: function (data) {
-          // Footer on each page
-          doc.setFontSize(8);
-          doc.setTextColor(150, 150, 150);
-          doc.text(
-            `${church.churchName} - ${program.title} | Page ${data.pageNumber}`,
-            pageWidth / 2,
-            pageHeight - 10,
-            { align: 'center' }
-          );
+      
+      yPos += 12; // MORE SPACE between header and data rows
+      
+      // Data rows
+      doc.setTextColor(0, 0, 0);
+      doc.setFont(undefined, 'normal');
+      doc.setFontSize(7);
+      
+      attendeesList.forEach((attendee, index) => {
+        if (yPos > pageHeight - 30) {
+          // Add new page if needed
+          doc.addPage();
+          doc.setDrawColor(249, 109, 16);
+          doc.setLineWidth(1);
+          doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+          yPos = 20;
         }
+        
+        xPos = 18;
+        
+        fields.forEach(field => {
+          let value = '-';
+          
+          if (field === 'firstTimer' || field === 'isWinner') {
+            value = attendee[field] ? 'Yes' : 'No';
+          } else if (field === 'scanTime') {
+            value = new Date(attendee[field]).toLocaleString();
+          } else if (attendee[field]) {
+            value = attendee[field].toString().substring(0, 20); // Truncate long values
+          }
+          
+          doc.text(value, xPos, yPos);
+          xPos += colWidth;
+        });
+        
+        yPos += 6; // Space between rows
       });
+      
     } else {
       doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text('No attendee data available for this program.', 20, yPosition);
+      doc.setTextColor(120, 120, 120);
+      doc.setFont(undefined, 'italic');
+      doc.text('No attendee data available.', 18, yPos);
     }
 
+    // Footer
+    // Footer
+doc.setFontSize(8);
+doc.setTextColor(130, 130, 130);
+doc.text(`${church.churchName} - ${program.title}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+doc.text(`Page 1`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+// Bottom right watermark
+doc.setFontSize(20);
+doc.setFont(undefined, 'bold');
+doc.setTextColor(200, 200, 200); // Faint gray
+doc.text('Powered by INGATHER', pageWidth - 18, pageHeight - 6, { 
+  align: 'right'
+});
+
     // Save PDF
-    const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-Report.pdf`;
     doc.save(fileName);
     
     alert('✅ PDF Report exported successfully!');
   } catch (error) {
     console.error('PDF export error:', error);
-    alert('❌ Failed to export PDF. Please try again.');
+    alert('❌ Failed to export PDF: ' + error.message);
   }
 };
-
 
 
 
@@ -481,12 +491,12 @@ function ProgramDetail() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <h2>Ingather</h2>
-          <div className="church-info">
-            <p className="church-name">Grace Assembly</p>
-            <p className="branch-name">Lekki Branch</p>
-          </div>
-        </div>
+    <h2>Ingather</h2>
+    <div className="church-info">
+      <p className="church-name">{churchData.name}</p>
+      <p className="branch-name">{churchData.branch}</p>
+    </div>
+  </div>
 
         <nav className="sidebar-nav">
           <a href="/dashboard" className="nav-item">

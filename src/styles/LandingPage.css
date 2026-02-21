@@ -171,8 +171,12 @@
 }
 
 .stat-label {
+  color: var(--color-black);
   font-size: 0.9rem;
-  color: rgba(235, 235, 211, 0.7);
+  margin-bottom: 6px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .stat-divider {
