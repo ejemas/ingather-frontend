@@ -16,6 +16,7 @@ function ProgramDetail() {
   const [attendanceData, setAttendanceData] = useState([]);
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [countOnlyStats, setCountOnlyStats] = useState({ maleCount: 0, femaleCount: 0, firstTimerCount: 0 });
   const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
 
   useEffect(() => {
@@ -34,17 +35,19 @@ function ProgramDetail() {
     return () => {
       socket.disconnect();
     };
+
+
+    
   }, [id]);
+const fetchProgramData = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = '/login';
+      return;
+    }
 
-  const fetchProgramData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-
-      // Get church info
+    // Get church info
     const { getCurrentChurch } = await import('../api/authService');
     const church = await getCurrentChurch();
     setChurchData({
@@ -52,31 +55,47 @@ function ProgramDetail() {
       branch: church.branchName
     });
 
-      // Get program details
-      const programData = await getProgramById(id);
-      setProgram({
-        ...programData,
-        status: programData.isActive ? 'active' : 'completed'
-      });
-      setTotalScans(programData.totalScans);
+    // Get program details
+    const programData = await getProgramById(id);
+    setProgram({
+      ...programData,
+      status: programData.isActive ? 'active' : 'completed'
+    });
+    setTotalScans(programData.totalScans);
 
-      // Get attendees
-      const attendeesData = await getAttendees(id);
-      setAttendees(attendeesData.attendees);
+    // Get attendees
+    const attendeesData = await getAttendees(id);
+    setAttendees(attendeesData.attendees);
 
-      // Get attendance over time
-      const chartData = await getAttendanceData(id);
-      setAttendanceData(chartData.attendanceData);
+    // Get attendance over time
+    const chartData = await getAttendanceData(id);
+    setAttendanceData(chartData.attendanceData);
 
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching program:', error);
-      if (error.response?.status === 401) {
-        window.location.href = '/login';
+    // ADD THIS NEW SECTION - Get count-only stats if program is count-only mode
+    if (programData.trackingMode === 'count-only') {
+      try {
+        const axios = (await import('axios')).default;
+        const statsResponse = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/programs/${id}/count-stats`,
+          {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }
+        );
+        setCountOnlyStats(statsResponse.data);
+      } catch (error) {
+        console.error('Error fetching count-only stats:', error);
       }
-      setLoading(false);
     }
-  };
+
+    setLoading(false);
+  } catch (error) {
+    console.error('Error fetching program:', error);
+    if (error.response?.status === 401) {
+      window.location.href = '/login';
+    }
+    setLoading(false);
+  }
+};
 
   const handleStopProgram = async () => {
     if (window.confirm('Are you sure you want to stop this program? The QR code will be disabled.')) {
@@ -557,9 +576,9 @@ doc.text('Powered by INGATHER', pageWidth - 18, pageHeight - 6, {
             )}
           </div>
         </div>
-
-        {/* Live Stats */}
+{/* Live Stats */}
         <div className="live-stats-grid">
+
           <div className="live-stat-card primary">
             <div className="live-indicator">
               {program.isActive && <span className="pulse-dot"></span>}
@@ -571,7 +590,29 @@ doc.text('Powered by INGATHER', pageWidth - 18, pageHeight - 6, {
             <p className="stat-subtitle">Total Scans</p>
           </div>
 
-          {program.trackingMode === 'collect-data' && (
+          {program.trackingMode === 'count-only' ? (
+            // Count-Only Mode Stats
+            <>
+              <div className="live-stat-card">
+                <span className="stat-icon">👨</span>
+                <h3>{countOnlyStats.maleCount}</h3>
+                <p>Male</p>
+              </div>
+
+              <div className="live-stat-card">
+                <span className="stat-icon">👩</span>
+                <h3>{countOnlyStats.femaleCount}</h3>
+                <p>Female</p>
+              </div>
+
+              <div className="live-stat-card">
+                <span className="stat-icon">⭐</span>
+                <h3>{countOnlyStats.firstTimerCount}</h3>
+                <p>First Timers</p>
+              </div>
+            </>
+          ) : (
+            // Collect-Data Mode Stats (YOUR ORIGINAL CODE)
             <>
               <div className="live-stat-card">
                 <span className="stat-icon">📝</span>

@@ -9,11 +9,19 @@ import '../styles/ScanPage.css';
 function ScanPage() {
   const { programId } = useParams();
   
+
+// ADD THESE NEW ONES:
+const [showGenderForm, setShowGenderForm] = useState(false);
+const [gender, setGender] = useState('');
+const [isFirstTimer, setIsFirstTimer] = useState(false);
+const [submittingGender, setSubmittingGender] = useState(false);
+
   const hasScannedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [alreadyScanned, setAlreadyScanned] = useState(false);
   const [programData, setProgramData] = useState(null);
   const [showForm, setShowForm] = useState(false);
+
 
   // Form data
   const [formData, setFormData] = useState({
@@ -57,57 +65,95 @@ function ScanPage() {
 // const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
     //   console.log('Device fingerprint:', fingerprint);
 
-    const initializeScan = async () => {
-  try {
-    // Create simple device fingerprint
-    const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
-    console.log('Device fingerprint:', fingerprint);
-    
-    // Get program info from backend
-    const programData = await getProgramInfo(programId);
-    console.log('Program data loaded:', programData);
-
-    if (!programData.isActive) {
-      setProgramData(programData);
-      setLoading(false);
-      return;
-    }
-
-    setProgramData(programData);
-    
-    // Submit scan to backend
+   const initializeScan = async () => {
     try {
-      const scanResult = await submitScan(programId, fingerprint, null);
-      console.log('Scan recorded:', scanResult);
+      const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
+      console.log('Device fingerprint:', fingerprint);
       
-      // Scan successful - decide what to show based on tracking mode
-      if (programData.trackingMode === 'count-only') {
-        // Count only - just show welcome message
+      // 1. Get program info from backend
+      const programData = await getProgramInfo(programId);
+      console.log('Program data loaded:', programData);
+
+      if (!programData.isActive) {
+        setProgramData(programData);
         setLoading(false);
-      } else if (programData.trackingMode === 'collect-data') {
-        // Collect data - show the form
-        setShowForm(true);
-        setLoading(false);
+        return;
       }
-    } catch (scanError) {
-      console.error('Scan error:', scanError);
-      
-      // Check if it's because device already scanned
-      if (scanError.response?.status === 400 && 
-          (scanError.response?.data?.alreadyScanned || 
-           scanError.response?.data?.error?.includes('already scanned'))) {
-        // Device has already scanned this program
-        setAlreadyScanned(true);
-        setLoading(false);
-      } else {
-        // Other error
-        console.error('Unexpected scan error:', scanError);
-        setLoading(false);
+
+      setProgramData(programData);
+
+      // Submit scan to backend
+      try {
+        const scanResult = await submitScan(programId, fingerprint, null);
+        console.log('Scan recorded successfully:', scanResult);
+        
+        // Scan successful - decide what to show based on tracking mode
+        if (programData.trackingMode === 'count-only') {
+          // Count only - show gender selection form
+          setShowGenderForm(true);
+          setLoading(false);
+        } else if (programData.trackingMode === 'collect-data') {
+          // Collect data - show the form
+          setShowForm(true);
+          setLoading(false);
+        }
+      } catch (scanError) {
+        console.error('Scan error:', scanError);
+        
+        // Check if it's because device already scanned
+        if (scanError.response?.status === 400 && 
+            (scanError.response?.data?.alreadyScanned || 
+             scanError.response?.data?.error?.includes('already scanned'))) {
+          // Device has already scanned this program
+          setAlreadyScanned(true);
+        }
+        setLoading(false); // Turn off loading on error
       }
+
+    } catch (error) {
+      console.error('Error in initializeScan:', error);
+      setLoading(false);
+    }
+  };
+
+
+  const handleGenderSubmit = async () => {
+  if (!gender) {
+    alert('Please select your gender');
+    return;
+  }
+
+  setSubmittingGender(true);
+
+  try {
+    const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
+    
+    // Update the scan record with gender and first-timer data
+    const axios = (await import('axios')).default;
+    await axios.put(
+      `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/api/scan/program/${programId}/update-scan`,
+      {
+        deviceFingerprint: fingerprint,
+        gender: gender,
+        firstTimer: isFirstTimer
+      }
+    );
+
+    console.log('Gender data updated successfully');
+
+    setSubmittingGender(false);
+    setShowGenderForm(false);
+    
+    // Show result based on first-timer status
+    if (isFirstTimer) {
+      setResult('first-timer-message');
+    } else {
+      setResult('count-only-success');
     }
   } catch (error) {
-    console.error('Error in initializeScan:', error);
-    setLoading(false);
+    console.error('Gender submit error:', error);
+    alert('Failed to submit. Please try again.');
+    setSubmittingGender(false);
   }
 };
 
@@ -241,22 +287,132 @@ if (alreadyScanned) {
   );
 }
 
-  // COUNT ONLY MODE
-  if (programData && programData.trackingMode === 'count-only' && !result) {
-    return (
-      <div className="scan-page">
-        <div className="scan-container">
-          <div className="message-card success">
-            <div className="message-icon">✅</div>
-            <h2>Welcome!</h2>
-            <h3>{programData.churchName}</h3>
-            <p>{programData.title}</p>
-            <p className="sub-message">You have been checked in successfully. Enjoy the service!</p>
+  // GENDER SELECTION FORM (Count-Only Mode)
+if (showGenderForm && programData) {
+  return (
+    <div className="scan-page">
+      <div className="scan-container">
+        <div className="form-header">
+          <h1>{programData.churchName}</h1>
+          <h2>{programData.title}</h2>
+          <p style={{marginTop: '10px', color: 'rgba(235, 235, 211, 0.8)'}}>
+            Please provide some basic information
+          </p>
+        </div>
+
+        <div className="gender-form" style={{
+          background: 'rgba(235, 235, 211, 0.05)',
+          padding: '30px',
+          borderRadius: '16px',
+          marginTop: '20px'
+        }}>
+          <div className="form-group">
+            <label style={{
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              marginBottom: '15px',
+              display: 'block',
+              color: 'var(--color-beige)'
+            }}>
+              Select Your Gender *
+            </label>
+            
+            <div style={{display: 'flex', gap: '15px', marginBottom: '25px'}}>
+              <label style={{
+                flex: 1,
+                padding: '20px',
+                background: gender === 'male' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
+                border: `2px solid ${gender === 'male' ? 'var(--color-pumpkin)' : 'rgba(235, 235, 211, 0.2)'}`,
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                textAlign: 'center',
+                fontWeight: '600',
+                fontSize: '1rem',
+                color: gender === 'male' ? 'var(--color-beige)' : 'rgba(235, 235, 211, 0.7)'
+              }}>
+                <input
+                  type="radio"
+                  name="gender"
+                  value="male"
+                  checked={gender === 'male'}
+                  onChange={(e) => setGender(e.target.value)}
+                  style={{display: 'none'}}
+                />
+                👨 Male
+              </label>
+
+              <label style={{
+                flex: 1,
+                padding: '20px',
+                background: gender === 'female' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
+                border: `2px solid ${gender === 'female' ? 'var(--color-pumpkin)' : 'rgba(235, 235, 211, 0.2)'}`,
+                borderRadius: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                textAlign: 'center',
+                fontWeight: '600',
+                fontSize: '1rem',
+                color: gender === 'female' ? 'var(--color-beige)' : 'rgba(235, 235, 211, 0.7)'
+              }}>
+                <input
+                  type="radio"
+                  name="gender"
+                  value="female"
+                  checked={gender === 'female'}
+                  onChange={(e) => setGender(e.target.value)}
+                  style={{display: 'none'}}
+                />
+                👩 Female
+              </label>
+            </div>
           </div>
+
+          <div className="form-group checkbox-group">
+            <label className="checkbox-label" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '15px',
+              background: 'rgba(235, 235, 211, 0.05)',
+              borderRadius: '12px',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={isFirstTimer}
+                onChange={(e) => setIsFirstTimer(e.target.checked)}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  accentColor: 'var(--color-pumpkin)',
+                  cursor: 'pointer'
+                }}
+              />
+              <span style={{fontSize: '1rem', fontWeight: '500'}}>
+                ⭐ I am a first-timer
+              </span>
+            </label>
+          </div>
+
+          <button
+            className="btn btn-primary btn-full"
+            onClick={handleGenderSubmit}
+            disabled={submittingGender || !gender}
+            style={{marginTop: '25px'}}
+          >
+            {submittingGender ? 'Submitting...' : 'Submit'}
+          </button>
+
+          
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+
+
+  
+}
 
   // SHOW FORM
   if (showForm && programData && !result) {
@@ -447,20 +603,52 @@ if (alreadyScanned) {
     );
   }
 
-  if (result === 'no-gifting') {
-    return (
-      <div className="scan-page">
-        <div className="scan-container">
-          <div className="message-card success">
-            <div className="message-icon">✅</div>
-            <h2>Thank You!</h2>
-            <p>Your information has been submitted successfully.</p>
-            <p className="sub-message">Enjoy the service!</p>
+  // FIRST-TIMER MESSAGE (Count-Only)
+if (result === 'first-timer-message') {
+  return (
+    <div className="scan-page">
+      <div className="scan-container">
+        <div className="message-card success">
+          <div className="message-icon">⭐</div>
+          <h2>Welcome First-Timer!</h2>
+          <p style={{fontSize: '1.2rem', marginBottom: '20px'}}>
+            Thank you for joining us today!
+          </p>
+          <div style={{
+            background: 'rgba(249, 109, 16, 0.1)',
+            padding: '20px',
+            borderRadius: '12px',
+            border: '2px solid var(--color-pumpkin)',
+            marginTop: '20px'
+          }}>
+            <p style={{fontSize: '1.1rem', fontWeight: '600', color: 'var(--color-pumpkin)'}}>
+              📍 Please kindly wait behind at the close of service
+            </p>
           </div>
+          <p className="sub-message" style={{marginTop: '20px'}}>
+            We look forward to connecting with you!
+          </p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+// COUNT-ONLY SUCCESS
+if (result === 'count-only-success') {
+  return (
+    <div className="scan-page">
+      <div className="scan-container">
+        <div className="message-card success">
+          <div className="message-icon">✅</div>
+          <h2>Thank You!</h2>
+          <p>You have been checked in successfully.</p>
+          <p className="sub-message">Enjoy the service!</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="scan-page">
@@ -473,6 +661,8 @@ if (alreadyScanned) {
       </div>
     </div>
   );
+
+  
 }
 
 export default ScanPage;

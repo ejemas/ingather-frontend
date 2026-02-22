@@ -9,10 +9,12 @@ export const getProgramInfo = async (programId) => {
   return response.data;
 };
 
-export const submitScan = async (programId, deviceFingerprint, formData = null) => {
+export const submitScan = async (programId, deviceFingerprint, formData = null, gender = null, firstTimer = false) => {
   const response = await SCAN_API.post(`/program/${programId}`, {
     deviceFingerprint,
-    formData
+    formData,
+    gender,
+    firstTimer
   });
   return response.data;
 };
