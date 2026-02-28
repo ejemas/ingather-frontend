@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { register } from '../api/authService';
 import '../styles/Auth.css';
 
 function Register() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     churchName: '',
     branchName: '',
@@ -82,41 +84,35 @@ function Register() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  const newErrors = validateForm();
-  
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
+    e.preventDefault();
 
-  try {
-    // Import at top of file
-    const { register } = await import('../api/authService');
-    
-    const response = await register(formData);
-    
-    // Store token
-    localStorage.setItem('token', response.token);
-    
-    // Store church info
-    localStorage.setItem('church', JSON.stringify(response.church));
-    
-    alert('Registration successful!');
-    window.location.href = '/dashboard';
-  } catch (error) {
-    console.error('Registration error:', error);
-    const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
-    alert(errorMessage);
-  }
-};
+    const newErrors = validateForm();
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      const { register } = await import('../api/authService');
+
+      const response = await register(formData);
+
+      // Redirect to email verification
+      alert('Registration successful! Please check your email for the verification code.');
+      navigate('/verify-email', { state: { email: formData.email } });
+    } catch (error) {
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
+      alert(errorMessage);
+    }
+  };
 
   return (
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-header">
-          <h1 onClick={() => window.location.href='/'} style={{cursor: 'pointer'}}>
+          <h1 onClick={() => window.location.href = '/'} style={{ cursor: 'pointer' }}>
             Ingather
           </h1>
           <p>Create your church account</p>
@@ -188,7 +184,7 @@ function Register() {
                 id="logo"
                 accept="image/*"
                 onChange={handleLogoUpload}
-                style={{display: 'none'}}
+                style={{ display: 'none' }}
               />
               <label htmlFor="logo" className="upload-btn">
                 {logoPreview ? 'Change Logo' : 'Upload Logo'}
@@ -236,7 +232,7 @@ function Register() {
 
           {/* Login Link */}
           <p className="auth-switch">
-            Already have an account? 
+            Already have an account?
             <a href="/login"> Login here</a>
           </p>
         </form>

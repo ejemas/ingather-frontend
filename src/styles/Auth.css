@@ -187,3 +187,118 @@
     align-items: flex-start;
   }
 }
+
+/* ======================== */
+/* OTP & Verification Styles */
+/* ======================== */
+
+.verify-info {
+  text-align: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.verify-description {
+  color: var(--color-black);
+  opacity: 0.7;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.verify-email {
+  color: var(--color-pumpkin);
+  font-weight: 700;
+  font-size: 1.05rem;
+  word-break: break-all;
+}
+
+/* OTP Input Boxes */
+.otp-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: var(--spacing-sm) 0;
+}
+
+.otp-input {
+  width: 64px !important;
+  height: 64px;
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--color-black);
+  background-color: white;
+  border: 2px solid rgba(9, 8, 9, 0.2);
+  border-radius: var(--radius-md);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  caret-color: var(--color-pumpkin);
+}
+
+.otp-input:focus {
+  outline: none;
+  border-color: var(--color-pumpkin);
+  box-shadow: 0 0 0 3px rgba(249, 109, 16, 0.15);
+}
+
+/* Auth Messages */
+.auth-message {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.auth-message-error {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.auth-message-success {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* Resend Link */
+.resend-link {
+  background: none;
+  border: none;
+  color: var(--color-pumpkin);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: 'Poppins', sans-serif;
+  padding: 0;
+}
+
+.resend-link:hover {
+  text-decoration: underline;
+}
+
+.resend-timer {
+  color: var(--color-black);
+  opacity: 0.5;
+  font-size: 0.95rem;
+}
+
+/* Disabled Button State */
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Responsive OTP */
+@media (max-width: 480px) {
+  .otp-input {
+    width: 52px !important;
+    height: 52px;
+    font-size: 1.5rem;
+  }
+
+  .otp-container {
+    gap: 8px;
+  }
+}

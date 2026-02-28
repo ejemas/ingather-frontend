@@ -9,6 +9,9 @@ import Dashboard from './pages/Dashboard';
 import CreateProgram from './pages/CreateProgram';
 import ProgramDetail from './pages/ProgramDetail';
 import ScanPage from './pages/ScanPage';
+import VerifyEmail from './pages/VerifyEmail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import './styles/globals.css';
 
 function App() {
@@ -25,6 +28,9 @@ function App() {
           <Route path="/create-program" element={<CreateProgram />} />
           <Route path="/program/:id" element={<ProgramDetail />} />
           <Route path="/scan/:programId" element={<ScanPage />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </div>
     </Router>
