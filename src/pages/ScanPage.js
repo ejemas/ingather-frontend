@@ -242,7 +242,9 @@ function ScanPage() {
       const response = await submitFormData(programId, fingerprint, formData);
       console.log('Form submitted successfully:', response);
 
-      if (formData.firstTimer) {
+      if (formData.firstTimer && response.isWinner) {
+        setResult('first-timer-winner');
+      } else if (formData.firstTimer) {
         setResult('first-timer-message');
       } else if (response.giftingEnabled) {
         setResult(response.isWinner ? 'winner' : 'no-win');
@@ -605,7 +607,39 @@ function ScanPage() {
     );
   }
 
-  // FIRST-TIMER MESSAGE (Count-Only)
+  // FIRST-TIMER WINNER (Gifting Enabled + First Timer + Winner)
+  if (result === 'first-timer-winner') {
+    return (
+      <div className="scan-page">
+        <div className="scan-container">
+          <div className="message-card winner">
+            <div className="confetti">🎉</div>
+            <div className="message-icon celebration">🎁 ⭐</div>
+            <h2>Welcome & Congratulations!</h2>
+            <p className="winner-message" style={{ marginBottom: '15px' }}>
+              Welcome First-Timer! You've also been selected to receive a gift!
+            </p>
+            <div style={{
+              background: 'rgba(249, 109, 16, 0.1)',
+              border: '1px solid #F96D10',
+              borderRadius: '8px',
+              padding: '15px',
+              marginBottom: '20px',
+              color: '#F96D10',
+              fontWeight: '600'
+            }}>
+              <p>📍 Please kindy wait behind at the close of service</p>
+              <p style={{ marginTop: '10px' }}>AND</p>
+              <p style={{ marginTop: '10px' }}>🎁 Proceed to the <strong>ushering stand</strong> to collect your gift</p>
+            </div>
+            <p className="sub-message">We look forward to connecting with you!</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FIRST-TIMER MESSAGE (Count-Only or Collect-Data without winning)
   if (result === 'first-timer-message') {
     return (
       <div className="scan-page">
