@@ -18,6 +18,7 @@ function ProgramDetail() {
   const [loading, setLoading] = useState(true);
   const [countOnlyStats, setCountOnlyStats] = useState({ maleCount: 0, femaleCount: 0, firstTimerCount: 0 });
   const [collectDataStats, setCollectDataStats] = useState({ maleCount: 0, femaleCount: 0, firstTimerCount: 0 });
+  const [formsSubmitted, setFormsSubmitted] = useState(0);
   const [countOnlyScans, setCountOnlyScans] = useState([]);
   const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
 
@@ -39,6 +40,7 @@ function ProgramDetail() {
       // Update collect-data stats in real-time
       if (data.attendeeMaleCount !== undefined) {
         setCollectDataStats({ maleCount: data.attendeeMaleCount, femaleCount: data.attendeeFemaleCount, firstTimerCount: data.attendeeFirstTimerCount });
+        if (data.attendeeTotal !== undefined) setFormsSubmitted(data.attendeeTotal);
         // Also refresh attendees list
         getAttendees(id).then(d => setAttendees(d.attendees)).catch(() => { });
       }
@@ -111,6 +113,7 @@ function ProgramDetail() {
         const femaleCount = attendeesData.attendees.filter(a => a.sex === 'Female').length;
         const firstTimerCount = attendeesData.attendees.filter(a => a.firstTimer).length;
         setCollectDataStats({ maleCount, femaleCount, firstTimerCount });
+        setFormsSubmitted(attendeesData.attendees.length);
       }
 
       setLoading(false);
@@ -641,6 +644,11 @@ function ProgramDetail() {
             // Collect-Data Mode Stats
             <>
               <div className="live-stat-card">
+                <span className="stat-icon">📝</span>
+                <h3>{formsSubmitted}</h3>
+                <p>Forms Submitted</p>
+              </div>
+              <div className="live-stat-card">
                 <span className="stat-icon">👨</span>
                 <h3>{collectDataStats.maleCount}</h3>
                 <p>Male</p>
@@ -735,8 +743,14 @@ function ProgramDetail() {
                       dataKey="time"
                       stroke="rgba(9, 8, 9, 0.6)"
                       style={{ fontSize: '0.9rem', fontWeight: '600' }}
+                      tickFormatter={(value) => {
+                        const [h, m] = value.split(':').map(Number);
+                        const period = h >= 12 ? 'PM' : 'AM';
+                        const hour12 = h % 12 || 12;
+                        return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
+                      }}
                       label={{
-                        value: 'Time Intervals',
+                        value: 'Time Intervals (30 min)',
                         position: 'insideBottom',
                         offset: -20,
                         style: {
@@ -772,6 +786,12 @@ function ProgramDetail() {
                       labelStyle={{
                         color: '#F96D10',
                         fontWeight: '700'
+                      }}
+                      labelFormatter={(value) => {
+                        const [h, m] = value.split(':').map(Number);
+                        const period = h >= 12 ? 'PM' : 'AM';
+                        const hour12 = h % 12 || 12;
+                        return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
                       }}
                       formatter={(value) => [`${value} scans`, 'Attendance']}
                     />
