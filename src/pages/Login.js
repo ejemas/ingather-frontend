@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { login } from '../api/authService';
+import { useToast } from '../components/Toast';
 import '../styles/Auth.css';
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -77,17 +79,15 @@ function Login() {
 
       // Handle unverified email
       if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
-        const goToVerify = window.confirm(
-          'Your email is not verified. Would you like to verify it now?'
+        toast.confirm(
+          'Your email is not verified. Would you like to verify it now?',
+          () => navigate('/verify-email', { state: { email: formData.email } })
         );
-        if (goToVerify) {
-          navigate('/verify-email', { state: { email: formData.email } });
-        }
         return;
       }
 
       const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

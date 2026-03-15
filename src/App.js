@@ -12,28 +12,31 @@ import ScanPage from './pages/ScanPage';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import { ToastProvider } from './components/Toast';
 import './styles/globals.css';
 
 function App() {
   return (
-    <Router>
-      <div className="App">
-        <Routes>
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/programs" element={<AllPrograms />} />
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/create-program" element={<CreateProgram />} />
-          <Route path="/program/:id" element={<ProgramDetail />} />
-          <Route path="/scan/:programId" element={<ScanPage />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-        </Routes>
-      </div>
-    </Router>
+    <ToastProvider>
+      <Router>
+        <div className="App">
+          <Routes>
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/programs" element={<AllPrograms />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/create-program" element={<CreateProgram />} />
+            <Route path="/program/:id" element={<ProgramDetail />} />
+            <Route path="/scan/:programId" element={<ScanPage />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+          </Routes>
+        </div>
+      </Router>
+    </ToastProvider>
   );
 }
 

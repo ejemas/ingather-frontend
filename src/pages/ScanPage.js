@@ -3,11 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
 import { useParams } from 'react-router-dom';
 import { getProgramInfo, submitScan, submitFormData } from '../api/scanService';
+import { useToast } from '../components/Toast';
 import '../styles/ScanPage.css';
 
 
 function ScanPage() {
   const { programId } = useParams();
+  const toast = useToast();
 
 
   // ADD THESE NEW ONES:
@@ -119,7 +121,7 @@ function ScanPage() {
 
   const handleGenderSubmit = async () => {
     if (!gender) {
-      alert('Please select your gender');
+      toast.warning('Please select your gender');
       return;
     }
 
@@ -152,7 +154,7 @@ function ScanPage() {
       }
     } catch (error) {
       console.error('Gender submit error:', error);
-      alert('Failed to submit. Please try again.');
+      toast.error('Failed to submit. Please try again.');
       setSubmittingGender(false);
     }
   };
@@ -256,7 +258,7 @@ function ScanPage() {
       setShowForm(false);
     } catch (error) {
       console.error('Submit error:', error);
-      alert('Failed to submit form. Please try again.');
+      toast.error('Failed to submit form. Please try again.');
       setSubmitting(false);
     }
   };

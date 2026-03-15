@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../api/authService';
+import { useToast } from '../components/Toast';
 import '../styles/Auth.css';
 
 function Register() {
   const navigate = useNavigate();
+  const toast = useToast();
   const [formData, setFormData] = useState({
     churchName: '',
     branchName: '',
@@ -99,12 +101,12 @@ function Register() {
       const response = await register(formData);
 
       // Redirect to email verification
-      alert('Registration successful! Please check your email for the verification code.');
+      toast.success('Registration successful! Please check your email for the verification code.');
       navigate('/verify-email', { state: { email: formData.email } });
     } catch (error) {
       console.error('Registration error:', error);
       const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

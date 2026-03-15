@@ -6,6 +6,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI } from '../api/programService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from '../components/Toast';
 import '../styles/ProgramDetail.css';
 
 function ProgramDetail() {
@@ -21,6 +22,7 @@ function ProgramDetail() {
   const [formsSubmitted, setFormsSubmitted] = useState(0);
   const [countOnlyScans, setCountOnlyScans] = useState([]);
   const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
+  const toast = useToast();
 
   useEffect(() => {
     fetchProgramData();
@@ -127,16 +129,16 @@ function ProgramDetail() {
   };
 
   const handleStopProgram = async () => {
-    if (window.confirm('Are you sure you want to stop this program? The QR code will be disabled.')) {
+    toast.confirm('Are you sure you want to stop this program? The QR code will be disabled.', async () => {
       try {
         await stopProgramAPI(id);
         setProgram({ ...program, isActive: false, status: 'completed' });
-        alert('Program stopped successfully!');
+        toast.success('Program stopped successfully!');
       } catch (error) {
         console.error('Stop program error:', error);
-        alert('Failed to stop program.');
+        toast.error('Failed to stop program.');
       }
-    }
+    });
   };
 
   const handleDownloadQR = () => {
@@ -475,10 +477,10 @@ function ProgramDetail() {
       const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-Report.pdf`;
       doc.save(fileName);
 
-      alert('✅ PDF Report exported successfully!');
+      toast.success('PDF Report exported successfully!');
     } catch (error) {
       console.error('PDF export error:', error);
-      alert('❌ Failed to export PDF: ' + error.message);
+      toast.error('Failed to export PDF: ' + error.message);
     }
   };
 

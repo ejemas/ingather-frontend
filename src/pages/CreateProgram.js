@@ -1,5 +1,6 @@
 // import React, { useState } from 'react';
 import { createProgram } from '../api/programService';
+import { useToast } from '../components/Toast';
 import '../styles/CreateProgram.css';
 import React, { useState, useEffect } from 'react';
 
@@ -27,23 +28,24 @@ function CreateProgram() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
+  const toast = useToast();
 
-useEffect(() => {
-  fetchChurchData();
-}, []);
+  useEffect(() => {
+    fetchChurchData();
+  }, []);
 
-const fetchChurchData = async () => {
-  try {
-    const { getCurrentChurch } = await import('../api/authService');
-    const church = await getCurrentChurch();
-    setChurchData({
-      name: church.churchName,
-      branch: church.branchName
-    });
-  } catch (error) {
-    console.error('Error fetching church data:', error);
-  }
-};
+  const fetchChurchData = async () => {
+    try {
+      const { getCurrentChurch } = await import('../api/authService');
+      const church = await getCurrentChurch();
+      setChurchData({
+        name: church.churchName,
+        branch: church.branchName
+      });
+    } catch (error) {
+      console.error('Error fetching church data:', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -137,38 +139,40 @@ const fetchChurchData = async () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  const newErrors = validateForm();
-  
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
+    e.preventDefault();
 
-  setIsSubmitting(true);
+    const newErrors = validateForm();
 
-  try {
-    const response = await createProgram({
-      programTitle: formData.programTitle,
-      date: formData.date,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      trackingMode: formData.trackingMode,
-      dataFields: formData.dataFields,
-      enableGifting: formData.enableGifting,
-      numberOfWinners: formData.numberOfWinners
-    });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
 
-    alert('Program created successfully!');
-    window.location.href = `/program/${response.program.id}`;
-  } catch (error) {
-    console.error('Create program error:', error);
-    const errorMessage = error.response?.data?.error || 'Failed to create program. Please try again.';
-    alert(errorMessage);
-    setIsSubmitting(false);
-  }
-};
+    setIsSubmitting(true);
+
+    try {
+      const response = await createProgram({
+        programTitle: formData.programTitle,
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        trackingMode: formData.trackingMode,
+        dataFields: formData.dataFields,
+        enableGifting: formData.enableGifting,
+        numberOfWinners: formData.numberOfWinners
+      });
+
+      toast.success('Program created successfully!');
+      setTimeout(() => {
+        window.location.href = `/program/${response.program.id}`;
+      }, 1500);
+    } catch (error) {
+      console.error('Create program error:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to create program. Please try again.';
+      toast.error(errorMessage);
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="dashboard">
@@ -217,7 +221,7 @@ const fetchChurchData = async () => {
             <h1>Create New Program</h1>
             <p>Set up a new event and configure attendance tracking</p>
           </div>
-          <button 
+          <button
             className="btn btn-secondary"
             onClick={() => window.location.href = '/dashboard'}
           >
@@ -229,7 +233,7 @@ const fetchChurchData = async () => {
           {/* Basic Information Card */}
           <div className="form-card">
             <h2 className="card-title">Basic Information</h2>
-            
+
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="programTitle">Program Title *</label>
@@ -294,7 +298,7 @@ const fetchChurchData = async () => {
             <p className="card-description">Choose how you want to track attendance</p>
 
             <div className="tracking-options">
-              <div 
+              <div
                 className={`tracking-option ${formData.trackingMode === 'count-only' ? 'selected' : ''}`}
                 onClick={() => handleTrackingModeChange('count-only')}
               >
@@ -312,7 +316,7 @@ const fetchChurchData = async () => {
                 </p>
               </div>
 
-              <div 
+              <div
                 className={`tracking-option ${formData.trackingMode === 'collect-data' ? 'selected' : ''}`}
                 onClick={() => handleTrackingModeChange('collect-data')}
               >
