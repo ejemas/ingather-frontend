@@ -29,3 +29,8 @@ export const getAttendanceData = async (id) => {
   const response = await API.get(`/programs/${id}/attendance-data`);
   return response.data;
 };
+
+export const markWinnerGifted = async (programId, attendeeId) => {
+  const response = await API.put(`/programs/${programId}/attendees/${attendeeId}/gift-claimed`);
+  return response.data;
+};

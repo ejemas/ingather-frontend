@@ -4,7 +4,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import io from 'socket.io-client';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI } from '../api/programService';
+import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../components/Toast';
 import '../styles/ProgramDetail.css';
@@ -22,6 +22,8 @@ function ProgramDetail() {
   const [formsSubmitted, setFormsSubmitted] = useState(0);
   const [countOnlyScans, setCountOnlyScans] = useState([]);
   const [churchData, setChurchData] = useState({ name: '', branch: '' }); // ADD THIS
+  const [searchQuery, setSearchQuery] = useState('');
+  const [winnersGifted, setWinnersGifted] = useState(0);
   const toast = useToast();
 
   useEffect(() => {
@@ -45,6 +47,13 @@ function ProgramDetail() {
         if (data.attendeeTotal !== undefined) setFormsSubmitted(data.attendeeTotal);
         // Also refresh attendees list
         getAttendees(id).then(d => setAttendees(d.attendees)).catch(() => { });
+      }
+      // Update winners gifted in real-time
+      if (data.winnersGifted !== undefined) {
+        setWinnersGifted(data.winnersGifted);
+        if (data.giftedAttendeeId) {
+          setAttendees(prev => prev.map(a => a.id === data.giftedAttendeeId ? { ...a, isGifted: true } : a));
+        }
       }
     });
 
@@ -78,6 +87,7 @@ function ProgramDetail() {
         status: programData.isActive ? 'active' : 'completed'
       });
       setTotalScans(programData.totalScans);
+      setWinnersGifted(programData.winnersGifted || 0);
 
       // Get attendees
       const attendeesData = await getAttendees(id);
@@ -643,23 +653,12 @@ function ProgramDetail() {
               </div>
             </>
           ) : (
-            // Collect-Data Mode Stats
+            // Collect-Data Mode Stats — Top Row
             <>
               <div className="live-stat-card">
                 <span className="stat-icon">📝</span>
                 <h3>{formsSubmitted}</h3>
                 <p>Forms Submitted</p>
-              </div>
-              <div className="live-stat-card">
-                <span className="stat-icon">👨</span>
-                <h3>{collectDataStats.maleCount}</h3>
-                <p>Male</p>
-              </div>
-
-              <div className="live-stat-card">
-                <span className="stat-icon">👩</span>
-                <h3>{collectDataStats.femaleCount}</h3>
-                <p>Female</p>
               </div>
 
               <div className="live-stat-card">
@@ -667,17 +666,52 @@ function ProgramDetail() {
                 <h3>{collectDataStats.firstTimerCount}</h3>
                 <p>First Timers</p>
               </div>
-
-              {program.giftingEnabled && (
-                <div className="live-stat-card">
-                  <span className="stat-icon">🎁</span>
-                  <h3>{program.winnersSelected}/{program.totalWinners}</h3>
-                  <p>Winners Selected</p>
-                </div>
-              )}
             </>
           )}
         </div>
+
+        {/* Grouped Stats Row — only for collect-data mode */}
+        {program.trackingMode === 'collect-data' && (
+          <div className="grouped-stats-row">
+            {/* Gender Group — only if sex field was selected */}
+            {program.dataFields?.sex && (
+              <div className="grouped-stat-card">
+                <span className="grouped-badge gender-badge">Gender</span>
+                <div className="grouped-inner">
+                  <div className="grouped-item">
+                    <span className="grouped-icon">👨</span>
+                    <h3>{collectDataStats.maleCount}</h3>
+                    <p>Male</p>
+                  </div>
+                  <div className="grouped-item">
+                    <span className="grouped-icon">👩</span>
+                    <h3>{collectDataStats.femaleCount}</h3>
+                    <p>Female</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Gifting Group — only if gifting enabled */}
+            {program.giftingEnabled && (
+              <div className="grouped-stat-card">
+                <span className="grouped-badge gifting-badge">Gifting</span>
+                <div className="grouped-inner">
+                  <div className="grouped-item">
+                    <span className="grouped-icon">🎁</span>
+                    <h3>{program.winnersSelected}/{program.totalWinners}</h3>
+                    <p>Winner Selected</p>
+                  </div>
+                  <div className="grouped-item">
+                    <span className="grouped-icon">🎉</span>
+                    <h3>{winnersGifted}/{program.winnersSelected}</h3>
+                    <p>Winner Gifted</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Two Column Layout */}
         <div className="detail-grid">
@@ -826,7 +860,19 @@ function ProgramDetail() {
               </button>
             </div>
 
-
+            <div className="attendee-search-bar">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder="Search attendees by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="search-input"
+              />
+              {searchQuery && (
+                <button className="search-clear" onClick={() => setSearchQuery('')}>×</button>
+              )}
+            </div>
 
             <div className="attendees-table-container">
               <table className="attendees-table">
@@ -842,11 +888,15 @@ function ProgramDetail() {
                     {program.dataFields?.age && <th>Age</th>}
                     {program.dataFields?.sex && <th>Gender</th>}
                     {program.giftingEnabled && <th>Winner</th>}
+                    {program.giftingEnabled && <th>Gifted</th>}
                     <th>Scan Time</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attendees.map(attendee => (
+                  {attendees.filter(a => {
+                    if (!searchQuery.trim()) return true;
+                    return (a.fullName || '').toLowerCase().includes(searchQuery.toLowerCase());
+                  }).map(attendee => (
                     <tr key={attendee.id}>
                       {/* Dynamically show data based on selected fields */}
                       {program.dataFields?.fullName && (
@@ -883,6 +933,38 @@ function ProgramDetail() {
                         <td>
                           {attendee.isWinner ? (
                             <span className="badge-winner">🎁 Winner</span>
+                          ) : (
+                            <span className="badge-no">-</span>
+                          )}
+                        </td>
+                      )}
+                      {program.giftingEnabled && (
+                        <td>
+                          {attendee.isWinner ? (
+                            attendee.isGifted ? (
+                              <span className="badge-gifted">✅ Gifted</span>
+                            ) : (
+                              <button
+                                className="btn-mark-gifted"
+                                onClick={() => {
+                                  toast.confirm(
+                                    `Mark ${attendee.fullName || 'this winner'} as gifted?`,
+                                    async () => {
+                                      try {
+                                        await markWinnerGifted(id, attendee.id);
+                                        setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, isGifted: true } : a));
+                                        setWinnersGifted(prev => prev + 1);
+                                        toast.success(`${attendee.fullName || 'Winner'} marked as gifted!`);
+                                      } catch (err) {
+                                        toast.error('Failed to mark as gifted.');
+                                      }
+                                    }
+                                  );
+                                }}
+                              >
+                                🎁 Mark Gifted
+                              </button>
+                            )
                           ) : (
                             <span className="badge-no">-</span>
                           )}
