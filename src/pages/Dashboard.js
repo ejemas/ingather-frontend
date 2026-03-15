@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useEffect } from 'react';
-import { getPrograms } from '../api/programService';
+import { getPrograms, deleteProgram } from '../api/programService';
 import { getCurrentChurch } from '../api/authService';
 import { useToast } from '../components/Toast';
 import '../styles/Dashboard.css';
@@ -91,6 +91,21 @@ function Dashboard() {
       localStorage.removeItem('church');
       window.location.href = '/';
     });
+  };
+
+  const handleDeleteProgram = (program) => {
+    toast.confirm(
+      `Are you sure you want to delete "${program.title}"? This will permanently remove all its data.`,
+      async () => {
+        try {
+          await deleteProgram(program.id);
+          setPrograms(prev => prev.filter(p => p.id !== program.id));
+          toast.success('Program deleted successfully!');
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Failed to delete program.');
+        }
+      }
+    );
   };
 
   const getStatusBadge = (status) => {
@@ -286,6 +301,14 @@ function Dashboard() {
                         >
                           View
                         </button>
+                        {program.status === 'completed' && (
+                          <button
+                            className="btn-action btn-delete"
+                            onClick={() => handleDeleteProgram(program)}
+                          >
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

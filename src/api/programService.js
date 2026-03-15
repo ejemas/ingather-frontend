@@ -34,3 +34,8 @@ export const markWinnerGifted = async (programId, attendeeId) => {
   const response = await API.put(`/programs/${programId}/attendees/${attendeeId}/gift-claimed`);
   return response.data;
 };
+
+export const deleteProgram = async (id) => {
+  const response = await API.delete(`/programs/${id}`);
+  return response.data;
+};
