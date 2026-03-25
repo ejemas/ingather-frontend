@@ -157,6 +157,30 @@
   background-color: #4CAF50;
 }
 
+.modal-card-topbar.red {
+  background-color: #C62828;
+}
+
+/* Pink X icon for Program Closed modal */
+.modal-closed-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 28px;
+}
+
+.modal-closed-icon svg {
+  width: 52px;
+  height: 52px;
+  stroke: #FF5C8A;
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .modal-card-body {
   padding: 50px 36px 50px;
 }

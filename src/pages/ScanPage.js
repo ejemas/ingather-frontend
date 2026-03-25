@@ -285,12 +285,12 @@ function ScanPage() {
             <div className="modal-card-topbar orange"></div>
             <div className="modal-card-body">
               <div className="modal-icon-circle">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               </div>
               <h2>Already Checked In</h2>
-              <p className="modal-subtitle">You have already scanned the QR code. Each device can only scan one per program.</p>
+              <p className="modal-subtitle">You have already scanned the QR code. Each device can only scan once per program.</p>
               <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">If you believe this is an error, please contact an usher</span>
               </div>
             </div>
@@ -586,14 +586,14 @@ function ScanPage() {
             <div className="modal-card-topbar green"></div>
             <div className="modal-card-body">
               <div className="modal-icon-circle dark">
-                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
               <h2>Congratulations !</h2>
               <p className="modal-subtitle">You have been selected to receive a gift from the Church, Thank you for being in Church today.</p>
               <div className="modal-callout-action">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
-                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
             </div>
           </div>
@@ -618,13 +618,13 @@ function ScanPage() {
                 <span className="dot dot-6"></span>
                 <span className="dot dot-7"></span>
                 <div className="dot-icon-circle">
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="16 6 9 13"/></svg>
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
                 </div>
               </div>
               <h2>Thank You!</h2>
               <p className="modal-subtitle">Your Information has been submitted successfully</p>
               <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">You didn't win this time, but we are glad you are here. Enjoy the rest of the service</span>
               </div>
             </div>
@@ -643,14 +643,14 @@ function ScanPage() {
             <div className="modal-card-topbar green"></div>
             <div className="modal-card-body">
               <div className="modal-icon-circle dark">
-                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
               <h2>Welcome &amp; Congratulations !</h2>
               <p className="modal-subtitle">Welcome first timer! You have been selected to receive a gift from the Church</p>
               <div className="modal-callout-action">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please kindly wait at the close of service, we look forward to connecting with you</span>
-                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
             </div>
           </div>
@@ -676,13 +676,13 @@ function ScanPage() {
                 <span className="dot dot-6"></span>
                 <span className="dot dot-7"></span>
                 <div className="dot-icon-circle">
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="16 6 9 13"/></svg>
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
                 </div>
               </div>
               <h2>Welcome First-Timer</h2>
               <p className="modal-subtitle">Thank you for joining us today we look forward to connecting with you.</p>
               <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please kindly wait behind at the close of service</span>
               </div>
             </div>
@@ -697,11 +697,24 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card success">
-            <div className="message-icon">✅</div>
-            <h2>Thank You!</h2>
-            <p>You have been checked in successfully.</p>
-            <p className="sub-message">Enjoy the service!</p>
+          <div className="modal-card">
+            <div className="modal-card-topbar orange"></div>
+            <div className="modal-card-body">
+              <div className="modal-decorative-dots">
+                <span className="dot dot-1"></span>
+                <span className="dot dot-2"></span>
+                <span className="dot dot-3"></span>
+                <span className="dot dot-4"></span>
+                <span className="dot dot-5"></span>
+                <span className="dot dot-6"></span>
+                <span className="dot dot-7"></span>
+                <div className="dot-icon-circle">
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
+                </div>
+              </div>
+              <h2>Thank You!</h2>
+              <p className="modal-subtitle">You have been checked in successfully<br />Enjoy the service!</p>
+            </div>
           </div>
         </div>
       </div>
@@ -727,10 +740,15 @@ function ScanPage() {
   return (
     <div className="scan-page">
       <div className="scan-container">
-        <div className="message-card error">
-          <div className="message-icon">❌</div>
-          <h2>Program Already closed</h2>
-          <p>This program may have ended or is no longer active.</p>
+        <div className="modal-card">
+          <div className="modal-card-topbar red"></div>
+          <div className="modal-card-body">
+            <div className="modal-closed-icon">
+              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </div>
+            <h2>Program Already Closed</h2>
+            <p className="modal-subtitle">This program may have ended or no longer active.</p>
+          </div>
         </div>
       </div>
     </div>
