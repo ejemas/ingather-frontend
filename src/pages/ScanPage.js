@@ -277,16 +277,23 @@ function ScanPage() {
   }
 
   // ALREADY SCANNED
-  // ALREADY SCANNED
   if (alreadyScanned) {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card error">
-            <div className="message-icon">⚠️</div>
-            <h2>Already Checked In</h2>
-            <p>You have already scanned this QR code. Each device can only scan once per program.</p>
-            <p className="sub-message">If you believe this is an error, please contact an usher.</p>
+          <div className="modal-card">
+            <div className="modal-card-topbar orange"></div>
+            <div className="modal-card-body">
+              <div className="modal-icon-circle">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              </div>
+              <h2>Already Checked In</h2>
+              <p className="modal-subtitle">You have already scanned the QR code. Each device can only scan one per program.</p>
+              <div className="modal-callout">
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <span className="callout-text">If you believe this is an error, please contact an usher</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -575,17 +582,20 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card winner">
-            <div className="confetti">🎉</div>
-            <div className="message-icon celebration">🎁</div>
-            <h2>Congratulations!</h2>
-            <p className="winner-message">
-              You have been selected to receive a gift from the church!
-            </p>
-            <p className="winner-instruction">
-              Please proceed to the <strong>ushering stand</strong> to collect your gift.
-            </p>
-            <p className="sub-message">Thank you for being here. Enjoy the service!</p>
+          <div className="modal-card">
+            <div className="modal-card-topbar green"></div>
+            <div className="modal-card-body">
+              <div className="modal-icon-circle dark">
+                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+              </div>
+              <h2>Congratulations !</h2>
+              <p className="modal-subtitle">You have been selected to receive a gift from the Church, Thank you for being in Church today.</p>
+              <div className="modal-callout-action">
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
+                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -596,13 +606,28 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card no-win">
-            <div className="message-icon">💙</div>
-            <h2>Thank You!</h2>
-            <p>Your information has been submitted successfully.</p>
-            <p className="sub-message">
-              You didn't win this time, but we are glad you are here. Enjoy the service!
-            </p>
+          <div className="modal-card">
+            <div className="modal-card-topbar orange"></div>
+            <div className="modal-card-body">
+              <div className="modal-decorative-dots">
+                <span className="dot dot-1"></span>
+                <span className="dot dot-2"></span>
+                <span className="dot dot-3"></span>
+                <span className="dot dot-4"></span>
+                <span className="dot dot-5"></span>
+                <span className="dot dot-6"></span>
+                <span className="dot dot-7"></span>
+                <div className="dot-icon-circle">
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="16 6 9 13"/></svg>
+                </div>
+              </div>
+              <h2>Thank You!</h2>
+              <p className="modal-subtitle">Your Information has been submitted successfully</p>
+              <div className="modal-callout">
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <span className="callout-text">You didn't win this time, but we are glad you are here. Enjoy the rest of the service</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -614,27 +639,20 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card winner">
-            <div className="confetti">🎉</div>
-            <div className="message-icon celebration">🎁 ⭐</div>
-            <h2>Welcome & Congratulations!</h2>
-            <p className="winner-message" style={{ marginBottom: '15px' }}>
-              Welcome First-Timer! You've also been selected to receive a gift!
-            </p>
-            <div style={{
-              background: 'rgba(249, 109, 16, 0.1)',
-              border: '1px solid #F96D10',
-              borderRadius: '8px',
-              padding: '15px',
-              marginBottom: '20px',
-              color: '#F96D10',
-              fontWeight: '600'
-            }}>
-              <p>📍 Please kindy wait behind at the close of service</p>
-              <p style={{ marginTop: '10px' }}>AND</p>
-              <p style={{ marginTop: '10px' }}>🎁 Proceed to the <strong>ushering stand</strong> to collect your gift</p>
+          <div className="modal-card">
+            <div className="modal-card-topbar green"></div>
+            <div className="modal-card-body">
+              <div className="modal-icon-circle dark">
+                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+              </div>
+              <h2>Welcome &amp; Congratulations !</h2>
+              <p className="modal-subtitle">Welcome first timer! You have been selected to receive a gift from the Church</p>
+              <div className="modal-callout-action">
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <span className="callout-text">Please kindly wait at the close of service, we look forward to connecting with you</span>
+                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1"/><path d="M12 10V6"/><path d="M8 6c0 0 0 4 4 4"/><path d="M16 6c0 0 0 4 -4 4"/><line x1="5" y1="14" x2="19" y2="14"/></svg>
+              </div>
             </div>
-            <p className="sub-message">We look forward to connecting with you!</p>
           </div>
         </div>
       </div>
@@ -646,26 +664,28 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="message-card success">
-            <div className="message-icon">⭐</div>
-            <h2>Welcome First-Timer!</h2>
-            <p style={{ fontSize: '1.2rem', marginBottom: '20px' }}>
-              Thank you for joining us today!
-            </p>
-            <div style={{
-              background: 'rgba(249, 109, 16, 0.1)',
-              padding: '20px',
-              borderRadius: '12px',
-              border: '2px solid var(--color-pumpkin)',
-              marginTop: '20px'
-            }}>
-              <p style={{ fontSize: '1.1rem', fontWeight: '600', color: 'var(--color-pumpkin)' }}>
-                📍 Please kindly wait behind at the close of service
-              </p>
+          <div className="modal-card">
+            <div className="modal-card-topbar orange"></div>
+            <div className="modal-card-body">
+              <div className="modal-decorative-dots">
+                <span className="dot dot-1"></span>
+                <span className="dot dot-2"></span>
+                <span className="dot dot-3"></span>
+                <span className="dot dot-4"></span>
+                <span className="dot dot-5"></span>
+                <span className="dot dot-6"></span>
+                <span className="dot dot-7"></span>
+                <div className="dot-icon-circle">
+                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/><polyline points="16 6 9 13"/></svg>
+                </div>
+              </div>
+              <h2>Welcome First-Timer</h2>
+              <p className="modal-subtitle">Thank you for joining us today we look forward to connecting with you.</p>
+              <div className="modal-callout">
+                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)"/></svg>
+                <span className="callout-text">Please kindly wait behind at the close of service</span>
+              </div>
             </div>
-            <p className="sub-message" style={{ marginTop: '20px' }}>
-              We look forward to connecting with you!
-            </p>
           </div>
         </div>
       </div>
