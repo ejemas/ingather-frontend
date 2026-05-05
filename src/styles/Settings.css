@@ -1,0 +1,429 @@
+/* ============================================
+   SETTINGS PAGE — Pixel-Perfect Styles
+   ============================================ */
+
+/* ---- Settings Inner Grid ---- */
+.settings-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* ---- Sub-Navigation Card ---- */
+.settings-subnav {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 8px 0;
+  position: sticky;
+  top: calc(var(--navbar-height) + 20px);
+}
+
+.settings-subnav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  position: relative;
+  border-left: 3px solid transparent;
+}
+
+.settings-subnav-item:hover {
+  background-color: var(--bg-table-hover);
+  color: var(--text-primary);
+}
+
+.settings-subnav-item.active {
+  color: var(--color-orange);
+  background-color: rgba(232, 89, 12, 0.05);
+  border-left-color: var(--color-orange);
+  font-weight: 600;
+}
+
+.settings-subnav-item .subnav-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-subnav-item .subnav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---- Right Content Area ---- */
+.settings-content {
+  min-height: 400px;
+}
+
+.settings-content-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0 0 16px 0;
+}
+
+/* ---- Church Info View ---- */
+.settings-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.settings-avatar-section {
+  margin-bottom: 20px;
+}
+
+.settings-avatar-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  background-color: var(--bg-table-hover);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-avatar-wrapper:hover {
+  border-color: var(--color-orange);
+}
+
+.settings-avatar-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.settings-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  color: var(--text-tertiary);
+}
+
+.settings-avatar-placeholder svg {
+  width: 48px;
+  height: 48px;
+}
+
+.settings-avatar-edit {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-avatar-edit:hover {
+  border-color: var(--color-orange);
+  color: var(--color-orange);
+}
+
+.settings-avatar-edit svg {
+  width: 12px;
+  height: 12px;
+  color: var(--text-secondary);
+}
+
+/* Form fields */
+.settings-field {
+  margin-bottom: 16px;
+}
+
+.settings-field-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.settings-field-input {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
+  background: none;
+  font-size: 0.88rem;
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast);
+  outline: none;
+  box-shadow: none;
+}
+
+.settings-field-input:focus {
+  border-bottom-color: var(--color-orange);
+}
+
+.settings-field-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Save Changes button (full width, orange) */
+.settings-btn-save {
+  width: 100%;
+  padding: 13px 24px;
+  background-color: var(--color-orange);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-top: 8px;
+}
+
+.settings-btn-save:hover {
+  background-color: var(--color-orange-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 89, 12, 0.3);
+}
+
+.settings-btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---- Password View ---- */
+.settings-password-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.settings-btn-cancel {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  padding: 10px 16px;
+  transition: color var(--transition-fast);
+}
+
+.settings-btn-cancel:hover {
+  color: var(--text-primary);
+}
+
+.settings-btn-primary {
+  padding: 12px 28px;
+  background-color: var(--color-orange);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-btn-primary:hover {
+  background-color: var(--color-orange-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 89, 12, 0.3);
+}
+
+.settings-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---- Notifications View ---- */
+.settings-notif-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.settings-notif-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.settings-mark-read {
+  background: none;
+  border: none;
+  color: var(--color-orange);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: all var(--transition-fast);
+}
+
+.settings-mark-read:hover {
+  text-decoration: underline;
+}
+
+.settings-notif-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-notif-item:last-child {
+  border-bottom: none;
+}
+
+.settings-notif-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--bg-stat-icon);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.settings-notif-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-notif-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-notif-item-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0 0 2px 0;
+}
+
+.settings-notif-item-desc {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.settings-notif-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.settings-notif-time {
+  font-size: 0.72rem;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.settings-notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #7C3AED;
+}
+
+/* Status message */
+.settings-message {
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.settings-message.success {
+  background-color: var(--status-active-bg);
+  color: var(--status-active-text);
+  border: 1px solid var(--status-active-text);
+}
+
+.settings-message.error {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-subnav {
+    position: static;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0;
+  }
+
+  .settings-subnav-item {
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    padding: 12px 16px;
+    justify-content: center;
+  }
+
+  .settings-subnav-item.active {
+    border-bottom-color: var(--color-orange);
+    border-left-color: transparent;
+  }
+
+  .settings-password-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

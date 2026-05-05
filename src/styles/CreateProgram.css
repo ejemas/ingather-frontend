@@ -1,270 +1,427 @@
-/* Create Program Page Styles */
+/* ============================================
+   CREATE PROGRAM — Pixel-Perfect Styles
+   ============================================ */
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--spacing-xl);
+/* Page Title */
+.cp-page-title {
+  margin-bottom: 24px;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.page-header h1 {
-  color: var(--color-beige);
-  font-size: 2rem;
-  margin-bottom: 8px;
+.cp-page-title h2 {
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
 }
 
-.page-header p {
-  color: rgba(235, 235, 211, 0.6);
-  font-size: 1rem;
-}
-
-/* Form Styling */
+/* Form Container */
 .create-program-form {
-  max-width: 900px;
+  max-width: 780px;
   margin: 0 auto;
 }
 
+/* Form Card */
 .form-card {
-  background-color: var(--color-beige);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
+  padding: 28px;
+  margin-bottom: 20px;
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
 }
 
 .card-title {
-  color: var(--color-black);
-  font-size: 1.5rem;
-  margin-bottom: var(--spacing-sm);
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0 0 4px 0;
 }
 
 .card-description {
-  color: rgba(9, 8, 9, 0.6);
-  margin-bottom: var(--spacing-md);
-  font-size: 0.95rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin: 0 0 22px 0;
+  line-height: 1.5;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-md);
-}
-
+/* Form Group */
 .form-group {
   display: flex;
   flex-direction: column;
+  margin-bottom: 18px;
 }
 
 .form-group label {
-  color: var(--color-black);
+  font-size: 0.85rem;
   font-weight: 600;
-  margin-bottom: var(--spacing-xs);
-  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 8px;
 }
 
+/* Form Input */
 .form-input {
-  padding: 12px 16px;
-  border: 2px solid rgba(9, 8, 9, 0.2);
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  font-size: 1rem;
-  background-color: white;
-  color: var(--color-black);
-  transition: border-color 0.3s ease;
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.form-input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
 }
 
 .form-input:focus {
+  border-color: var(--color-orange);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.12);
   outline: none;
-  border-color: var(--color-pumpkin);
 }
 
-.error {
-  color: #d32f2f;
-  font-size: 0.85rem;
-  margin-top: 4px;
+.form-input:active {
+  border-color: var(--color-orange);
 }
 
-.field-hint {
-  color: rgba(9, 8, 9, 0.5);
-  font-size: 0.85rem;
-  margin-top: 4px;
+/* Ensure select dropdowns also get orange focus */
+.form-select:focus {
+  border-color: var(--color-orange);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.12);
+  outline: none;
 }
 
-/* Tracking Options */
+.form-input.input-error {
+  border-color: #EF4444;
+}
+
+/* Select dropdown styling */
+.form-select {
+  cursor: pointer;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+}
+
+[data-theme="dark"] .form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%239BA1B0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Date input icon */
+.input-icon-wrapper {
+  position: relative;
+}
+
+.input-icon-wrapper .form-input {
+  padding-right: 40px;
+}
+
+/* 3-Column Row: Date | Start Time | End Time */
+.form-row-3col {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.form-row-3col .form-group {
+  margin-bottom: 0;
+}
+
+/* Select wrapper */
+.select-wrapper {
+  position: relative;
+}
+
+/* ============================================
+   TRACKING MODE — Radio Cards
+   ============================================ */
 .tracking-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--spacing-md);
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .tracking-option {
-  border: 2px solid rgba(9, 8, 9, 0.2);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-md);
+  padding: 20px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: white;
+  transition: all var(--transition-fast);
+  background-color: var(--bg-card);
+  position: relative;
 }
 
 .tracking-option:hover {
-  border-color: var(--color-pumpkin);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  border-color: rgba(232, 89, 12, 0.4);
 }
 
 .tracking-option.selected {
-  border-color: var(--color-pumpkin);
-  background-color: rgba(249, 109, 16, 0.05);
+  border-color: var(--color-orange);
+  border-width: 2px;
+  padding: 19.5px; /* compensate for thicker border */
 }
 
-.option-header {
+/* Option layout: title + radio on same row, description below */
+.option-top {
   display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
+.option-title {
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+/* Radio circle */
 .radio-circle {
-  width: 24px;
-  height: 24px;
-  border: 2px solid rgba(9, 8, 9, 0.3);
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-top: 2px;
-  transition: border-color 0.3s ease;
+  transition: border-color var(--transition-fast);
 }
 
 .tracking-option.selected .radio-circle {
-  border-color: var(--color-pumpkin);
+  border-color: var(--color-orange);
 }
 
 .radio-dot {
-  width: 12px;
-  height: 12px;
-  background-color: var(--color-pumpkin);
+  width: 10px;
+  height: 10px;
+  background-color: var(--color-orange);
   border-radius: 50%;
 }
 
-.option-header h3 {
-  color: var(--color-black);
-  font-size: 1.1rem;
-  margin-bottom: 4px;
-}
-
-.option-header p {
-  color: rgba(9, 8, 9, 0.6);
-  font-size: 0.9rem;
-}
-
 .option-detail {
-  color: rgba(9, 8, 9, 0.6);
-  font-size: 0.9rem;
-  line-height: 1.5;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 0;
 }
 
-/* Data Fields Grid */
+/* ============================================
+   DATA FIELDS GRID
+   ============================================ */
 .data-fields-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .checkbox-card {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: 12px;
-  border: 2px solid rgba(9, 8, 9, 0.2);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: white;
+  transition: all var(--transition-fast);
+  background-color: var(--bg-card);
+  user-select: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .checkbox-card:hover {
-  border-color: var(--color-pumpkin);
-  background-color: rgba(249, 109, 16, 0.05);
+  border-color: rgba(232, 89, 12, 0.4);
 }
 
-.checkbox-card input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: var(--color-pumpkin);
+.checkbox-card.checked {
+  border-color: var(--color-orange);
+  background-color: rgba(232, 89, 12, 0.03);
 }
 
-.checkbox-label {
-  color: var(--color-black);
+/* Reset all children inside checkbox-card to remove inherited borders */
+.checkbox-card * {
+  border: none !important;
+  padding: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.data-fields-grid .checkbox-label {
+  color: var(--text-primary);
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: 0.82rem;
+  flex: 1;
+  min-width: 0;
+  display: inline;
+  margin: 0;
 }
 
-/* Toggle Option */
+.checkbox-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.checkbox-icon svg {
+  display: block;
+}
+
+/* Restore SVG strokes killed by the wildcard reset */
+.checkbox-card .checkbox-icon svg rect {
+  border: none !important; /* rect uses stroke, not border — this is fine */
+}
+
+/* ============================================
+   TOGGLE OPTION (Gifting)
+   ============================================ */
 .toggle-option {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: 16px;
-  border: 2px solid rgba(9, 8, 9, 0.2);
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: white;
-  margin-bottom: var(--spacing-md);
+  transition: all var(--transition-fast);
+  background-color: var(--bg-card);
+  margin-bottom: 0;
+  user-select: none;
 }
 
 .toggle-option:hover {
-  border-color: var(--color-pumpkin);
-  background-color: rgba(249, 109, 16, 0.05);
+  border-color: rgba(232, 89, 12, 0.4);
 }
 
-.toggle-option input[type="checkbox"] {
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  accent-color: var(--color-pumpkin);
+.toggle-option.checked {
+  border-color: var(--color-orange);
+  background-color: rgba(232, 89, 12, 0.03);
 }
 
 .toggle-label {
-  color: var(--color-black);
+  color: var(--text-primary);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.88rem;
+  flex: 1;
 }
 
-/* Form Actions */
+/* Gifting winners input */
+.gifting-winners-group {
+  margin-top: 18px;
+}
+
+.gifting-winners-group .form-input {
+  -moz-appearance: textfield;
+}
+
+/* Show number spinner in the design */
+.gifting-winners-group .form-input::-webkit-inner-spin-button,
+.gifting-winners-group .form-input::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 24px;
+}
+
+/* ============================================
+   ERROR & HINT TEXT
+   ============================================ */
+.error-text {
+  color: #EF4444;
+  font-size: 0.78rem;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+.field-hint {
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+/* ============================================
+   FORM ACTIONS
+   ============================================ */
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-xl);
+  gap: 16px;
+  margin-top: 28px;
+  padding-bottom: 40px;
 }
 
-.btn-large {
-  padding: 14px 32px;
-  font-size: 1.1rem;
+.btn-cancel {
+  padding: 14px 48px;
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
-.btn-large:disabled {
+.btn-cancel:hover {
+  background-color: var(--bg-table-hover);
+  border-color: var(--text-tertiary);
+}
+
+.btn-create {
+  padding: 14px 40px;
+  background-color: var(--color-orange);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.btn-create:hover {
+  background-color: var(--color-orange-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 89, 12, 0.3);
+}
+
+.btn-create:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
-/* Utility Classes */
-.mt-3 {
-  margin-top: var(--spacing-md);
-}
-
-/* Responsive */
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    gap: var(--spacing-md);
-  }
-
-  .form-row {
+  .form-row-3col {
     grid-template-columns: 1fr;
   }
 
@@ -280,7 +437,14 @@
     flex-direction: column-reverse;
   }
 
-  .btn-large {
+  .btn-cancel,
+  .btn-create {
     width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .form-card {
+    padding: 20px;
   }
 }

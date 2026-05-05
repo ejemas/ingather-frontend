@@ -10,6 +10,14 @@ export const getPrograms = async () => {
   return response.data;
 };
 
+export const getDashboardStats = async (startDate, endDate) => {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  const response = await API.get('/programs/dashboard-stats', { params });
+  return response.data;
+};
+
 export const getProgramById = async (id) => {
   const response = await API.get(`/programs/${id}`);
   return response.data;
@@ -25,8 +33,10 @@ export const getAttendees = async (id) => {
   return response.data;
 };
 
-export const getAttendanceData = async (id) => {
-  const response = await API.get(`/programs/${id}/attendance-data`);
+export const getAttendanceData = async (id, tzOffset = 0) => {
+  const response = await API.get(`/programs/${id}/attendance-data`, {
+    params: { tzOffset }
+  });
   return response.data;
 };
 
