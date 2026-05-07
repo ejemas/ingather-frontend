@@ -536,7 +536,7 @@ function Settings() {
                     ) : (
                       notifications.map(notif => (
                         <div key={notif.id} className={`settings-notif-item ${!notif.isRead ? 'unread' : ''}`}>
-                          <div className="settings-notif-icon">{Icons.gearSmall}</div>
+                          <div className="settings-notif-icon"><img src="/ingather-logo.png" alt="Ingather" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
                           <div className="settings-notif-body">
                             <p className="settings-notif-item-title">{notif.title}</p>
                             <p className="settings-notif-item-desc">{notif.message}</p>
