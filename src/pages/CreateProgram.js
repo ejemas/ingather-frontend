@@ -143,6 +143,7 @@ function CreateProgram() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
+  const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
@@ -177,6 +178,17 @@ function CreateProgram() {
         email: church.email || '',
         logo: church.logoUrl
       });
+      // Fetch unread notification count
+      try {
+        const axios = (await import('axios')).default;
+        const countRes = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setUnreadCount(countRes.data.unreadCount || 0);
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
     } catch (error) {
       console.error('Error fetching church data:', error);
     }
@@ -314,10 +326,10 @@ function CreateProgram() {
         </nav>
 
         <div className="sidebar-footer">
-          <a href="/dashboard" className="sidebar-footer-item">
+          <a href="/settings?tab=notifications" className="sidebar-footer-item">
             <span className="nav-icon">{Icons.notification}</span>
             <span>Notification</span>
-            <span className="notification-badge">2</span>
+            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </a>
           <button className="btn-logout" onClick={handleLogout}>
             <span className="nav-icon">{Icons.logout}</span>
@@ -353,9 +365,9 @@ function CreateProgram() {
               <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
               <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
             </button>
-            <button className="navbar-icon-btn" title="Notifications">
+            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
               {Icons.notification}
-              <span className="icon-badge"></span>
+              {unreadCount > 0 && <span className="icon-badge"></span>}
             </button>
             <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>
               {Icons.gear}

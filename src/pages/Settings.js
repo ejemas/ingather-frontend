@@ -57,7 +57,10 @@ function getRelativeTime(dateString) {
    MAIN SETTINGS COMPONENT
    ============================================ */
 function Settings() {
-  const [activeTab, setActiveTab] = useState('church');
+  // Read ?tab query parameter from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab') === 'notifications' ? 'notifications' : 'church';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [churchData, setChurchData] = useState({ churchName: '', branchName: '', email: '', location: '', logoUrl: '' });
   const [formData, setFormData] = useState({ churchName: '', branchName: '', location: '' });
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', repeatPassword: '' });
@@ -331,7 +334,7 @@ function Settings() {
           <a href="/settings" className="nav-item active"><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
-          <a href="/dashboard" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
+          <a href="/settings?tab=notifications" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
           <button className="btn-logout" onClick={handleLogout}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
         </div>
         <div className="sidebar-profile" onClick={() => setActiveTab('church')}>

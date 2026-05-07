@@ -351,6 +351,7 @@ function ProgramDetail() {
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [winnersGifted, setWinnersGifted] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
   const [chartPage, setChartPage] = useState(0);
   const toast = useToast();
@@ -404,6 +405,17 @@ function ProgramDetail() {
       const { getCurrentChurch } = await import('../api/authService');
       const church = await getCurrentChurch();
       setChurchData({ name: church.churchName, branch: church.branchName, email: church.email || '', logo: church.logoUrl });
+      // Fetch unread notification count
+      try {
+        const axios = (await import('axios')).default;
+        const countRes = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setUnreadCount(countRes.data.unreadCount || 0);
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
       const programData = await getProgramById(id);
       setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
       setTotalScans(programData.totalScans);
@@ -568,7 +580,7 @@ function ProgramDetail() {
           <a href="/settings" className="nav-item"><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
-          <a href="/dashboard" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span><span className="notification-badge">2</span></a>
+          <a href="/settings?tab=notifications" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
           <button className="btn-logout" onClick={handleLogout}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
         </div>
         <div className="sidebar-profile" onClick={() => window.location.href = '/settings'}>
@@ -600,7 +612,7 @@ function ProgramDetail() {
             ) : (
               <button className="btn-end-program" disabled>Program Ended</button>
             )}
-            <button className="navbar-icon-btn" title="Notifications">{Icons.notification}<span className="icon-badge"></span></button>
+            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>{Icons.notification}{unreadCount > 0 && <span className="icon-badge"></span>}</button>
             <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>{Icons.gear}</button>
             <div className="navbar-avatar-dropdown">
               <div className="navbar-avatar">

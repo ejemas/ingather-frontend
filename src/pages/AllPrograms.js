@@ -77,6 +77,7 @@ function AllPrograms() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
+  const [unreadCount, setUnreadCount] = useState(0);
   const toast = useToast();
 
   useEffect(() => {
@@ -104,6 +105,18 @@ function AllPrograms() {
         email: church.email || '',
         logo: church.logoUrl
       });
+
+      // Fetch unread notification count
+      try {
+        const axios = (await import('axios')).default;
+        const countRes = await axios.get(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setUnreadCount(countRes.data.unreadCount || 0);
+      } catch (err) {
+        console.error('Error fetching unread count:', err);
+      }
 
       const response = await getPrograms();
       const formattedPrograms = response.programs.map(p => ({
@@ -231,10 +244,10 @@ function AllPrograms() {
         </nav>
 
         <div className="sidebar-footer">
-          <a href="/dashboard" className="sidebar-footer-item">
+          <a href="/settings?tab=notifications" className="sidebar-footer-item">
             <span className="nav-icon">{Icons.notification}</span>
             <span>Notification</span>
-            <span className="notification-badge">2</span>
+            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </a>
           <button className="btn-logout" onClick={handleLogout}>
             <span className="nav-icon">{Icons.logout}</span>

@@ -241,30 +241,75 @@ function DonutChart({ data }) {
 }
 
 /* ============================================
-   SPARKLINE COMPONENT
+   SPARKLINE COMPONENT — Data-driven
+   Shows actual attendance trend over time.
+   Green = uptrend, Red = downtrend, Grey = flat/no data.
    ============================================ */
-function Sparkline() {
+function Sparkline({ data = [] }) {
+  const W = 80, H = 40, PAD = 4;
+
+  // Extract attendance values
+  const values = data.map(d => d.attendance || 0);
+
+  // Need at least 2 points to draw a line
+  if (values.length < 2 || values.every(v => v === 0)) {
+    // Flat placeholder line when no data
+    return (
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+        <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="var(--text-tertiary)" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.4" />
+      </svg>
+    );
+  }
+
+  // Determine trend: compare first half avg vs second half avg
+  const mid = Math.floor(values.length / 2);
+  const firstHalf = values.slice(0, mid);
+  const secondHalf = values.slice(mid);
+  const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+  const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+  let trendColor = '#6B7280'; // grey — flat
+  if (avgSecond > avgFirst) trendColor = '#10B981'; // green — uptrend
+  else if (avgSecond < avgFirst) trendColor = '#EF4444'; // red — downtrend
+
+  // Scale values to SVG coordinates
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal || 1; // avoid division by zero
+  const plotW = W - PAD * 2;
+  const plotH = H - PAD * 2;
+
+  const points = values.map((v, i) => {
+    const x = PAD + (i / (values.length - 1)) * plotW;
+    const y = PAD + plotH - ((v - minVal) / range) * plotH;
+    return { x, y };
+  });
+
+  // Build SVG path
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  // Fill path (closes to bottom)
+  const fillPath = linePath + ` L${points[points.length - 1].x.toFixed(1)} ${H} L${points[0].x.toFixed(1)} ${H}Z`;
+
+  // Unique gradient ID to prevent collisions
+  const gradId = `sparkGrad_${trendColor.replace('#', '')}`;
+
   return (
-    <svg width="80" height="40" viewBox="0 0 80 40" fill="none">
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
+      <defs>
+        <linearGradient id={gradId} x1="40" y1="0" x2="40" y2={H} gradientUnits="userSpaceOnUse">
+          <stop stopColor={trendColor} />
+          <stop offset="1" stopColor={trendColor} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={fillPath} fill={`url(#${gradId})`} opacity="0.15" />
       <path
-        d="M2 32 L12 28 L22 18 L32 22 L42 14 L52 10 L62 16 L72 6 L78 8"
-        stroke="#10B981"
+        d={linePath}
+        stroke={trendColor}
         strokeWidth="2"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M2 32 L12 28 L22 18 L32 22 L42 14 L52 10 L62 16 L72 6 L78 8 L78 40 L2 40Z"
-        fill="url(#sparkGrad)"
-        opacity="0.15"
-      />
-      <defs>
-        <linearGradient id="sparkGrad" x1="40" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#10B981" />
-          <stop offset="1" stopColor="#10B981" stopOpacity="0" />
-        </linearGradient>
-      </defs>
     </svg>
   );
 }
@@ -538,6 +583,7 @@ function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
@@ -607,7 +653,7 @@ function Dashboard() {
     };
   }, []);
 
-  // Fetch church data on mount
+  // Fetch church data and unread notification count on mount
   useEffect(() => {
     const fetchChurchData = async () => {
       try {
@@ -623,6 +669,17 @@ function Dashboard() {
           email: church.email || '',
           logo: church.logoUrl
         });
+        // Fetch unread notification count
+        try {
+          const axios = (await import('axios')).default;
+          const countRes = await axios.get(
+            `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          setUnreadCount(countRes.data.unreadCount || 0);
+        } catch (err) {
+          console.error('Error fetching unread count:', err);
+        }
       } catch (error) {
         console.error('Error fetching church data:', error);
         if (error.response?.status === 401) {
@@ -874,10 +931,10 @@ function Dashboard() {
 
         {/* Footer */}
         <div className="sidebar-footer">
-          <a href="/dashboard" className="sidebar-footer-item" id="nav-notifications">
+          <a href="/settings?tab=notifications" className="sidebar-footer-item" id="nav-notifications">
             <span className="nav-icon">{Icons.notification}</span>
             <span>Notification</span>
-            <span className="notification-badge">2</span>
+            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </a>
           <button className="btn-logout" onClick={handleLogout} id="btn-logout">
             <span className="nav-icon">{Icons.logout}</span>
@@ -929,9 +986,9 @@ function Dashboard() {
             </button>
 
             {/* Notification Bell */}
-            <button className="navbar-icon-btn" title="Notifications" id="btn-navbar-notifications">
+            <button className="navbar-icon-btn" title="Notifications" id="btn-navbar-notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
               {Icons.notification}
-              <span className="icon-badge"></span>
+              {unreadCount > 0 && <span className="icon-badge"></span>}
             </button>
 
             {/* Settings Gear */}
@@ -1060,7 +1117,7 @@ function Dashboard() {
                 <h2 className="stat-value">{totalAttendance.toLocaleString()}</h2>
               </div>
               <div className="stat-sparkline">
-                <Sparkline />
+                <Sparkline data={chartData} />
               </div>
             </div>
 
