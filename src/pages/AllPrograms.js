@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getPrograms, deleteProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
 import '../styles/Dashboard.css';
@@ -61,6 +61,31 @@ const Icons = {
       <polyline points="6,4 10,8 6,12" />
     </svg>
   ),
+  chevronDown: (
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3,5 7,9 11,5" />
+    </svg>
+  ),
+  sun: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="3.5" />
+      <line x1="10" y1="2" x2="10" y2="4" /><line x1="10" y1="16" x2="10" y2="18" />
+      <line x1="2" y1="10" x2="4" y2="10" /><line x1="16" y1="10" x2="18" y2="10" />
+      <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
+      <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" /><line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
+    </svg>
+  ),
+  moon: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" />
+    </svg>
+  ),
+  gear: (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.3 3h3.4l.5 2.1a6 6 0 011.7 1l2-.7 1.7 3-1.5 1.4a6 6 0 010 2l1.5 1.4-1.7 3-2-.7a6 6 0 01-1.7 1L11.7 17H8.3l-.5-2.1a6 6 0 01-1.7-1l-2 .7-1.7-3 1.5-1.4a6 6 0 010-2L2.4 7.8l1.7-3 2 .7a6 6 0 011.7-1L8.3 3z" />
+      <circle cx="10" cy="10" r="2.5" />
+    </svg>
+  ),
   trash: (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="3,4 13,4" />
@@ -78,15 +103,36 @@ function AllPrograms() {
   const [activeFilter, setActiveFilter] = useState('all');
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [unreadCount, setUnreadCount] = useState(0);
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('ingather-theme') === 'dark';
+  });
   const toast = useToast();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+
+  // Theme effect
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   useEffect(() => {
-    // Apply stored theme
-    const theme = localStorage.getItem('ingather-theme');
-    if (theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
     fetchPrograms();
+  }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchPrograms = async () => {
@@ -163,12 +209,20 @@ function AllPrograms() {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    const day = date.getDate();
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
+    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    return `${weekday}, ${month} ${day}${suffix}, ${year}`;
+  };
+
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
   };
 
   const getStatusBadge = (status) => {
@@ -180,6 +234,8 @@ function AllPrograms() {
     return statusColors[status] || '';
   };
 
+  const toggleTheme = () => setDarkMode(prev => !prev);
+
   const churchInitials = churchData.name
     ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'IN';
@@ -188,6 +244,9 @@ function AllPrograms() {
     if (activeFilter === 'all') return true;
     return program.status === activeFilter;
   });
+
+  // Count active programs for the "Active" tab badge
+  const activeCount = programs.filter(p => p.status === 'active').length;
 
   if (loading) {
     return (
@@ -273,21 +332,56 @@ function AllPrograms() {
 
       {/* Main Content */}
       <main className="dashboard-main">
-        <div className="dashboard-content">
-          <div className="overview-header" style={{ marginBottom: '24px' }}>
-            <h2 className="overview-title">All Programs</h2>
-            <button
-              className="btn btn-primary"
-              onClick={() => window.location.href = '/create-program'}
-              style={{ fontSize: '0.85rem', padding: '10px 20px' }}
-            >
-              + Create New Program
-            </button>
+        {/* Top Navbar */}
+        <header className="top-navbar">
+          <div className="navbar-left">
+            <span className="navbar-church-name">All Programs</span>
           </div>
+          <div className="navbar-right">
+            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
+              <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
+            </button>
+            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
+              {Icons.notification}
+              {unreadCount > 0 && <span className="icon-badge"></span>}
+            </button>
+            <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>
+              {Icons.gear}
+            </button>
+            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
+              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
+                {churchData.logo ? (
+                  <img src={churchData.logo} alt={churchData.name} />
+                ) : (
+                  <div className="navbar-avatar-fallback">{churchInitials}</div>
+                )}
+              </div>
+              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
+                {Icons.chevronDown}
+              </span>
+              {showProfileMenu && (
+                <div className="profile-dropdown-menu">
+                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
+                    View Profile
+                  </button>
+                  <div className="profile-dropdown-divider"></div>
+                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <div className="dashboard-content">
+          <h2 className="overview-title" style={{ marginBottom: '24px' }}>All Programs</h2>
 
           <div className="programs-section">
             <div className="section-header">
-              <h2>Programs ({programs.length})</h2>
               <div className="filter-tabs">
                 <button
                   className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
@@ -306,6 +400,7 @@ function AllPrograms() {
                   onClick={() => setActiveFilter('upcoming')}
                 >
                   Upcoming
+                  {activeCount > 0 && <span className="filter-tab-badge">{activeCount}</span>}
                 </button>
                 <button
                   className={`filter-tab ${activeFilter === 'completed' ? 'active' : ''}`}
@@ -343,7 +438,7 @@ function AllPrograms() {
                       <tr key={program.id}>
                         <td className="program-title-cell">{program.title}</td>
                         <td>{formatDate(program.date)}</td>
-                        <td>{program.startTime} - {program.endTime}</td>
+                        <td>{formatTime(program.startTime)} - {formatTime(program.endTime)}</td>
                         <td>
                           <span className={`status-badge ${getStatusBadge(program.status)}`}>
                             {program.status.charAt(0).toUpperCase() + program.status.slice(1)}
@@ -363,15 +458,13 @@ function AllPrograms() {
                             >
                               View
                             </button>
-                            {program.status === 'completed' && (
-                              <button
-                                className="btn-action btn-delete"
-                                onClick={() => handleDeleteProgram(program)}
-                                title="Delete program"
-                              >
-                                {Icons.trash}
-                              </button>
-                            )}
+                            <button
+                              className="btn-action btn-delete"
+                              onClick={() => handleDeleteProgram(program)}
+                              title="Delete program"
+                            >
+                              {Icons.trash}
+                            </button>
                           </div>
                         </td>
                       </tr>

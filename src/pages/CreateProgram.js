@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
 import '../styles/Dashboard.css';
@@ -148,6 +148,8 @@ function CreateProgram() {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
   const toast = useToast();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
 
   // Theme effect
   useEffect(() => {
@@ -161,6 +163,17 @@ function CreateProgram() {
 
   useEffect(() => {
     fetchChurchData();
+  }, []);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchChurchData = async () => {
@@ -372,15 +385,30 @@ function CreateProgram() {
             <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>
               {Icons.gear}
             </button>
-            <div className="navbar-avatar-dropdown">
-              <div className="navbar-avatar">
+            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
+              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
                 {churchData.logo ? (
                   <img src={churchData.logo} alt={churchData.name} />
                 ) : (
                   <div className="navbar-avatar-fallback">{churchInitials}</div>
                 )}
               </div>
-              {Icons.chevronDown}
+              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
+                {Icons.chevronDown}
+              </span>
+              {showProfileMenu && (
+                <div className="profile-dropdown-menu">
+                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
+                    View Profile
+                  </button>
+                  <div className="profile-dropdown-divider"></div>
+                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
+                    Log out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
