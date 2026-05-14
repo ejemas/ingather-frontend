@@ -602,16 +602,34 @@
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
+  .cp-page-title {
+    margin-bottom: 18px;
+    max-width: none;
+  }
+
+  .cp-page-title h2 {
+    font-size: 1.18rem;
+    line-height: 1.25;
+  }
+
+  .create-program-form {
+    max-width: none;
+    width: 100%;
+  }
+
   .form-row-3col {
     grid-template-columns: 1fr;
+    gap: 0;
   }
 
   .tracking-options {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .data-fields-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .flyer-card-header,
@@ -631,6 +649,7 @@
 
   .flyer-preview-actions {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .flyer-change-btn,
@@ -640,6 +659,8 @@
 
   .form-actions {
     flex-direction: column-reverse;
+    gap: 12px;
+    align-items: stretch;
   }
 
   .btn-cancel,
@@ -650,6 +671,38 @@
   }
 
   .form-card {
-    padding: 20px;
+    padding: 18px;
+    border-radius: var(--radius-xl);
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 1.02rem;
+  }
+
+  .card-description {
+    margin-bottom: 18px;
+  }
+
+  .form-input,
+  .form-select {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .checkbox-label,
+  .tracking-option {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 420px) {
+  .form-card {
+    padding: 16px;
+  }
+
+  .flyer-change-btn,
+  .flyer-remove-btn {
+    width: 100%;
   }
 }

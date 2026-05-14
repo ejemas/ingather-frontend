@@ -589,6 +589,7 @@ function Dashboard() {
   });
   const toast = useToast();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
   // ---- Date-range filtering state ----
@@ -665,6 +666,23 @@ function Dashboard() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleEscape);
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen]);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   // Fetch church data and unread notification count on mount
   useEffect(() => {
@@ -910,7 +928,7 @@ function Dashboard() {
   return (
     <div className="dashboard">
       {/* ====== SIDEBAR ====== */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
         {/* Logo */}
         <div className="sidebar-logo">
           <a href="/dashboard" className="sidebar-logo-link">
@@ -924,19 +942,19 @@ function Dashboard() {
 
         {/* Navigation */}
         <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item active" id="nav-dashboard">
+          <a href="/dashboard" className="nav-item active" id="nav-dashboard" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.dashboard}</span>
             <span>Dashboard</span>
           </a>
-          <a href="/create-program" className="nav-item" id="nav-create-program">
+          <a href="/create-program" className="nav-item" id="nav-create-program" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
             <span>Create Program</span>
           </a>
-          <a href="/programs" className="nav-item" id="nav-all-programs">
+          <a href="/programs" className="nav-item" id="nav-all-programs" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.allPrograms}</span>
             <span>All Program</span>
           </a>
-          <a href="/settings" className="nav-item" id="nav-settings">
+          <a href="/settings" className="nav-item" id="nav-settings" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.settings}</span>
             <span>Settings</span>
           </a>
@@ -944,19 +962,19 @@ function Dashboard() {
 
         {/* Footer */}
         <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" id="nav-notifications">
+          <a href="/settings?tab=notifications" className="sidebar-footer-item" id="nav-notifications" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.notification}</span>
             <span>Notification</span>
             {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </a>
-          <button className="btn-logout" onClick={handleLogout} id="btn-logout">
+          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }} id="btn-logout">
             <span className="nav-icon">{Icons.logout}</span>
             <span>Log out</span>
           </button>
         </div>
 
         {/* Church Profile */}
-        <div className="sidebar-profile" onClick={() => window.location.href = '/settings'}>
+        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
           <div className="sidebar-profile-avatar">
             {churchData.logo ? (
               <img src={churchData.logo} alt={churchData.name} />
@@ -971,12 +989,31 @@ function Dashboard() {
           <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
         </div>
       </aside>
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={closeMobileMenu}
+        />
+      )}
 
       {/* ====== MAIN CONTENT ====== */}
       <main className="dashboard-main">
         {/* Top Navbar */}
         <header className="top-navbar">
           <div className="navbar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
             <span className="navbar-church-name">{churchData.name || 'Deeper Life Church'}</span>
           </div>
           <div className="navbar-right">
@@ -1247,25 +1284,25 @@ function Dashboard() {
                   ) : (
                     filteredPrograms.map(program => (
                       <tr key={program.id}>
-                        <td className="program-title-cell">
+                        <td className="program-title-cell" data-label="Program">
                           {program.title}
                         </td>
-                        <td>{formatDate(program.date)}</td>
-                        <td>{program.startTime} - {program.endTime}</td>
-                        <td>
+                        <td data-label="Date">{formatDate(program.date)}</td>
+                        <td data-label="Time">{program.startTime} - {program.endTime}</td>
+                        <td data-label="Status">
                           <span className={`status-badge ${getStatusBadge(program.status)}`}>
                             {program.status.charAt(0).toUpperCase() + program.status.slice(1)}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Attendance">
                           <strong>{program.totalScans.toLocaleString()}</strong>
                         </td>
-                        <td>
+                        <td data-label="Data Collection">
                           <span className={program.dataCollection ? 'badge-yes' : 'badge-no'}>
                             {program.dataCollection ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className="action-buttons">
                             <button
                               className="btn-action btn-view"

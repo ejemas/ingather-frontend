@@ -399,31 +399,112 @@
 @media (max-width: 768px) {
   .settings-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
 
   .settings-subnav {
     position: static;
     display: flex;
     flex-direction: row;
-    overflow-x: auto;
-    padding: 0;
+    overflow: visible;
+    gap: 4px;
+    padding: 5px;
+    border-radius: var(--radius-xl);
+    scrollbar-width: none;
+  }
+
+  .settings-subnav::-webkit-scrollbar {
+    display: none;
   }
 
   .settings-subnav-item {
     border-left: none;
-    border-bottom: 3px solid transparent;
+    border-bottom: none;
     white-space: nowrap;
-    padding: 12px 16px;
+    padding: 10px 7px;
     justify-content: center;
+    gap: 5px;
+    border-radius: var(--radius-lg);
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 0.76rem;
+  }
+
+  .settings-subnav-item span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .settings-subnav-item.active {
-    border-bottom-color: var(--color-orange);
+    border-bottom-color: transparent;
     border-left-color: transparent;
+    background: var(--color-orange-light);
   }
 
   .settings-password-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .settings-card {
+    padding: 18px;
+    border-radius: var(--radius-xl);
+  }
+
+  .settings-content-title {
+    font-size: 1.05rem;
+  }
+
+  .settings-field-input {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .settings-btn-save,
+  .settings-btn-primary,
+  .settings-btn-cancel {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .settings-notif-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .settings-mark-read {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .settings-notif-item {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+  }
+
+  .settings-avatar-section {
+    display: flex;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .settings-card {
+    padding: 16px;
+  }
+
+  .settings-subnav-item {
+    padding-inline: 6px;
+    font-size: 0.72rem;
+    gap: 4px;
+  }
+
+  .settings-subnav-item .subnav-icon {
+    width: 16px;
+    height: 16px;
   }
 }

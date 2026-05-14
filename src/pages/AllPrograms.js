@@ -108,6 +108,7 @@ function AllPrograms() {
   });
   const toast = useToast();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
   // Theme effect
@@ -134,6 +135,23 @@ function AllPrograms() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleEscape);
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen]);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const fetchPrograms = async () => {
     try {
@@ -272,7 +290,7 @@ function AllPrograms() {
   return (
     <div className="dashboard">
       {/* Sidebar */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
         <div className="sidebar-logo">
           <a href="/dashboard" className="sidebar-logo-link">
             <span className="sidebar-logo-icon">{Icons.logo}</span>
@@ -284,37 +302,37 @@ function AllPrograms() {
         </div>
 
         <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item">
+          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.dashboard}</span>
             <span>Dashboard</span>
           </a>
-          <a href="/create-program" className="nav-item">
+          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
             <span>Create Program</span>
           </a>
-          <a href="/programs" className="nav-item active">
+          <a href="/programs" className="nav-item active" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.allPrograms}</span>
             <span>All Program</span>
           </a>
-          <a href="/settings" className="nav-item">
+          <a href="/settings" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.settings}</span>
             <span>Settings</span>
           </a>
         </nav>
 
         <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item">
+          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.notification}</span>
             <span>Notification</span>
             {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
           </a>
-          <button className="btn-logout" onClick={handleLogout}>
+          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}>
             <span className="nav-icon">{Icons.logout}</span>
             <span>Log out</span>
           </button>
         </div>
 
-        <div className="sidebar-profile" onClick={() => window.location.href = '/settings'}>
+        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
           <div className="sidebar-profile-avatar">
             {churchData.logo ? (
               <img src={churchData.logo} alt={churchData.name} />
@@ -329,12 +347,31 @@ function AllPrograms() {
           <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
         </div>
       </aside>
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={closeMobileMenu}
+        />
+      )}
 
       {/* Main Content */}
       <main className="dashboard-main">
         {/* Top Navbar */}
         <header className="top-navbar">
           <div className="navbar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
             <span className="navbar-church-name">All Programs</span>
           </div>
           <div className="navbar-right">
@@ -436,21 +473,21 @@ function AllPrograms() {
                   ) : (
                     filteredPrograms.map(program => (
                       <tr key={program.id}>
-                        <td className="program-title-cell">{program.title}</td>
-                        <td>{formatDate(program.date)}</td>
-                        <td>{formatTime(program.startTime)} - {formatTime(program.endTime)}</td>
-                        <td>
+                        <td className="program-title-cell" data-label="Program">{program.title}</td>
+                        <td data-label="Date">{formatDate(program.date)}</td>
+                        <td data-label="Time">{formatTime(program.startTime)} - {formatTime(program.endTime)}</td>
+                        <td data-label="Status">
                           <span className={`status-badge ${getStatusBadge(program.status)}`}>
                             {program.status.charAt(0).toUpperCase() + program.status.slice(1)}
                           </span>
                         </td>
-                        <td><strong>{program.totalScans.toLocaleString()}</strong></td>
-                        <td>
+                        <td data-label="Attendance"><strong>{program.totalScans.toLocaleString()}</strong></td>
+                        <td data-label="Data Collection">
                           <span className={program.dataCollection ? 'badge-yes' : 'badge-no'}>
                             {program.dataCollection ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Actions">
                           <div className="action-buttons">
                             <button
                               className="btn-action btn-view"

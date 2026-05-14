@@ -877,30 +877,172 @@
 }
 
 @media (max-width: 768px) {
+  .pd-header {
+    margin-bottom: 16px;
+  }
+
+  .pd-title {
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+
   .pd-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 
   .pd-stats-row1.cols-3 {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 
   .pd-secondary-metrics {
     flex-direction: column;
+    gap: 12px;
   }
 
   .pd-metric-card {
     min-width: 0;
+    width: 100%;
+  }
+
+  .pd-middle-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .pd-chart-card,
+  .pd-qr-card,
+  .pd-attendee-card,
+  .pd-stat-card,
+  .pd-metric-card {
+    border-radius: var(--radius-xl);
+  }
+
+  .pd-chart-card,
+  .pd-qr-card,
+  .pd-attendee-card {
+    padding: 18px;
+  }
+
+  .pd-chart-area {
+    height: 240px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .pd-qr-card {
+    width: 100%;
+  }
+
+  .pd-qr-canvas canvas {
+    max-width: 100%;
+    height: auto !important;
+  }
+
+  .pd-qr-link-row {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .pd-qr-link {
+    min-width: 0;
+  }
+
+  .pd-qr-btn-download,
+  .pd-qr-btn-print,
+  .pd-qr-status {
+    width: 100%;
+    justify-content: center;
   }
 
   .pd-attendee-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
+  }
+
+  .pd-search-box,
+  .pd-btn-export {
+    width: 100%;
   }
 
   .pd-pills {
     flex-direction: column;
     align-items: flex-start;
+    gap: 8px;
+  }
+
+  .pd-pill {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .btn-end-program {
+    max-width: 140px;
+    padding: 8px 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pd-table-container {
+    overflow: visible;
+  }
+
+  .pd-table,
+  .pd-table thead,
+  .pd-table tbody,
+  .pd-table tr,
+  .pd-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .pd-table thead {
+    display: none;
+  }
+
+  .pd-table tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .pd-table tbody tr {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .pd-table tbody tr:hover {
+    background: var(--bg-card);
+  }
+
+  .pd-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0;
+    border-bottom: none;
+    text-align: right;
+    font-size: 0.86rem;
+  }
+
+  .pd-table tbody td::before {
+    content: attr(data-label);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: left;
+  }
+
+  .pd-table tbody td:not([data-label])::before {
+    content: none;
   }
 }
 
@@ -918,6 +1060,43 @@
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
+  }
+
+  .pd-stat-card {
+    padding: 16px;
+  }
+
+  .pd-stat-card .pd-stat-value {
+    font-size: 1.35rem;
+  }
+
+  .pd-chart-card,
+  .pd-qr-card,
+  .pd-attendee-card {
+    padding: 16px;
+  }
+
+  .btn-end-program {
+    width: 40px;
+    height: 40px;
+    max-width: 40px;
+    padding: 0;
+    font-size: 0;
+    border-radius: var(--radius-lg);
+  }
+
+  .btn-end-program::after {
+    content: 'End';
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .btn-end-program:disabled::after {
+    content: 'Done';
+  }
+
+  .pd-chart-area {
+    height: 220px;
   }
 }
 

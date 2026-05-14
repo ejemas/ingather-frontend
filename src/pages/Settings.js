@@ -75,6 +75,7 @@ function Settings() {
   const toast = useToast();
   const logoInputRef = React.useRef(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   // Theme
   useEffect(() => {
@@ -93,6 +94,23 @@ function Settings() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleEscape);
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen]);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   // Fetch church data
   useEffect(() => {
@@ -332,7 +350,7 @@ function Settings() {
   return (
     <div className="dashboard">
       {/* ====== SIDEBAR ====== */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
         <div className="sidebar-logo">
           <a href="/dashboard" className="sidebar-logo-link">
             <span className="sidebar-logo-icon">{Icons.logo}</span>
@@ -341,16 +359,16 @@ function Settings() {
           <button className="sidebar-collapse-btn" title="Toggle sidebar">{Icons.collapse}</button>
         </div>
         <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item"><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/create-program" className="nav-item"><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
-          <a href="/programs" className="nav-item"><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
-          <a href="/settings" className="nav-item active"><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
+          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
+          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
+          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
+          <a href="/settings" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
-          <button className="btn-logout" onClick={handleLogout}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
+          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
+          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
         </div>
-        <div className="sidebar-profile" onClick={() => setActiveTab('church')}>
+        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); setActiveTab('church'); }}>
           <div className="sidebar-profile-avatar">
             {(logoPreview || churchData.logoUrl) ? <img src={logoPreview || churchData.logoUrl} alt={churchData.churchName} /> : <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>}
           </div>
@@ -361,12 +379,31 @@ function Settings() {
           <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
         </div>
       </aside>
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={closeMobileMenu}
+        />
+      )}
 
       {/* ====== MAIN ====== */}
       <main className="dashboard-main">
         {/* Top Navbar */}
         <header className="top-navbar">
           <div className="navbar-left">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
             <h2 className="navbar-church-name">Settings</h2>
           </div>
           <div className="navbar-right">

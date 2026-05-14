@@ -357,6 +357,7 @@ function ProgramDetail() {
   const toast = useToast();
   const BARS_PER_PAGE = 8;
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
   // Theme
@@ -376,6 +377,23 @@ function ProgramDetail() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+
+    document.addEventListener('keydown', handleEscape);
+    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileMenuOpen]);
+
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
 
 
@@ -580,7 +598,7 @@ function ProgramDetail() {
   return (
     <div className="dashboard">
       {/* ====== SIDEBAR ====== */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
         <div className="sidebar-logo">
           <a href="/dashboard" className="sidebar-logo-link">
             <span className="sidebar-logo-icon">{Icons.logo}</span>
@@ -589,16 +607,16 @@ function ProgramDetail() {
           <button className="sidebar-collapse-btn" title="Toggle sidebar">{Icons.collapse}</button>
         </div>
         <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item"><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/create-program" className="nav-item active"><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
-          <a href="/programs" className="nav-item"><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
-          <a href="/settings" className="nav-item"><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
+          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
+          <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
+          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
+          <a href="/settings" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item"><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
-          <button className="btn-logout" onClick={handleLogout}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
+          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
+          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
         </div>
-        <div className="sidebar-profile" onClick={() => window.location.href = '/settings'}>
+        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
           <div className="sidebar-profile-avatar">
             {churchData.logo ? <img src={churchData.logo} alt={churchData.name} /> : <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>}
           </div>
@@ -609,12 +627,31 @@ function ProgramDetail() {
           <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
         </div>
       </aside>
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={closeMobileMenu}
+        />
+      )}
 
       {/* ====== MAIN ====== */}
       <main className="dashboard-main">
         {/* Top Navbar */}
         <header className="top-navbar">
           <div className="navbar-left" style={{ gap: '12px' }}>
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              aria-label="Open navigation menu"
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
             <button className="btn-back-arrow" onClick={() => window.location.href = '/dashboard'} title="Back">{Icons.arrowLeft}</button>
           </div>
           <div className="navbar-right">
@@ -876,9 +913,9 @@ function ProgramDetail() {
                   <tbody>
                     {countOnlyScans.map((scan) => (
                       <tr key={scan.id}>
-                        <td><strong>{scan.gender ? scan.gender.charAt(0).toUpperCase() + scan.gender.slice(1) : '-'}</strong></td>
-                        <td>{scan.firstTimer ? <span className="pd-badge-yes">Yes</span> : <span className="pd-badge-no">No</span>}</td>
-                        <td>{new Date(scan.scanTime).toLocaleString()}</td>
+                        <td data-label="Gender"><strong>{scan.gender ? scan.gender.charAt(0).toUpperCase() + scan.gender.slice(1) : '-'}</strong></td>
+                        <td data-label="First Timer">{scan.firstTimer ? <span className="pd-badge-yes">Yes</span> : <span className="pd-badge-no">No</span>}</td>
+                        <td data-label="Scan Time">{new Date(scan.scanTime).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -918,16 +955,16 @@ function ProgramDetail() {
                   <tbody>
                     {attendees.filter(a => !searchQuery.trim() || (a.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())).map(attendee => (
                       <tr key={attendee.id}>
-                        {program.dataFields?.fullName && <td><strong>{attendee.fullName || '-'}</strong></td>}
-                        {program.dataFields?.fellowship && <td>{attendee.fellowship || '-'}</td>}
-                        {program.dataFields?.age && <td>{attendee.age ? `${attendee.age} Years` : '-'}</td>}
+                        {program.dataFields?.fullName && <td data-label="Name"><strong>{attendee.fullName || '-'}</strong></td>}
+                        {program.dataFields?.fellowship && <td data-label="Fellowship">{attendee.fellowship || '-'}</td>}
+                        {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
                         {program.giftingEnabled && (
-                          <td>
+                          <td data-label="Winner">
                             {attendee.isWinner ? <span className="pill-winner">✓ Completed</span> : <span className="pill-dash">-</span>}
                           </td>
                         )}
                         {program.giftingEnabled && (
-                          <td>
+                          <td data-label="Gifted">
                             {attendee.isWinner ? (
                               attendee.isGifted ? (
                                 <span className="pill-gifted">✓ Gifted</span>
@@ -946,7 +983,7 @@ function ProgramDetail() {
                             ) : <span className="pill-dash">-</span>}
                           </td>
                         )}
-                        <td>{new Date(attendee.scanTime).toLocaleString()}</td>
+                        <td data-label="Scan Time">{new Date(attendee.scanTime).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
