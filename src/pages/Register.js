@@ -26,7 +26,6 @@ function Register() {
       ...formData,
       [name]: value
     });
-    // Clear error for this field when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -42,7 +41,6 @@ function Register() {
         ...formData,
         logo: file
       });
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result);
@@ -96,11 +94,8 @@ function Register() {
     }
 
     try {
-      const { register } = await import('../api/authService');
+      await register(formData);
 
-      const response = await register(formData);
-
-      // Redirect to email verification
       toast.success('Registration successful! Please check your email for the verification code.');
       navigate('/verify-email', { state: { email: formData.email } });
     } catch (error) {
@@ -111,133 +106,155 @@ function Register() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1 onClick={() => window.location.href = '/'} style={{ cursor: 'pointer' }}>
-            Ingather
-          </h1>
-          <p>Create your church account</p>
-        </div>
+    <div className="auth-modern-page auth-register-page">
+      <div className="auth-modern-shell auth-modern-shell-wide">
+        <aside
+          className="auth-modern-panel auth-register-panel"
+          style={{ '--auth-panel-image': "url('/ingather-landing-hero.png')" }}
+        >
+          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
+            <img src="/ingather-logo.png" alt="" />
+            <span>Ingather</span>
+          </button>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {/* Church Name */}
-          <div className="form-group">
-            <label htmlFor="churchName">Church Name *</label>
-            <input
-              type="text"
-              id="churchName"
-              name="churchName"
-              value={formData.churchName}
-              onChange={handleChange}
-              placeholder="e.g., Grace Assembly"
-            />
-            {errors.churchName && <span className="error">{errors.churchName}</span>}
+          <div className="auth-panel-content">
+            <span className="auth-panel-pill">Start in minutes</span>
+            <h1>Give your church a cleaner way to welcome people.</h1>
+            <p>
+              Create programs, collect visitor information, prevent duplicate scans,
+              and keep attendance records organized from day one.
+            </p>
           </div>
 
-          {/* Branch Name */}
-          <div className="form-group">
-            <label htmlFor="branchName">Branch Name *</label>
-            <input
-              type="text"
-              id="branchName"
-              name="branchName"
-              value={formData.branchName}
-              onChange={handleChange}
-              placeholder="e.g., Lekki Branch"
-            />
-            {errors.branchName && <span className="error">{errors.branchName}</span>}
+          <div className="auth-register-highlights" aria-hidden="true">
+            <div><strong>QR</strong><span>Fast check-in</span></div>
+            <div><strong>Live</strong><span>Event insights</span></div>
+            <div><strong>Free</strong><span>No card needed</span></div>
+          </div>
+        </aside>
+
+        <main className="auth-modern-card auth-register-card">
+          <div className="auth-modern-header">
+            <p className="auth-modern-kicker">Create account</p>
+            <h2>Set up your church workspace</h2>
+            <span>Tell us about your church so Ingather can prepare your dashboard.</span>
           </div>
 
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="email">Email Address *</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="admin@church.com"
-            />
-            {errors.email && <span className="error">{errors.email}</span>}
-          </div>
+          <form className="auth-modern-form" onSubmit={handleSubmit}>
+            <div className="auth-modern-grid">
+              <div className="auth-modern-field">
+                <label htmlFor="churchName">Church name</label>
+                <input
+                  type="text"
+                  id="churchName"
+                  name="churchName"
+                  value={formData.churchName}
+                  onChange={handleChange}
+                  placeholder="e.g., Grace Assembly"
+                />
+                {errors.churchName && <span className="error">{errors.churchName}</span>}
+              </div>
 
-          {/* Location */}
-          <div className="form-group">
-            <label htmlFor="location">Location/Address *</label>
-            <input
-              type="text"
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g., Lagos, Nigeria"
-            />
-            {errors.location && <span className="error">{errors.location}</span>}
-          </div>
+              <div className="auth-modern-field">
+                <label htmlFor="branchName">Branch name</label>
+                <input
+                  type="text"
+                  id="branchName"
+                  name="branchName"
+                  value={formData.branchName}
+                  onChange={handleChange}
+                  placeholder="e.g., Lekki Branch"
+                />
+                {errors.branchName && <span className="error">{errors.branchName}</span>}
+              </div>
+            </div>
 
-          {/* Logo Upload */}
-          <div className="form-group">
-            <label htmlFor="logo">Church Logo (Optional)</label>
-            <div className="logo-upload">
+            <div className="auth-modern-field">
+              <label htmlFor="email">Email address</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="admin@church.com"
+              />
+              {errors.email && <span className="error">{errors.email}</span>}
+            </div>
+
+            <div className="auth-modern-field">
+              <label htmlFor="location">Location or address</label>
+              <input
+                type="text"
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="e.g., Lagos, Nigeria"
+              />
+              {errors.location && <span className="error">{errors.location}</span>}
+            </div>
+
+            <div className="auth-modern-upload">
               <input
                 type="file"
                 id="logo"
                 accept="image/*"
                 onChange={handleLogoUpload}
-                style={{ display: 'none' }}
               />
-              <label htmlFor="logo" className="upload-btn">
-                {logoPreview ? 'Change Logo' : 'Upload Logo'}
+              <label htmlFor="logo">
+                <span className="auth-upload-avatar">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo preview" />
+                  ) : (
+                    <img src="/ingather-logo.png" alt="" />
+                  )}
+                </span>
+                <span>
+                  <strong>{logoPreview ? 'Logo selected' : 'Add church logo'}</strong>
+                  <small>Optional, JPG or PNG</small>
+                </span>
               </label>
-              {logoPreview && (
-                <div className="logo-preview">
-                  <img src={logoPreview} alt="Logo preview" />
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* Password */}
-          <div className="form-group">
-            <label htmlFor="password">Password *</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Minimum 6 characters"
-            />
-            {errors.password && <span className="error">{errors.password}</span>}
-          </div>
+            <div className="auth-modern-grid">
+              <div className="auth-modern-field">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Minimum 6 characters"
+                />
+                {errors.password && <span className="error">{errors.password}</span>}
+              </div>
 
-          {/* Confirm Password */}
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password *</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-enter your password"
-            />
-            {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
-          </div>
+              <div className="auth-modern-field">
+                <label htmlFor="confirmPassword">Confirm password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Re-enter password"
+                />
+                {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
+              </div>
+            </div>
 
-          {/* Submit Button */}
-          <button type="submit" className="btn btn-primary btn-full">
-            Create Account
-          </button>
+            <button type="submit" className="auth-modern-submit">
+              Create Account
+            </button>
 
-          {/* Login Link */}
-          <p className="auth-switch">
-            Already have an account?
-            <a href="/login"> Login here</a>
-          </p>
-        </form>
+            <p className="auth-modern-switch">
+              Already have an account?
+              <a href="/login"> Login here</a>
+            </p>
+          </form>
+        </main>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
+import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
 import '../styles/Dashboard.css';
 import '../styles/CreateProgram.css';
 
@@ -144,12 +145,22 @@ function CreateProgram() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [unreadCount, setUnreadCount] = useState(0);
+  const [flyerProcessing, setFlyerProcessing] = useState(false);
+  const [flyerData, setFlyerData] = useState({
+    compressedFile: null,
+    previewUrl: '',
+    originalName: '',
+    originalSize: 0,
+    compressedSize: 0,
+    error: ''
+  });
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
   const toast = useToast();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
+  const flyerInputRef = useRef(null);
 
   // Theme effect
   useEffect(() => {
@@ -164,6 +175,14 @@ function CreateProgram() {
   useEffect(() => {
     fetchChurchData();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (flyerData.previewUrl) {
+        URL.revokeObjectURL(flyerData.previewUrl);
+      }
+    };
+  }, [flyerData.previewUrl]);
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -213,6 +232,64 @@ function CreateProgram() {
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
     }
+  };
+
+  const handleFlyerSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setFlyerProcessing(true);
+    setFlyerData(prev => ({ ...prev, error: '' }));
+
+    try {
+      const compressedFile = await compressFlyerImage(file);
+      const previewUrl = URL.createObjectURL(compressedFile);
+
+      setFlyerData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile,
+          previewUrl,
+          originalName: file.name,
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+          error: ''
+        };
+      });
+
+      toast.success(`Flyer compressed to ${formatFileSize(compressedFile.size)}.`);
+    } catch (error) {
+      const message = error.message || 'Flyer compression failed. Please try another image.';
+      setFlyerData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile: null,
+          previewUrl: '',
+          originalName: '',
+          originalSize: 0,
+          compressedSize: 0,
+          error: message
+        };
+      });
+      toast.error(message);
+    } finally {
+      setFlyerProcessing(false);
+    }
+  };
+
+  const handleRemoveFlyer = () => {
+    setFlyerData(prev => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        compressedFile: null,
+        previewUrl: '',
+        originalName: '',
+        originalSize: 0,
+        compressedSize: 0,
+        error: ''
+      };
+    });
   };
 
   const handleTrackingModeChange = (mode) => {
@@ -268,8 +345,20 @@ function CreateProgram() {
       setErrors(newErrors);
       return;
     }
+    if (flyerProcessing) {
+      toast.info('Please wait for the flyer compression to finish.');
+      return;
+    }
     setIsSubmitting(true);
     try {
+      const eventFlyer = flyerData.compressedFile
+        ? {
+            dataUrl: await fileToDataUrl(flyerData.compressedFile),
+            originalName: flyerData.originalName,
+            size: flyerData.compressedSize
+          }
+        : null;
+
       const response = await createProgram({
         programTitle: formData.programTitle,
         date: formData.date,
@@ -278,7 +367,8 @@ function CreateProgram() {
         trackingMode: formData.trackingMode,
         dataFields: formData.dataFields,
         enableGifting: formData.enableGifting,
-        numberOfWinners: formData.numberOfWinners
+        numberOfWinners: formData.numberOfWinners,
+        eventFlyer
       });
       toast.success('Program created successfully!');
       setTimeout(() => {
@@ -496,6 +586,70 @@ function CreateProgram() {
               </div>
             </div>
 
+            {/* Optional Event Flyer */}
+            <div className="form-card" id="event-flyer-card">
+              <div className="flyer-card-header">
+                <div>
+                  <h3 className="card-title">Event Flyer</h3>
+                  <p className="card-description">Upload an optional event image for attendees to view after check-in</p>
+                </div>
+                <span className="flyer-optional-pill">Optional</span>
+              </div>
+
+              <input
+                ref={flyerInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFlyerSelect}
+                className="flyer-file-input"
+              />
+
+              {!flyerData.compressedFile ? (
+                <button
+                  type="button"
+                  className={`flyer-upload-zone ${flyerProcessing ? 'processing' : ''}`}
+                  onClick={() => !flyerProcessing && flyerInputRef.current?.click()}
+                  disabled={flyerProcessing}
+                >
+                  <span className="flyer-upload-icon">
+                    {flyerProcessing ? (
+                      <span className="flyer-mini-spinner"></span>
+                    ) : (
+                      Icons.calendar
+                    )}
+                  </span>
+                  <span className="flyer-upload-copy">
+                    <strong>{flyerProcessing ? 'Compressing flyer...' : 'Choose flyer image'}</strong>
+                    <span>JPEG, PNG, or WebP. It will be compressed to about 200 KB before upload.</span>
+                  </span>
+                </button>
+              ) : (
+                <div className="flyer-preview-panel">
+                  <div className="flyer-preview-image-wrap">
+                    <img src={flyerData.previewUrl} alt="Event flyer preview" />
+                  </div>
+                  <div className="flyer-preview-meta">
+                    <div>
+                      <p className="flyer-preview-title">{flyerData.originalName}</p>
+                      <p className="flyer-preview-sub">
+                        {formatFileSize(flyerData.originalSize)} compressed to {formatFileSize(flyerData.compressedSize)}
+                      </p>
+                    </div>
+                    <div className="flyer-preview-actions">
+                      <button type="button" className="flyer-change-btn" onClick={() => flyerInputRef.current?.click()}>
+                        Change
+                      </button>
+                      <button type="button" className="flyer-remove-btn" onClick={handleRemoveFlyer}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {flyerData.error && <span className="error-text">{flyerData.error}</span>}
+            </div>
+
             {/* Tracking Mode Card */}
             <div className="form-card" id="tracking-mode-card">
               <h3 className="card-title">Tracking Mode</h3>
@@ -629,9 +783,9 @@ function CreateProgram() {
               <button
                 type="submit"
                 className="btn-create"
-                disabled={isSubmitting}
+                disabled={isSubmitting || flyerProcessing}
               >
-                {isSubmitting ? 'Creating...' : 'Create  Program'}
+                {isSubmitting ? 'Creating...' : flyerProcessing ? 'Preparing Flyer...' : 'Create  Program'}
               </button>
             </div>
           </form>

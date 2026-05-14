@@ -1,15 +1,141 @@
 // CHANGE THIS LINE:
 import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { useParams } from 'react-router-dom';
-import { getProgramInfo, submitScan, submitFormData } from '../api/scanService';
+import { getProgramInfo, submitScan, submitFormData, updateScanData } from '../api/scanService';
 import { useToast } from '../components/Toast';
 import '../styles/ScanPage.css';
 
+const INGATHER_PUBLIC_ORIGIN = 'https://ingather.app';
+
+const getEventDetailsUrl = (programId) => `${INGATHER_PUBLIC_ORIGIN}/scan/${programId}?details=1`;
+
+const fallbackFingerprint = () => {
+  return `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
+};
+
+const getDeviceFingerprint = async () => {
+  try {
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    return result.visitorId;
+  } catch (error) {
+    return fallbackFingerprint();
+  }
+};
+
+const getShareLinks = (shareUrl, title) => {
+  const text = `View ${title || 'this event'} details on Ingather`;
+  const encodedUrl = encodeURIComponent(shareUrl);
+  const encodedText = encodeURIComponent(text);
+  const encodedTextWithUrl = encodeURIComponent(`${text} ${shareUrl}`);
+
+  return [
+    { key: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/?text=${encodedTextWithUrl}` },
+    { key: 'facebook', label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
+    { key: 'x', label: 'X', href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
+    { key: 'telegram', label: 'Telegram', href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}` },
+    { key: 'linkedin', label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}` }
+  ];
+};
+
+function EventDetailsButton({ programData, onClick }) {
+  if (!programData?.flyerUrl) return null;
+
+  return (
+    <button type="button" className="event-details-trigger" onClick={onClick}>
+      View Event Details
+    </button>
+  );
+}
+
+function FlyerDetailsViewer({ programData, programId, onClose, standalone = false, toast }) {
+  if (!programData?.flyerUrl) return null;
+
+  const shareUrl = getEventDetailsUrl(programId);
+  const shareLinks = getShareLinks(shareUrl, programData.title);
+
+  const handleShare = async () => {
+    const shareData = {
+      title: programData.title || 'Ingather Event',
+      text: `View ${programData.title || 'this event'} details on Ingather`,
+      url: shareUrl
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast?.success('Event link copied.');
+    } catch (error) {
+      window.open(shareLinks[0].href, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const content = (
+    <div className="flyer-viewer-card">
+      <div className="flyer-viewer-header">
+        <div>
+          <p className="flyer-viewer-kicker">{programData.churchName}</p>
+          <h2>{programData.title}</h2>
+        </div>
+        {!standalone && (
+          <button type="button" className="flyer-viewer-close" onClick={onClose} aria-label="Close event details">
+            &times;
+          </button>
+        )}
+      </div>
+
+      <div className="flyer-viewer-image-wrap">
+        <img src={programData.flyerUrl} alt={`${programData.title} event flyer`} />
+      </div>
+
+      <div className="flyer-share-panel">
+        <button type="button" className="flyer-share-primary" onClick={handleShare}>
+          Share
+        </button>
+        <div className="flyer-share-links">
+          {shareLinks.map(link => (
+            <a
+              key={link.key}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flyer-share-link"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (standalone) {
+    return content;
+  }
+
+  return (
+    <div className="flyer-viewer-overlay" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}>
+        {content}
+      </div>
+    </div>
+  );
+}
 
 function ScanPage() {
   const { programId } = useParams();
   const toast = useToast();
+  const detailsOnly = new URLSearchParams(window.location.search).get('details') === '1';
 
 
   // ADD THESE NEW ONES:
@@ -19,10 +145,13 @@ function ScanPage() {
   const [submittingGender, setSubmittingGender] = useState(false);
 
   const hasScannedRef = useRef(false);
+  const deviceFingerprintRef = useRef('');
+  const scanSessionTokenRef = useRef('');
   const [loading, setLoading] = useState(true);
   const [alreadyScanned, setAlreadyScanned] = useState(false);
   const [programData, setProgramData] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showFlyerDetails, setShowFlyerDetails] = useState(false);
 
 
   // Form data
@@ -51,8 +180,13 @@ function ScanPage() {
     hasScannedRef.current = true;
 
     console.log('Initializing scan page for program:', programId);
-    initializeScan();
-  }, [programId]);
+    if (detailsOnly) {
+      loadProgramDetailsOnly();
+    } else {
+      initializeScan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programId, detailsOnly]);
   //   useEffect(() => {
   // console.log('Initializing scan page for program:', programId);
   // initializeScan();
@@ -69,7 +203,8 @@ function ScanPage() {
 
   const initializeScan = async () => {
     try {
-      const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
+      const fingerprint = await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
       console.log('Device fingerprint:', fingerprint);
 
       // 1. Get program info from backend
@@ -87,6 +222,7 @@ function ScanPage() {
       // Submit scan to backend
       try {
         const scanResult = await submitScan(programId, fingerprint, null);
+        scanSessionTokenRef.current = scanResult.scanSessionToken || '';
         console.log('Scan recorded successfully:', scanResult);
 
         // Scan successful - decide what to show based on tracking mode
@@ -118,6 +254,19 @@ function ScanPage() {
     }
   };
 
+  const loadProgramDetailsOnly = async () => {
+    try {
+      const data = await getProgramInfo(programId);
+      setProgramData(data);
+      setShowFlyerDetails(Boolean(data.flyerUrl));
+    } catch (error) {
+      console.error('Error loading event details:', error);
+      toast.error('Unable to load event details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleGenderSubmit = async () => {
     if (!gender) {
@@ -128,18 +277,9 @@ function ScanPage() {
     setSubmittingGender(true);
 
     try {
-      const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
-
-      // Update the scan record with gender and first-timer data
-      const axios = (await import('axios')).default;
-      await axios.put(
-        `${process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000'}/api/scan/program/${programId}/update-scan`,
-        {
-          deviceFingerprint: fingerprint,
-          gender: gender,
-          firstTimer: isFirstTimer
-        }
-      );
+      const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
+      await updateScanData(programId, fingerprint, gender, isFirstTimer, scanSessionTokenRef.current);
 
       console.log('Gender data updated successfully');
 
@@ -165,6 +305,8 @@ function ScanPage() {
     setAlreadyScanned(false);
     setShowForm(false);
     setResult(null);
+    deviceFingerprintRef.current = '';
+    scanSessionTokenRef.current = '';
     setFormData({
       fullName: '',
       address: '',
@@ -238,10 +380,11 @@ function ScanPage() {
     setSubmitting(true);
 
     try {
-      const fingerprint = `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
+      const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
 
       // Submit only the form data (scan was already recorded)
-      const response = await submitFormData(programId, fingerprint, formData);
+      const response = await submitFormData(programId, fingerprint, formData, scanSessionTokenRef.current);
       console.log('Form submitted successfully:', response);
 
       if (formData.firstTimer && response.isWinner) {
@@ -263,6 +406,14 @@ function ScanPage() {
     }
   };
 
+  const flyerDetailsOverlay = showFlyerDetails && !detailsOnly ? (
+    <FlyerDetailsViewer
+      programData={programData}
+      programId={programId}
+      onClose={() => setShowFlyerDetails(false)}
+      toast={toast}
+    />
+  ) : null;
 
   // LOADING
   if (loading) {
@@ -271,6 +422,34 @@ function ScanPage() {
         <div className="scan-container">
           <div className="spinner"></div>
           <p className="loading-text">Loading program...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (detailsOnly) {
+    return (
+      <div className="scan-page">
+        <div className="scan-container">
+          {programData?.flyerUrl ? (
+            <FlyerDetailsViewer
+              programData={programData}
+              programId={programId}
+              standalone
+              toast={toast}
+            />
+          ) : (
+            <div className="modal-card">
+              <div className="modal-card-topbar orange"></div>
+              <div className="modal-card-body">
+                <div className="modal-icon-circle">
+                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                </div>
+                <h2>Event Details Unavailable</h2>
+                <p className="modal-subtitle">No flyer has been added for this program yet.</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -595,8 +774,10 @@ function ScanPage() {
                 <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
                 <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
+              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );
@@ -627,8 +808,10 @@ function ScanPage() {
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">You didn't win this time, but we are glad you are here. Enjoy the rest of the service</span>
               </div>
+              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );
@@ -652,8 +835,10 @@ function ScanPage() {
                 <span className="callout-text">Please kindly wait at the close of service, we look forward to connecting with you</span>
                 <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
+              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );
@@ -685,8 +870,10 @@ function ScanPage() {
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please kindly wait behind at the close of service</span>
               </div>
+              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );
@@ -714,8 +901,10 @@ function ScanPage() {
               </div>
               <h2>Thank You!</h2>
               <p className="modal-subtitle">You have been checked in successfully<br />Enjoy the service!</p>
+              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );
@@ -731,7 +920,9 @@ function ScanPage() {
             <h2>Thank You!</h2>
             <p>Your information has been submitted successfully.</p>
             <p className="sub-message">Thank you for coming to church today, do enjoy the rest of the service!</p>
+            <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
           </div>
+          {flyerDetailsOverlay}
         </div>
       </div>
     );

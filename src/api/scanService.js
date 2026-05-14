@@ -19,10 +19,21 @@ export const submitScan = async (programId, deviceFingerprint, formData = null, 
   return response.data;
 };
 
-export const submitFormData = async (programId, deviceFingerprint, formData) => {
+export const submitFormData = async (programId, deviceFingerprint, formData, scanSessionToken) => {
   const response = await SCAN_API.post(`/program/${programId}/form`, {
     deviceFingerprint,
-    formData
+    formData,
+    scanSessionToken
+  });
+  return response.data;
+};
+
+export const updateScanData = async (programId, deviceFingerprint, gender, firstTimer, scanSessionToken) => {
+  const response = await SCAN_API.put(`/program/${programId}/update-scan`, {
+    deviceFingerprint,
+    gender,
+    firstTimer,
+    scanSessionToken
   });
   return response.data;
 };

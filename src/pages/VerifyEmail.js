@@ -3,180 +3,193 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { verifyOtp, resendOtp } from '../api/authService';
 import '../styles/Auth.css';
 
+const OTP_LENGTH = 6;
+
 function VerifyEmail() {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const email = location.state?.email || '';
+  const location = useLocation();
+  const navigate = useNavigate();
+  const email = location.state?.email || '';
 
-    const [otp, setOtp] = useState(['', '', '', '']);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [resendCooldown, setResendCooldown] = useState(0);
-    const inputRefs = [useRef(), useRef(), useRef(), useRef()];
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(''));
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const inputRefs = useRef([]);
 
-    // Redirect if no email in state
-    useEffect(() => {
-        if (!email) {
-            navigate('/register');
-        }
-    }, [email, navigate]);
+  useEffect(() => {
+    if (!email) {
+      navigate('/register');
+    }
+  }, [email, navigate]);
 
-    // Resend cooldown timer
-    useEffect(() => {
-        if (resendCooldown > 0) {
-            const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [resendCooldown]);
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
-    const handleChange = (index, value) => {
-        // Only allow digits
-        if (value && !/^\d$/.test(value)) return;
+  const handleChange = (index, value) => {
+    if (value && !/^\d$/.test(value)) return;
 
-        const newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
-        setError('');
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setError('');
 
-        // Auto-advance to next input
-        if (value && index < 3) {
-            inputRefs[index + 1].current.focus();
-        }
-    };
+    if (value && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
 
-    const handleKeyDown = (index, e) => {
-        // Go back on backspace if current field is empty
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs[index - 1].current.focus();
-        }
-    };
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
-    const handlePaste = (e) => {
-        e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').trim().slice(0, 4);
-        if (/^\d{1,4}$/.test(pastedData)) {
-            const newOtp = [...otp];
-            pastedData.split('').forEach((char, i) => {
-                newOtp[i] = char;
-            });
-            setOtp(newOtp);
-            const focusIndex = Math.min(pastedData.length, 3);
-            inputRefs[focusIndex].current.focus();
-        }
-    };
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').trim().slice(0, OTP_LENGTH);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const otpCode = otp.join('');
+    if (/^\d{1,6}$/.test(pastedData)) {
+      const newOtp = Array(OTP_LENGTH).fill('');
+      pastedData.split('').forEach((char, i) => {
+        newOtp[i] = char;
+      });
+      setOtp(newOtp);
+      const focusIndex = Math.min(pastedData.length, OTP_LENGTH - 1);
+      inputRefs.current[focusIndex]?.focus();
+    }
+  };
 
-        if (otpCode.length !== 4) {
-            setError('Please enter the complete 4-digit code');
-            return;
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const otpCode = otp.join('');
 
-        setLoading(true);
-        setError('');
+    if (otpCode.length !== OTP_LENGTH) {
+      setError(`Please enter the complete ${OTP_LENGTH}-digit code`);
+      return;
+    }
 
-        try {
-            const response = await verifyOtp(email, otpCode);
-            setSuccess(response.message || 'Email verified successfully!');
-            setTimeout(() => {
-                navigate('/login', { state: { verified: true } });
-            }, 1500);
-        } catch (err) {
-            const errorMessage = err.response?.data?.error || 'Verification failed. Please try again.';
-            setError(errorMessage);
-        } finally {
-            setLoading(false);
-        }
-    };
+    setLoading(true);
+    setError('');
 
-    const handleResend = async () => {
-        if (resendCooldown > 0) return;
+    try {
+      const response = await verifyOtp(email, otpCode);
+      setSuccess(response.message || 'Email verified successfully!');
+      setTimeout(() => {
+        navigate('/login', { state: { verified: true } });
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Verification failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        try {
-            await resendOtp(email);
-            setResendCooldown(60);
-            setError('');
-            setSuccess('A new OTP has been sent to your email.');
-            setTimeout(() => setSuccess(''), 3000);
-        } catch (err) {
-            setError(err.response?.data?.error || 'Failed to resend OTP.');
-        }
-    };
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
 
-    return (
-        <div className="auth-page">
-            <div className="auth-container">
-                <div className="auth-header">
-                    <h1 onClick={() => window.location.href = '/'} style={{ cursor: 'pointer' }}>
-                        Ingather
-                    </h1>
-                    <p>Verify your email address</p>
-                </div>
+    try {
+      await resendOtp(email);
+      setResendCooldown(60);
+      setError('');
+      setSuccess('A new code has been sent to your email.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to resend code.');
+    }
+  };
 
-                <div className="verify-info">
-                    <p className="verify-description">
-                        We've sent a 4-digit verification code to
-                    </p>
-                    <p className="verify-email">{email}</p>
-                </div>
+  return (
+    <div className="auth-modern-page auth-recovery-page">
+      <div className="auth-modern-shell auth-recovery-shell">
+        <aside
+          className="auth-modern-panel auth-recovery-panel"
+          style={{ '--auth-panel-image': "url('/ingather-landing-hero.png')" }}
+        >
+          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
+            <img src="/ingather-logo.png" alt="" />
+            <span>Ingather</span>
+          </button>
 
-                <form className="auth-form" onSubmit={handleSubmit}>
-                    {/* OTP Input */}
-                    <div className="otp-container">
-                        {otp.map((digit, index) => (
-                            <input
-                                key={index}
-                                ref={inputRefs[index]}
-                                type="text"
-                                maxLength="1"
-                                className="otp-input"
-                                value={digit}
-                                onChange={(e) => handleChange(index, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(index, e)}
-                                onPaste={index === 0 ? handlePaste : undefined}
-                                autoFocus={index === 0}
-                            />
-                        ))}
-                    </div>
+          <div className="auth-panel-content">
+            <span className="auth-panel-pill">Email verification</span>
+            <h1>Confirm the workspace belongs to you.</h1>
+            <p>
+              One quick code protects your church data before your account is
+              activated.
+            </p>
+          </div>
 
-                    {/* Error Message */}
-                    {error && <div className="auth-message auth-message-error">{error}</div>}
+          <div className="auth-code-preview" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
+        </aside>
 
-                    {/* Success Message */}
-                    {success && <div className="auth-message auth-message-success">{success}</div>}
+        <main className="auth-modern-card">
+          <div className="auth-modern-header">
+            <p className="auth-modern-kicker">Verify email</p>
+            <h2>Enter your code</h2>
+            <span>We sent a six-digit verification code to your inbox.</span>
+          </div>
 
-                    {/* Submit Button */}
-                    <button
-                        type="submit"
-                        className="btn btn-primary btn-full"
-                        disabled={loading}
-                    >
-                        {loading ? 'Verifying...' : 'Verify Email'}
-                    </button>
+          <div className="auth-modern-note">
+            <span>Code sent to</span>
+            <strong>{email}</strong>
+          </div>
 
-                    {/* Resend OTP */}
-                    <p className="auth-switch">
-                        Didn't receive the code?{' '}
-                        {resendCooldown > 0 ? (
-                            <span className="resend-timer">Resend in {resendCooldown}s</span>
-                        ) : (
-                            <button type="button" className="resend-link" onClick={handleResend}>
-                                Resend OTP
-                            </button>
-                        )}
-                    </p>
-
-                    {/* Back to Login */}
-                    <p className="auth-switch">
-                        <a href="/login">Back to Login</a>
-                    </p>
-                </form>
+          <form className="auth-modern-form" onSubmit={handleSubmit}>
+            <div className="auth-modern-field">
+              <label>Verification code</label>
+              <div className="otp-container otp-container-modern">
+                {otp.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(element) => { inputRefs.current[index] = element; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength="1"
+                    className="otp-input"
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    autoFocus={index === 0}
+                    aria-label={`Digit ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
-        </div>
-    );
+
+            {error && <div className="auth-message auth-message-error">{error}</div>}
+            {success && <div className="auth-message auth-message-success">{success}</div>}
+
+            <button type="submit" className="auth-modern-submit" disabled={loading}>
+              {loading ? 'Verifying...' : 'Verify email'}
+            </button>
+
+            <p className="auth-modern-switch">
+              Didn't receive the code?{' '}
+              {resendCooldown > 0 ? (
+                <span className="resend-timer">Resend in {resendCooldown}s</span>
+              ) : (
+                <button type="button" className="resend-link" onClick={handleResend}>
+                  Resend code
+                </button>
+              )}
+            </p>
+
+            <p className="auth-modern-switch auth-modern-switch-muted">
+              <a href="/login">Back to login</a>
+            </p>
+          </form>
+        </main>
+      </div>
+    </div>
+  );
 }
 
 export default VerifyEmail;

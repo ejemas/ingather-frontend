@@ -27,7 +27,6 @@ function Login() {
       ...formData,
       [name]: value
     });
-    // Clear error for this field
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -63,21 +62,15 @@ function Login() {
     }
 
     try {
-      const { login } = await import('../api/authService');
-
       const response = await login(formData.email, formData.password);
 
-      // Store token
       localStorage.setItem('token', response.token);
-
-      // Store church info
       localStorage.setItem('church', JSON.stringify(response.church));
 
       window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);
 
-      // Handle unverified email
       if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
         toast.confirm(
           'Your email is not verified. Would you like to verify it now?',
@@ -92,75 +85,101 @@ function Login() {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h1 onClick={() => window.location.href = '/'} style={{ cursor: 'pointer' }}>
-            Ingather
-          </h1>
-          <p>Welcome back! Please login to your account</p>
-        </div>
-
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {/* Success Message */}
-          {successMessage && (
-            <div className="auth-message auth-message-success">{successMessage}</div>
-          )}
-
-          {/* Email */}
-          <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="admin@church.com"
-            />
-            {errors.email && <span className="error">{errors.email}</span>}
-          </div>
-
-          {/* Password */}
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Enter your password"
-            />
-            {errors.password && <span className="error">{errors.password}</span>}
-          </div>
-
-          {/* Remember Me & Forgot Password */}
-          <div className="form-extras">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <span>Remember me</span>
-            </label>
-            <a href="/forgot-password" className="forgot-link">
-              Forgot password?
-            </a>
-          </div>
-
-          {/* Submit Button */}
-          <button type="submit" className="btn btn-primary btn-full">
-            Login
+    <div className="auth-modern-page auth-login-page">
+      <div className="auth-modern-shell">
+        <aside
+          className="auth-modern-panel"
+          style={{ '--auth-panel-image': "url('/ingather-landing-hero.png')" }}
+        >
+          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
+            <img src="/ingather-logo.png" alt="" />
+            <span>Ingather</span>
           </button>
 
-          {/* Register Link */}
-          <p className="auth-switch">
-            Don't have an account?
-            <a href="/register"> Sign up here</a>
-          </p>
-        </form>
+          <div className="auth-panel-content">
+            <span className="auth-panel-pill">Live church attendance</span>
+            <h1>Welcome back to your event command center.</h1>
+            <p>
+              Track scans, visitor forms, gifting, and program reports from one
+              calm dashboard built for church teams.
+            </p>
+          </div>
+
+          <div className="auth-panel-preview" aria-hidden="true">
+            <div className="preview-card preview-card-main">
+              <span>Current Program</span>
+              <strong>Sunday Service</strong>
+              <div className="preview-bars">
+                <i></i><i></i><i></i><i></i>
+              </div>
+            </div>
+            <div className="preview-card preview-card-floating">
+              <span>Live check-ins</span>
+              <strong>248</strong>
+            </div>
+          </div>
+        </aside>
+
+        <main className="auth-modern-card">
+          <div className="auth-modern-header">
+            <p className="auth-modern-kicker">Sign in</p>
+            <h2>Access your workspace</h2>
+            <span>Enter your details to continue managing attendance.</span>
+          </div>
+
+          <form className="auth-modern-form" onSubmit={handleSubmit}>
+            {successMessage && (
+              <div className="auth-message auth-message-success">{successMessage}</div>
+            )}
+
+            <div className="auth-modern-field">
+              <label htmlFor="email">Email address</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="admin@church.com"
+              />
+              {errors.email && <span className="error">{errors.email}</span>}
+            </div>
+
+            <div className="auth-modern-field">
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter your password"
+              />
+              {errors.password && <span className="error">{errors.password}</span>}
+            </div>
+
+            <div className="auth-modern-extras">
+              <label className="auth-modern-checkbox">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <span>Remember me</span>
+              </label>
+              <a href="/forgot-password">Forgot password?</a>
+            </div>
+
+            <button type="submit" className="auth-modern-submit">
+              Login
+            </button>
+
+            <p className="auth-modern-switch">
+              New to Ingather?
+              <a href="/register"> Create an account</a>
+            </p>
+          </form>
+        </main>
       </div>
     </div>
   );
