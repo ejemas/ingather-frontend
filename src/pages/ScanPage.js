@@ -40,12 +40,38 @@ const getShareLinks = (shareUrl, title) => {
   ];
 };
 
+const formatEventDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+};
+
+const formatEventTime = (startTime, endTime) => {
+  if (!startTime && !endTime) return '';
+  return [startTime, endTime].filter(Boolean).join(' - ');
+};
+
 function EventDetailsButton({ programData, onClick }) {
   if (!programData?.flyerUrl) return null;
 
   return (
     <button type="button" className="event-details-trigger" onClick={onClick}>
-      View Event Details
+      <span className="event-details-trigger-icon">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="14" height="12" rx="2" />
+          <line x1="3" y1="8" x2="17" y2="8" />
+          <path d="M7 12h4" />
+        </svg>
+      </span>
+      <span>
+        <strong>View Event Details</strong>
+        <small>Flyer, date, and share link</small>
+      </span>
+      <svg className="event-details-trigger-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="5" y1="10" x2="15" y2="10" />
+        <polyline points="11,6 15,10 11,14" />
+      </svg>
     </button>
   );
 }
@@ -80,16 +106,28 @@ function FlyerDetailsViewer({ programData, programId, onClose, standalone = fals
     }
   };
 
+  const dateText = formatEventDate(programData.date);
+  const timeText = formatEventTime(programData.startTime, programData.endTime);
+
   const content = (
     <div className="flyer-viewer-card">
       <div className="flyer-viewer-header">
         <div>
           <p className="flyer-viewer-kicker">{programData.churchName}</p>
           <h2>{programData.title}</h2>
+          {(dateText || timeText) && (
+            <div className="flyer-viewer-meta">
+              {dateText && <span>{dateText}</span>}
+              {timeText && <span>{timeText}</span>}
+            </div>
+          )}
         </div>
         {!standalone && (
           <button type="button" className="flyer-viewer-close" onClick={onClose} aria-label="Close event details">
-            &times;
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <line x1="5" y1="5" x2="15" y2="15" />
+              <line x1="15" y1="5" x2="5" y2="15" />
+            </svg>
           </button>
         )}
       </div>
@@ -99,8 +137,12 @@ function FlyerDetailsViewer({ programData, programId, onClose, standalone = fals
       </div>
 
       <div className="flyer-share-panel">
+        <div className="flyer-share-copy">
+          <h3>Share this event</h3>
+          <p>Send the flyer and details to someone who may want to attend.</p>
+        </div>
         <button type="button" className="flyer-share-primary" onClick={handleShare}>
-          Share
+          Share event link
         </button>
         <div className="flyer-share-links">
           {shareLinks.map(link => (
@@ -484,22 +526,21 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="form-header">
+          <div className="form-header scan-form-hero">
+            <div className="scan-hero-badge">Check-in recorded</div>
             <h1>{programData.churchName}</h1>
             <h2>{programData.title}</h2>
-            <p style={{ marginTop: '10px', color: 'rgba(235, 235, 211, 0.8)' }}>
-              Please provide some basic information
-            </p>
+            <p>Please provide a few quick details to complete your check-in.</p>
           </div>
 
-          <div className="gender-form" style={{
+          <div className="gender-form scan-form-card" style={{
             background: 'rgba(235, 235, 211, 0.05)',
             padding: '30px',
             borderRadius: '16px',
             marginTop: '20px'
           }}>
             <div className="form-group">
-              <label style={{
+              <label className="scan-field-heading" style={{
                 fontSize: '1.1rem',
                 fontWeight: '600',
                 marginBottom: '15px',
@@ -509,8 +550,8 @@ function ScanPage() {
                 Select Your Gender *
               </label>
 
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
-                <label style={{
+              <div className="scan-choice-grid" style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+                <label className={`scan-choice-card male-choice ${gender === 'male' ? 'selected' : ''}`} style={{
                   flex: 1,
                   padding: '20px',
                   background: gender === 'male' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
@@ -534,7 +575,7 @@ function ScanPage() {
                   👨 Male
                 </label>
 
-                <label style={{
+                <label className={`scan-choice-card female-choice ${gender === 'female' ? 'selected' : ''}`} style={{
                   flex: 1,
                   padding: '20px',
                   background: gender === 'female' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
@@ -561,7 +602,7 @@ function ScanPage() {
             </div>
 
             <div className="form-group checkbox-group">
-              <label className="checkbox-label" style={{
+              <label className="checkbox-label scan-checkbox-card" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px',
@@ -611,7 +652,8 @@ function ScanPage() {
     return (
       <div className="scan-page">
         <div className="scan-container">
-          <div className="form-header">
+          <div className="form-header scan-form-hero">
+            <div className="scan-hero-badge">Welcome</div>
             <h1>{programData.churchName}</h1>
             <h2>{programData.title}</h2>
             {programData.giftingEnabled && (
