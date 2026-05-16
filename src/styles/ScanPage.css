@@ -1104,10 +1104,10 @@
 }
 
 .personalized-viewer-card {
-  width: min(94vw, 680px);
+  width: min(96vw, 820px);
   max-height: 92dvh;
   overflow: auto;
-  background: #FFFFFF;
+  background: #EDEDED;
   border-radius: 28px;
   box-shadow: 0 32px 90px rgba(0, 0, 0, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -1139,152 +1139,139 @@
 
 .personalized-card-preview {
   position: relative;
-  min-height: 650px;
-  margin: 0 24px 18px;
+  width: calc(100% - 48px);
+  max-width: 741px;
+  aspect-ratio: 741 / 780;
+  margin: 0 auto 18px;
   overflow: hidden;
-  border-radius: 28px;
+  border-radius: 32px;
   background: #FFFFFF;
   color: var(--personalized-text, #111217);
-  box-shadow: inset 0 0 0 1px rgba(17, 18, 23, 0.08), 0 24px 52px rgba(15, 17, 23, 0.18);
+  box-shadow: 0 26px 62px rgba(15, 17, 23, 0.16);
 }
 
-.personalized-card-preview::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: var(--personalized-bg-image);
-  background-size: cover;
-  background-position: center;
-  opacity: 0.06;
-  pointer-events: none;
-}
-
-.personalized-card-preview::after {
-  content: '';
+.personalized-card-line {
   position: absolute;
   z-index: 1;
+  display: block;
   top: 0;
-  left: 82px;
-  width: 5px;
-  height: calc(100% - 76px);
+  left: 44.94%;
+  width: 0.54%;
+  min-width: 3px;
+  height: 72.18%;
   border-radius: 999px;
   background: var(--personalized-brand, #E8590C);
   pointer-events: none;
 }
 
-.personalized-card-stage {
-  position: relative;
-  z-index: 2;
-  min-height: 560px;
-  margin-left: 86px;
-  padding: 116px 54px 64px 78px;
-  background: #FFFFFF;
-  border-radius: 0 0 0 58px;
-}
-
 .personalized-card-bg-logo {
   position: absolute;
-  z-index: 2;
-  top: 44px;
-  right: 58px;
-  width: 112px;
-  height: 112px;
+  z-index: 4;
+  top: 4.1%;
+  left: 68.83%;
+  width: 14.71%;
+  aspect-ratio: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 7px solid #111217;
+  border: 8px solid #111217;
   border-radius: 50%;
   background: #FFFFFF;
   color: #111217;
-  font-size: 0.92rem;
-  font-weight: 900;
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(0.54rem, 1.85vw, 1rem);
+  font-weight: 400;
 }
 
 .personalized-card-bg-logo img,
 .personalized-card-logo img {
-  width: 100%;
-  height: 100%;
+  width: 74%;
+  height: 74%;
   object-fit: contain;
   display: block;
 }
 
 .personalized-quote-panel {
   position: absolute;
-  left: 132px;
-  right: 38px;
-  bottom: 88px;
-  min-height: 266px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 72px 42px 44px;
-  border: 5px solid var(--personalized-accent, #FFB86B);
+  z-index: 2;
+  left: 44.94%;
+  top: 40.38%;
+  width: 48.18%;
+  height: 28.46%;
+  border: 4px solid var(--personalized-accent, #FFB86B);
   border-radius: 0 64px 64px 64px;
   background: #FFFFFF;
-  color: var(--personalized-text, #111217);
+  pointer-events: none;
 }
 
 .personalized-card-logo {
   position: absolute;
-  top: -56px;
-  left: -56px;
-  width: 112px;
-  height: 112px;
+  z-index: 5;
+  top: 34.23%;
+  left: 33.87%;
+  width: 14.71%;
+  aspect-ratio: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 14px;
-  border: 7px solid #111217;
+  border: 8px solid #111217;
   border-radius: 50%;
   background: #FFFFFF;
   color: #111217;
-  font-size: 0.92rem;
-  font-weight: 900;
-  box-shadow: 0 18px 36px rgba(17, 18, 23, 0.14);
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(0.54rem, 1.85vw, 1rem);
+  font-weight: 400;
 }
 
 .personalized-message {
-  max-width: 430px;
+  position: absolute;
+  z-index: 4;
+  top: 50.45%;
+  left: 33.87%;
+  width: 48.04%;
   margin: 0;
   color: var(--personalized-text, #111217);
   font-family: 'Poppins', sans-serif;
-  font-size: clamp(1.15rem, 4vw, 1.55rem);
-  font-weight: 500;
-  line-height: 1.35;
+  font-size: clamp(0.72rem, 2.15vw, 1rem);
+  font-weight: 400;
+  line-height: 1.5;
   text-align: left;
+}
+
+.personalized-message-quote {
+  font-size: clamp(1.45rem, 4.3vw, 2rem);
+  line-height: 1;
+  vertical-align: -0.06em;
 }
 
 .personalized-message strong {
   color: #111217;
-  font-size: clamp(1.9rem, 7vw, 3rem);
+  font-size: clamp(1.45rem, 4.3vw, 2rem);
   font-weight: 900;
   line-height: 1;
 }
 
-.personalized-card-footer {
-  position: relative;
+.personalized-card-strip {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 6.92%;
+  pointer-events: none;
+}
+
+.personalized-card-strip-muted {
   z-index: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 76px;
-  margin-top: -76px;
-  padding: 16px 34px 18px;
+  bottom: 6.92%;
+  background: #313131;
+  background: color-mix(in srgb, var(--personalized-brand, #E8590C) 72%, #313131);
+}
+
+.personalized-card-strip-brand {
+  z-index: 3;
+  bottom: 0;
   background: var(--personalized-brand, #E8590C);
-  color: #FFFFFF;
-}
-
-.personalized-card-footer strong {
-  color: #FFFFFF;
-  font-size: 0.98rem;
-}
-
-.personalized-card-footer span {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.78rem;
-  font-weight: 700;
 }
 
 .personalized-actions {
@@ -1550,64 +1537,29 @@
   }
 
   .personalized-card-preview {
-    margin-inline: 18px;
-    min-height: 540px;
+    width: calc(100% - 20px);
     border-radius: 24px;
   }
 
-  .personalized-card-preview::after {
-    left: 38px;
-    width: 4px;
-    height: calc(100% - 70px);
-  }
-
-  .personalized-card-stage {
-    min-height: 456px;
-    margin-left: 42px;
-    padding: 92px 18px 52px 34px;
-    border-radius: 0 0 0 38px;
-  }
-
   .personalized-card-bg-logo {
-    top: 30px;
-    right: 32px;
-    width: 78px;
-    height: 78px;
     border-width: 5px;
-    font-size: 0.72rem;
   }
 
   .personalized-quote-panel {
-    left: 52px;
-    right: 18px;
-    bottom: 54px;
-    min-height: 250px;
-    padding: 58px 22px 34px;
-    border-width: 4px;
     border-radius: 0 42px 42px 42px;
   }
 
   .personalized-card-logo {
-    top: -42px;
-    left: -42px;
-    width: 84px;
-    height: 84px;
     border-width: 5px;
-    font-size: 0.72rem;
   }
 
   .personalized-message {
-    font-size: 1rem;
+    font-size: 0.72rem;
   }
 
+  .personalized-message-quote,
   .personalized-message strong {
-    font-size: 1.85rem;
-  }
-
-  .personalized-card-footer {
-    min-height: 70px;
-    margin-top: -70px;
-    padding: 14px 18px 16px;
+    font-size: 1.35rem;
   }
 
   .personalized-actions {

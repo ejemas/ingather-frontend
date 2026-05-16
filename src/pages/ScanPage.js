@@ -15,13 +15,37 @@ const fallbackFingerprint = () => {
   return `${navigator.userAgent}-${navigator.language}-${window.screen.width}x${window.screen.height}`;
 };
 
+const FINGERPRINT_CACHE_KEY = 'ingather_device_fingerprint_v1';
+
+const getCachedFingerprint = () => {
+  try {
+    return window.localStorage.getItem(FINGERPRINT_CACHE_KEY);
+  } catch (error) {
+    return null;
+  }
+};
+
+const setCachedFingerprint = (fingerprint) => {
+  try {
+    window.localStorage.setItem(FINGERPRINT_CACHE_KEY, fingerprint);
+  } catch (error) {
+    // Private browsing or storage restrictions should not block scanning.
+  }
+};
+
 const getDeviceFingerprint = async () => {
+  const cachedFingerprint = getCachedFingerprint();
+  if (cachedFingerprint) return cachedFingerprint;
+
   try {
     const fp = await FingerprintJS.load();
     const result = await fp.get();
+    setCachedFingerprint(result.visitorId);
     return result.visitorId;
   } catch (error) {
-    return fallbackFingerprint();
+    const fallback = fallbackFingerprint();
+    setCachedFingerprint(fallback);
+    return fallback;
   }
 };
 
@@ -85,25 +109,6 @@ const loadCanvasImage = (src) => new Promise((resolve, reject) => {
   img.onerror = reject;
   img.src = src;
 });
-
-const wrapCanvasText = (ctx, text, maxWidth) => {
-  const words = String(text || '').split(/\s+/).filter(Boolean);
-  const lines = [];
-  let line = '';
-
-  words.forEach(word => {
-    const testLine = line ? `${line} ${word}` : word;
-    if (ctx.measureText(testLine).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = testLine;
-    }
-  });
-
-  if (line) lines.push(line);
-  return lines;
-};
 
 function EventDetailsButton({ programData, onClick }) {
   const personalized = isPersonalizedFlyer(programData);
@@ -204,46 +209,45 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
     ? '#111217'
     : configuredTextColor;
   const accentColor = config.accentColor || '#FFB86B';
-  const backgroundUrl = config.backgroundUrl || programData.personalizedBackgroundUrl;
   const logoUrl = config.logoUrl || programData.personalizedLogoUrl || programData.churchLogo;
-  const dateText = formatEventDate(programData.date);
-  const timeText = formatEventTime(programData.startTime, programData.endTime);
   const logoFallback = (programData.churchName || 'Ingather').slice(0, 2).toUpperCase();
+  const messageWithoutName = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
 
   const handleDownload = async () => {
     try {
+      const flyerWidth = 741;
+      const flyerHeight = 780;
+      const scale = 2;
       const canvas = document.createElement('canvas');
-      canvas.width = 1080;
-      canvas.height = 1350;
+      canvas.width = flyerWidth * scale;
+      canvas.height = flyerHeight * scale;
       const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
 
+      ctx.beginPath();
+      ctx.roundRect(0, 0, flyerWidth, flyerHeight, 32);
+      ctx.clip();
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const background = await loadCanvasImage(backgroundUrl).catch(() => null);
-      if (background) {
-        ctx.globalAlpha = 0.07;
-        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1;
-      }
+      ctx.fillRect(0, 0, flyerWidth, flyerHeight);
 
       ctx.fillStyle = brandColor;
-      ctx.fillRect(172, 0, 8, 1058);
-      ctx.fillRect(0, 1240, canvas.width, 110);
+      ctx.fillRect(333, 0, 4, 563);
 
-      ctx.fillStyle = hexToRgba(accentColor, 0.18);
-      ctx.beginPath();
-      ctx.roundRect(365, 575, 560, 430, 88);
-      ctx.fill();
+      ctx.fillStyle = hexToRgba(brandColor, 0.82);
+      ctx.fillRect(0, 672, flyerWidth, 54);
+      ctx.fillStyle = brandColor;
+      ctx.fillRect(0, 726, flyerWidth, 54);
 
       ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 9;
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.roundRect(365, 575, 560, 430, 88);
+      ctx.roundRect(333, 315, 357, 222, [0, 64, 64, 64]);
       ctx.stroke();
 
       const logo = await loadCanvasImage(logoUrl).catch(() => null);
-      const drawLogoCircle = (cx, cy, size) => {
+      const drawLogoCircle = (x, y, size) => {
+        const cx = x + size / 2;
+        const cy = y + size / 2;
         ctx.save();
         ctx.beginPath();
         ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
@@ -279,28 +283,38 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         ctx.restore();
       };
 
-      drawLogoCircle(820, 165, 146);
-      drawLogoCircle(365, 575, 146);
+      drawLogoCircle(510, 32, 109);
+      drawLogoCircle(251, 267, 109);
 
       ctx.textAlign = 'left';
       ctx.fillStyle = textColor;
-      ctx.font = '900 50px Poppins, Arial, sans-serif';
-      ctx.fillText(firstName, 448, 724);
+      ctx.font = '400 32px Poppins, Arial, sans-serif';
+      ctx.fillText('"', 251, 424);
 
-      ctx.font = '600 34px Poppins, Arial, sans-serif';
-      const messageWithoutName = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
-      const lines = wrapCanvasText(ctx, messageWithoutName, 390);
-      lines.slice(0, 6).forEach((line, index) => {
-        ctx.fillText(line, 448, 780 + index * 44);
+      ctx.font = '900 32px Poppins, Arial, sans-serif';
+      const nameX = 269;
+      ctx.fillText(firstName, nameX, 424);
+      const firstLineX = nameX + ctx.measureText(firstName).width + 8;
+
+      ctx.font = '400 16px Poppins, Arial, sans-serif';
+      const firstLineWords = messageWithoutName.split(/\s+/).filter(Boolean);
+      const lines = [];
+      let line = '';
+      let maxWidth = Math.max(70, 607 - firstLineX);
+      firstLineWords.forEach((word) => {
+        const testLine = line ? `${line} ${word}` : word;
+        if (ctx.measureText(testLine).width > maxWidth && line) {
+          lines.push(line);
+          line = word;
+          maxWidth = 356;
+        } else {
+          line = testLine;
+        }
       });
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = '800 28px Inter, Arial, sans-serif';
-      ctx.fillText(programData.churchName || 'Ingather', 72, 1288);
-      ctx.font = '700 26px Inter, Arial, sans-serif';
-      ctx.fillText(programData.title || 'Ingather Event', 72, 1330);
-      ctx.font = '500 24px Inter, Arial, sans-serif';
-      ctx.fillText([dateText, timeText].filter(Boolean).join(' | '), 600, 1330);
+      if (line) lines.push(line);
+      lines.slice(0, 4).forEach((textLine, index) => {
+        ctx.fillText(textLine, index === 0 ? firstLineX : 251, index === 0 ? 424 : 448 + (index - 1) * 24);
+      });
 
       const link = document.createElement('a');
       link.download = `${firstName.toLowerCase()}-ingather-flyer.png`;
@@ -352,33 +366,29 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         style={{
           '--personalized-brand': brandColor,
           '--personalized-text': textColor,
-          '--personalized-accent': accentColor,
-          '--personalized-bg-image': backgroundUrl ? `url(${backgroundUrl})` : 'none'
+          '--personalized-accent': accentColor
         }}
       >
+        <span className="personalized-card-line" aria-hidden="true" />
         <span className="personalized-card-bg-logo personalized-card-bg-logo-top">
           {logoUrl ? <img src={logoUrl} alt="" /> : logoFallback}
         </span>
-        <div className="personalized-card-stage">
-          <div className="personalized-quote-panel">
-            <span className="personalized-card-logo">
-              {logoUrl ? (
-                <img src={logoUrl} alt={`${programData.churchName || 'Church'} logo`} />
-              ) : (
-                <span>{logoFallback}</span>
-              )}
-            </span>
-            <p className="personalized-message">
-              <strong>{firstName}</strong>
-              {' '}
-              <span>{message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message}</span>
-            </p>
-          </div>
-        </div>
-        <div className="personalized-card-footer">
-          <strong>{programData.title || 'Ingather Event'}</strong>
-          <span>{[dateText, timeText].filter(Boolean).join(' | ')}</span>
-        </div>
+        <div className="personalized-quote-panel" aria-hidden="true" />
+        <span className="personalized-card-logo">
+          {logoUrl ? (
+            <img src={logoUrl} alt={`${programData.churchName || 'Church'} logo`} />
+          ) : (
+            <span>{logoFallback}</span>
+          )}
+        </span>
+        <p className="personalized-message">
+          <span className="personalized-message-quote" aria-hidden="true">&ldquo;</span>
+          <strong>{firstName}</strong>
+          {' '}
+          <span>{messageWithoutName}</span>
+        </p>
+        <div className="personalized-card-strip personalized-card-strip-muted" aria-hidden="true" />
+        <div className="personalized-card-strip personalized-card-strip-brand" aria-hidden="true" />
       </div>
 
       <div className="personalized-actions">
@@ -572,12 +582,13 @@ function ScanPage() {
 
   const initializeScan = async () => {
     try {
-      const fingerprint = await getDeviceFingerprint();
+      const [fingerprint, programData] = await Promise.all([
+        getDeviceFingerprint(),
+        getProgramInfo(programId)
+      ]);
+
       deviceFingerprintRef.current = fingerprint;
       console.log('Device fingerprint:', fingerprint);
-
-      // 1. Get program info from backend
-      const programData = await getProgramInfo(programId);
       console.log('Program data loaded:', programData);
 
       if (!programData.isActive) {
@@ -801,7 +812,7 @@ function ScanPage() {
       <div className="scan-page">
         <div className="scan-container">
           <div className="spinner"></div>
-          <p className="loading-text">Loading program...</p>
+          <p className="loading-text">{detailsOnly ? 'Loading event details...' : 'Checking you in...'}</p>
         </div>
       </div>
     );
