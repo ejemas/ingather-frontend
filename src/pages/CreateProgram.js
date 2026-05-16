@@ -138,7 +138,14 @@ function CreateProgram() {
       sex: false
     },
     enableGifting: false,
-    numberOfWinners: 0
+    numberOfWinners: 0,
+    flyerType: 'standard',
+    personalizedFlyerConfig: {
+      template: '[FirstName], you are deeply loved and created for purpose.',
+      brandColor: '#E8590C',
+      textColor: '#FFFFFF',
+      accentColor: '#FFB86B'
+    }
   });
 
   const [errors, setErrors] = useState({});
@@ -154,6 +161,24 @@ function CreateProgram() {
     compressedSize: 0,
     error: ''
   });
+  const [personalizedBackgroundData, setPersonalizedBackgroundData] = useState({
+    compressedFile: null,
+    previewUrl: '',
+    originalName: '',
+    originalSize: 0,
+    compressedSize: 0,
+    error: ''
+  });
+  const [personalizedLogoData, setPersonalizedLogoData] = useState({
+    compressedFile: null,
+    previewUrl: '',
+    originalName: '',
+    originalSize: 0,
+    compressedSize: 0,
+    error: ''
+  });
+  const [personalizedBackgroundProcessing, setPersonalizedBackgroundProcessing] = useState(false);
+  const [personalizedLogoProcessing, setPersonalizedLogoProcessing] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
@@ -162,6 +187,8 @@ function CreateProgram() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const flyerInputRef = useRef(null);
+  const personalizedBackgroundInputRef = useRef(null);
+  const personalizedLogoInputRef = useRef(null);
 
   // Theme effect
   useEffect(() => {
@@ -184,6 +211,22 @@ function CreateProgram() {
       }
     };
   }, [flyerData.previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (personalizedBackgroundData.previewUrl) {
+        URL.revokeObjectURL(personalizedBackgroundData.previewUrl);
+      }
+    };
+  }, [personalizedBackgroundData.previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (personalizedLogoData.previewUrl) {
+        URL.revokeObjectURL(personalizedLogoData.previewUrl);
+      }
+    };
+  }, [personalizedLogoData.previewUrl]);
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -310,7 +353,163 @@ function CreateProgram() {
     });
   };
 
+  const handlePersonalizedBackgroundSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPersonalizedBackgroundProcessing(true);
+    setPersonalizedBackgroundData(prev => ({ ...prev, error: '' }));
+
+    try {
+      const compressedFile = await compressFlyerImage(file);
+      const previewUrl = URL.createObjectURL(compressedFile);
+
+      setPersonalizedBackgroundData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile,
+          previewUrl,
+          originalName: file.name,
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+          error: ''
+        };
+      });
+
+      toast.success(`Background compressed to ${formatFileSize(compressedFile.size)}.`);
+    } catch (error) {
+      const message = error.message || 'Background image compression failed. Please try another image.';
+      setPersonalizedBackgroundData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile: null,
+          previewUrl: '',
+          originalName: '',
+          originalSize: 0,
+          compressedSize: 0,
+          error: message
+        };
+      });
+      toast.error(message);
+    } finally {
+      setPersonalizedBackgroundProcessing(false);
+    }
+  };
+
+  const handleRemovePersonalizedBackground = () => {
+    setPersonalizedBackgroundData(prev => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        compressedFile: null,
+        previewUrl: '',
+        originalName: '',
+        originalSize: 0,
+        compressedSize: 0,
+        error: ''
+      };
+    });
+  };
+
+  const handlePersonalizedLogoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPersonalizedLogoProcessing(true);
+    setPersonalizedLogoData(prev => ({ ...prev, error: '' }));
+
+    try {
+      const compressedFile = await compressFlyerImage(file);
+      const previewUrl = URL.createObjectURL(compressedFile);
+
+      setPersonalizedLogoData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile,
+          previewUrl,
+          originalName: file.name,
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+          error: ''
+        };
+      });
+
+      toast.success(`Logo compressed to ${formatFileSize(compressedFile.size)}.`);
+    } catch (error) {
+      const message = error.message || 'Logo compression failed. Please try another image.';
+      setPersonalizedLogoData(prev => {
+        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+        return {
+          compressedFile: null,
+          previewUrl: '',
+          originalName: '',
+          originalSize: 0,
+          compressedSize: 0,
+          error: message
+        };
+      });
+      toast.error(message);
+    } finally {
+      setPersonalizedLogoProcessing(false);
+    }
+  };
+
+  const handleRemovePersonalizedLogo = () => {
+    setPersonalizedLogoData(prev => {
+      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
+      return {
+        compressedFile: null,
+        previewUrl: '',
+        originalName: '',
+        originalSize: 0,
+        compressedSize: 0,
+        error: ''
+      };
+    });
+  };
+
+  const handleFlyerTypeChange = (type) => {
+    if (type === 'personalized') {
+      setFormData(prev => ({
+        ...prev,
+        flyerType: 'personalized',
+        trackingMode: 'collect-data',
+        dataFields: {
+          ...prev.dataFields,
+          fullName: true
+        }
+      }));
+      setErrors(prev => ({ ...prev, flyerType: '', dataFields: '', personalizedTemplate: '' }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      flyerType: 'standard'
+    }));
+  };
+
+  const handlePersonalizedConfigChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      personalizedFlyerConfig: {
+        ...prev.personalizedFlyerConfig,
+        [field]: value
+      }
+    }));
+
+    if (errors.personalizedTemplate) {
+      setErrors(prev => ({ ...prev, personalizedTemplate: '' }));
+    }
+  };
+
   const handleTrackingModeChange = (mode) => {
+    if (formData.flyerType === 'personalized' && mode === 'count-only') {
+      toast.info('Personalized flyers require Collect Data and Full Name.');
+      return;
+    }
+
     setFormData({
       ...formData,
       trackingMode: mode,
@@ -323,6 +522,11 @@ function CreateProgram() {
   };
 
   const handleDataFieldToggle = (field) => {
+    if (formData.flyerType === 'personalized' && field === 'fullName') {
+      toast.info('Full Name is required for personalized flyers.');
+      return;
+    }
+
     setFormData({
       ...formData,
       dataFields: { ...formData.dataFields, [field]: !formData.dataFields[field] }
@@ -350,6 +554,17 @@ function CreateProgram() {
       const selectedFields = Object.values(formData.dataFields).filter(v => v).length;
       if (selectedFields === 0) newErrors.dataFields = 'Please select at least one data field';
     }
+    if (formData.flyerType === 'personalized') {
+      if (formData.trackingMode !== 'collect-data') {
+        newErrors.flyerType = 'Personalized flyers require Collect Data mode';
+      }
+      if (!formData.dataFields.fullName) {
+        newErrors.dataFields = 'Full Name is required for personalized flyers';
+      }
+      if (!formData.personalizedFlyerConfig.template.trim()) {
+        newErrors.personalizedTemplate = 'Personalized flyer message is required';
+      }
+    }
     if (formData.enableGifting && (!formData.numberOfWinners || formData.numberOfWinners <= 0)) {
       newErrors.numberOfWinners = 'Number of winners must be greater than 0';
     }
@@ -367,13 +582,35 @@ function CreateProgram() {
       toast.info('Please wait for the flyer compression to finish.');
       return;
     }
+    if (personalizedBackgroundProcessing) {
+      toast.info('Please wait for the personalized background compression to finish.');
+      return;
+    }
+    if (personalizedLogoProcessing) {
+      toast.info('Please wait for the personalized logo compression to finish.');
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const eventFlyer = flyerData.compressedFile
+      const eventFlyer = formData.flyerType === 'standard' && flyerData.compressedFile
         ? {
             dataUrl: await fileToDataUrl(flyerData.compressedFile),
             originalName: flyerData.originalName,
             size: flyerData.compressedSize
+          }
+        : null;
+      const personalizedBackground = formData.flyerType === 'personalized' && personalizedBackgroundData.compressedFile
+        ? {
+            dataUrl: await fileToDataUrl(personalizedBackgroundData.compressedFile),
+            originalName: personalizedBackgroundData.originalName,
+            size: personalizedBackgroundData.compressedSize
+          }
+        : null;
+      const personalizedLogo = formData.flyerType === 'personalized' && personalizedLogoData.compressedFile
+        ? {
+            dataUrl: await fileToDataUrl(personalizedLogoData.compressedFile),
+            originalName: personalizedLogoData.originalName,
+            size: personalizedLogoData.compressedSize
           }
         : null;
 
@@ -386,7 +623,11 @@ function CreateProgram() {
         dataFields: formData.dataFields,
         enableGifting: formData.enableGifting,
         numberOfWinners: formData.numberOfWinners,
-        eventFlyer
+        eventFlyer,
+        flyerType: formData.flyerType,
+        personalizedFlyerConfig: formData.personalizedFlyerConfig,
+        personalizedBackground,
+        personalizedLogo
       });
       toast.success('Program created successfully!');
       setTimeout(() => {
@@ -627,11 +868,31 @@ function CreateProgram() {
             <div className="form-card" id="event-flyer-card">
               <div className="flyer-card-header">
                 <div>
-                  <h3 className="card-title">Event Flyer</h3>
-                  <p className="card-description">Upload an optional event image for attendees to view after check-in</p>
+                  <h3 className="card-title">Post Check-in Flyer</h3>
+                  <p className="card-description">Choose what attendees see after they complete check-in</p>
                 </div>
                 <span className="flyer-optional-pill">Optional</span>
               </div>
+
+              <div className="flyer-type-options">
+                <button
+                  type="button"
+                  className={`flyer-type-card ${formData.flyerType === 'standard' ? 'selected' : ''}`}
+                  onClick={() => handleFlyerTypeChange('standard')}
+                >
+                  <span className="flyer-type-title">Standard Event Flyer</span>
+                  <span className="flyer-type-copy">Upload a static event image for everyone.</span>
+                </button>
+                <button
+                  type="button"
+                  className={`flyer-type-card ${formData.flyerType === 'personalized' ? 'selected' : ''}`}
+                  onClick={() => handleFlyerTypeChange('personalized')}
+                >
+                  <span className="flyer-type-title">Personalized Flyer</span>
+                  <span className="flyer-type-copy">Generate a branded card with each attendee's first name.</span>
+                </button>
+              </div>
+              {errors.flyerType && <span className="error-text">{errors.flyerType}</span>}
 
               <input
                 ref={flyerInputRef}
@@ -641,50 +902,207 @@ function CreateProgram() {
                 className="flyer-file-input"
               />
 
-              {!flyerData.compressedFile ? (
-                <button
-                  type="button"
-                  className={`flyer-upload-zone ${flyerProcessing ? 'processing' : ''}`}
-                  onClick={() => !flyerProcessing && flyerInputRef.current?.click()}
-                  disabled={flyerProcessing}
-                >
-                  <span className="flyer-upload-icon">
-                    {flyerProcessing ? (
-                      <span className="flyer-mini-spinner"></span>
-                    ) : (
-                      Icons.calendar
-                    )}
-                  </span>
-                  <span className="flyer-upload-copy">
-                    <strong>{flyerProcessing ? 'Compressing flyer...' : 'Choose flyer image'}</strong>
-                    <span>JPEG, PNG, or WebP. It will be compressed to about 200 KB before upload.</span>
-                  </span>
-                </button>
+              {formData.flyerType === 'standard' ? (
+                <>
+                  {!flyerData.compressedFile ? (
+                    <button
+                      type="button"
+                      className={`flyer-upload-zone ${flyerProcessing ? 'processing' : ''}`}
+                      onClick={() => !flyerProcessing && flyerInputRef.current?.click()}
+                      disabled={flyerProcessing}
+                    >
+                      <span className="flyer-upload-icon">
+                        {flyerProcessing ? (
+                          <span className="flyer-mini-spinner"></span>
+                        ) : (
+                          Icons.calendar
+                        )}
+                      </span>
+                      <span className="flyer-upload-copy">
+                        <strong>{flyerProcessing ? 'Compressing flyer...' : 'Choose flyer image'}</strong>
+                        <span>JPEG, PNG, or WebP. It will be compressed to about 200 KB before upload.</span>
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flyer-preview-panel">
+                      <div className="flyer-preview-image-wrap">
+                        <img src={flyerData.previewUrl} alt="Event flyer preview" />
+                      </div>
+                      <div className="flyer-preview-meta">
+                        <div>
+                          <p className="flyer-preview-title">{flyerData.originalName}</p>
+                          <p className="flyer-preview-sub">
+                            {formatFileSize(flyerData.originalSize)} compressed to {formatFileSize(flyerData.compressedSize)}
+                          </p>
+                        </div>
+                        <div className="flyer-preview-actions">
+                          <button type="button" className="flyer-change-btn" onClick={() => flyerInputRef.current?.click()}>
+                            Change
+                          </button>
+                          <button type="button" className="flyer-remove-btn" onClick={handleRemoveFlyer}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {flyerData.error && <span className="error-text">{flyerData.error}</span>}
+                </>
               ) : (
-                <div className="flyer-preview-panel">
-                  <div className="flyer-preview-image-wrap">
-                    <img src={flyerData.previewUrl} alt="Event flyer preview" />
+                <div className="personalized-flyer-builder">
+                  <div className="personalized-rule-callout">
+                    Personalized flyers require Collect Data mode and Full Name. Ingather has enabled both for this program.
                   </div>
-                  <div className="flyer-preview-meta">
-                    <div>
-                      <p className="flyer-preview-title">{flyerData.originalName}</p>
-                      <p className="flyer-preview-sub">
-                        {formatFileSize(flyerData.originalSize)} compressed to {formatFileSize(flyerData.compressedSize)}
-                      </p>
-                    </div>
-                    <div className="flyer-preview-actions">
-                      <button type="button" className="flyer-change-btn" onClick={() => flyerInputRef.current?.click()}>
-                        Change
-                      </button>
-                      <button type="button" className="flyer-remove-btn" onClick={handleRemoveFlyer}>
-                        Remove
-                      </button>
-                    </div>
+
+                  <div className="form-group">
+                    <label htmlFor="personalizedTemplate">Motivational Message</label>
+                    <textarea
+                      id="personalizedTemplate"
+                      value={formData.personalizedFlyerConfig.template}
+                      onChange={(e) => handlePersonalizedConfigChange('template', e.target.value)}
+                      className={`form-input form-textarea ${errors.personalizedTemplate ? 'input-error' : ''}`}
+                      rows="4"
+                      placeholder="[FirstName], you are blessed, loved, and created for purpose."
+                    />
+                    <p className="field-hint">Use [FirstName] where the attendee's first name should appear.</p>
+                    {errors.personalizedTemplate && <span className="error-text">{errors.personalizedTemplate}</span>}
                   </div>
+
+                  <div className="personalized-color-grid">
+                    <label className="color-control">
+                      <span>Brand color</span>
+                      <input
+                        type="color"
+                        value={formData.personalizedFlyerConfig.brandColor}
+                        onChange={(e) => handlePersonalizedConfigChange('brandColor', e.target.value)}
+                      />
+                    </label>
+                    <label className="color-control">
+                      <span>Text color</span>
+                      <input
+                        type="color"
+                        value={formData.personalizedFlyerConfig.textColor}
+                        onChange={(e) => handlePersonalizedConfigChange('textColor', e.target.value)}
+                      />
+                    </label>
+                    <label className="color-control">
+                      <span>Accent color</span>
+                      <input
+                        type="color"
+                        value={formData.personalizedFlyerConfig.accentColor}
+                        onChange={(e) => handlePersonalizedConfigChange('accentColor', e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <input
+                    ref={personalizedBackgroundInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePersonalizedBackgroundSelect}
+                    className="flyer-file-input"
+                  />
+
+                  {!personalizedBackgroundData.compressedFile ? (
+                    <button
+                      type="button"
+                      className={`flyer-upload-zone ${personalizedBackgroundProcessing ? 'processing' : ''}`}
+                      onClick={() => !personalizedBackgroundProcessing && personalizedBackgroundInputRef.current?.click()}
+                      disabled={personalizedBackgroundProcessing}
+                    >
+                      <span className="flyer-upload-icon">
+                        {personalizedBackgroundProcessing ? (
+                          <span className="flyer-mini-spinner"></span>
+                        ) : (
+                          Icons.calendar
+                        )}
+                      </span>
+                      <span className="flyer-upload-copy">
+                        <strong>{personalizedBackgroundProcessing ? 'Compressing background...' : 'Add branded background image'}</strong>
+                        <span>Optional. Without an image, Ingather will generate a premium branded gradient card.</span>
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flyer-preview-panel">
+                      <div className="flyer-preview-image-wrap">
+                        <img src={personalizedBackgroundData.previewUrl} alt="Personalized flyer background preview" />
+                      </div>
+                      <div className="flyer-preview-meta">
+                        <div>
+                          <p className="flyer-preview-title">{personalizedBackgroundData.originalName}</p>
+                          <p className="flyer-preview-sub">
+                            {formatFileSize(personalizedBackgroundData.originalSize)} compressed to {formatFileSize(personalizedBackgroundData.compressedSize)}
+                          </p>
+                        </div>
+                        <div className="flyer-preview-actions">
+                          <button type="button" className="flyer-change-btn" onClick={() => personalizedBackgroundInputRef.current?.click()}>
+                            Change
+                          </button>
+                          <button type="button" className="flyer-remove-btn" onClick={handleRemovePersonalizedBackground}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {personalizedBackgroundData.error && <span className="error-text">{personalizedBackgroundData.error}</span>}
+
+                  <input
+                    ref={personalizedLogoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handlePersonalizedLogoSelect}
+                    className="flyer-file-input"
+                  />
+
+                  {!personalizedLogoData.compressedFile ? (
+                    <button
+                      type="button"
+                      className={`flyer-upload-zone logo-upload-zone ${personalizedLogoProcessing ? 'processing' : ''}`}
+                      onClick={() => !personalizedLogoProcessing && personalizedLogoInputRef.current?.click()}
+                      disabled={personalizedLogoProcessing}
+                    >
+                      <span className="flyer-upload-icon">
+                        {personalizedLogoProcessing ? (
+                          <span className="flyer-mini-spinner"></span>
+                        ) : (
+                          Icons.logo
+                        )}
+                      </span>
+                      <span className="flyer-upload-copy">
+                        <strong>{personalizedLogoProcessing ? 'Compressing logo...' : 'Add church or event logo'}</strong>
+                        <span>Optional. This logo appears on the personalized card and downloaded flyer.</span>
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flyer-preview-panel logo-preview-panel">
+                      <div className="flyer-preview-image-wrap logo-preview-image-wrap">
+                        <img src={personalizedLogoData.previewUrl} alt="Personalized flyer logo preview" />
+                      </div>
+                      <div className="flyer-preview-meta">
+                        <div>
+                          <p className="flyer-preview-title">{personalizedLogoData.originalName}</p>
+                          <p className="flyer-preview-sub">
+                            {formatFileSize(personalizedLogoData.originalSize)} compressed to {formatFileSize(personalizedLogoData.compressedSize)}
+                          </p>
+                        </div>
+                        <div className="flyer-preview-actions">
+                          <button type="button" className="flyer-change-btn" onClick={() => personalizedLogoInputRef.current?.click()}>
+                            Change
+                          </button>
+                          <button type="button" className="flyer-remove-btn" onClick={handleRemovePersonalizedLogo}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {personalizedLogoData.error && <span className="error-text">{personalizedLogoData.error}</span>}
                 </div>
               )}
-
-              {flyerData.error && <span className="error-text">{flyerData.error}</span>}
             </div>
 
             {/* Tracking Mode Card */}
@@ -695,7 +1113,7 @@ function CreateProgram() {
               <div className="tracking-options">
                 {/* Count Only */}
                 <div
-                  className={`tracking-option ${formData.trackingMode === 'count-only' ? 'selected' : ''}`}
+                  className={`tracking-option ${formData.trackingMode === 'count-only' ? 'selected' : ''} ${formData.flyerType === 'personalized' ? 'disabled' : ''}`}
                   onClick={() => handleTrackingModeChange('count-only')}
                   id="opt-count-only"
                 >
@@ -739,7 +1157,7 @@ function CreateProgram() {
                   {Object.keys(formData.dataFields).map(field => (
                     <div
                       key={field}
-                      className={`checkbox-card ${formData.dataFields[field] ? 'checked' : ''}`}
+                      className={`checkbox-card ${formData.dataFields[field] ? 'checked' : ''} ${formData.flyerType === 'personalized' && field === 'fullName' ? 'locked' : ''}`}
                       onClick={() => handleDataFieldToggle(field)}
                     >
                       <span className="checkbox-label">
@@ -820,9 +1238,9 @@ function CreateProgram() {
               <button
                 type="submit"
                 className="btn-create"
-                disabled={isSubmitting || flyerProcessing}
+                disabled={isSubmitting || flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing}
               >
-                {isSubmitting ? 'Creating...' : flyerProcessing ? 'Preparing Flyer...' : 'Create  Program'}
+                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing) ? 'Preparing Flyer...' : 'Create Program'}
               </button>
             </div>
           </form>

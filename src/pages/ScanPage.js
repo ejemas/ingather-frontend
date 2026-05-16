@@ -52,8 +52,62 @@ const formatEventTime = (startTime, endTime) => {
   return [startTime, endTime].filter(Boolean).join(' - ');
 };
 
+const isPersonalizedFlyer = (programData) => (
+  programData?.flyerType === 'personalized' && Boolean(programData?.personalizedFlyerConfig?.template)
+);
+
+const getFirstName = (fullName) => {
+  const firstName = String(fullName || '').trim().split(/\s+/)[0];
+  return firstName || 'Friend';
+};
+
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const personalizeTemplate = (template, firstName) => (
+  String(template || '[FirstName], you are welcome and deeply valued.')
+    .replace(/\[FirstName\]/gi, firstName)
+);
+
+const hexToRgba = (hex, alpha = 1) => {
+  const normalized = /^#[0-9A-Fa-f]{6}$/.test(hex || '') ? hex : '#E8590C';
+  const value = normalized.slice(1);
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const loadCanvasImage = (src) => new Promise((resolve, reject) => {
+  if (!src) return resolve(null);
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = reject;
+  img.src = src;
+});
+
+const wrapCanvasText = (ctx, text, maxWidth) => {
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+
+  words.forEach(word => {
+    const testLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines;
+};
+
 function EventDetailsButton({ programData, onClick }) {
-  if (!programData?.flyerUrl) return null;
+  const personalized = isPersonalizedFlyer(programData);
+  if (!personalized && !programData?.flyerUrl) return null;
 
   return (
     <button type="button" className="event-details-trigger" onClick={onClick}>
@@ -65,14 +119,287 @@ function EventDetailsButton({ programData, onClick }) {
         </svg>
       </span>
       <span>
-        <strong>View Event Details</strong>
-        <small>Flyer, date, and share link</small>
+        <strong>{personalized ? 'View Personalized Flyer' : 'View Event Details'}</strong>
+        <small>{personalized ? 'Your custom encouragement card' : 'Flyer, date, and share link'}</small>
       </span>
       <svg className="event-details-trigger-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <line x1="5" y1="10" x2="15" y2="10" />
         <polyline points="11,6 15,10 11,14" />
       </svg>
     </button>
+  );
+}
+
+function GenderIcon({ type }) {
+  if (type === 'female') {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M12 12v8" />
+        <path d="M8.5 16h7" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="10" cy="14" r="4" />
+      <path d="M13 11l6-6" />
+      <path d="M15 5h4v4" />
+    </svg>
+  );
+}
+
+function ScanFormShell({ badge, programData, helperText, mode, children }) {
+  return (
+    <div className="scan-page scan-form-page">
+      <div className={`scan-container scan-form-container ${mode ? `scan-form-container-${mode}` : ''}`}>
+        <section className="scan-figma-card">
+          <div className="scan-figma-pill">{badge}</div>
+          <header className="scan-figma-header">
+            <h1>{programData.churchName}</h1>
+            <h2>{programData.title}</h2>
+            <p>{helperText}</p>
+          </header>
+          {children}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ScanInputField({ label, error, ...inputProps }) {
+  return (
+    <div className="scan-figma-field">
+      <label htmlFor={inputProps.id}>{label}</label>
+      <input className={`scan-figma-input ${error ? 'has-error' : ''}`} {...inputProps} />
+      {error && <span className="scan-figma-error">{error}</span>}
+    </div>
+  );
+}
+
+function ScanSelectField({ label, error, children, ...selectProps }) {
+  return (
+    <div className="scan-figma-field">
+      <label htmlFor={selectProps.id}>{label}</label>
+      <span className="scan-figma-select-wrap">
+        <select className={`scan-figma-input ${error ? 'has-error' : ''}`} {...selectProps}>
+          {children}
+        </select>
+      </span>
+      {error && <span className="scan-figma-error">{error}</span>}
+    </div>
+  );
+}
+
+function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalone = false, toast }) {
+  if (!isPersonalizedFlyer(programData)) return null;
+
+  const config = programData.personalizedFlyerConfig || {};
+  const firstName = getFirstName(attendeeName);
+  const message = personalizeTemplate(config.template, firstName);
+  const brandColor = config.brandColor || '#E8590C';
+  const configuredTextColor = config.textColor || '#111217';
+  const textColor = ['#fff', '#ffffff', 'white'].includes(String(configuredTextColor).trim().toLowerCase())
+    ? '#111217'
+    : configuredTextColor;
+  const accentColor = config.accentColor || '#FFB86B';
+  const backgroundUrl = config.backgroundUrl || programData.personalizedBackgroundUrl;
+  const logoUrl = config.logoUrl || programData.personalizedLogoUrl || programData.churchLogo;
+  const dateText = formatEventDate(programData.date);
+  const timeText = formatEventTime(programData.startTime, programData.endTime);
+  const logoFallback = (programData.churchName || 'Ingather').slice(0, 2).toUpperCase();
+
+  const handleDownload = async () => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1350;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const background = await loadCanvasImage(backgroundUrl).catch(() => null);
+      if (background) {
+        ctx.globalAlpha = 0.07;
+        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+      }
+
+      ctx.fillStyle = brandColor;
+      ctx.fillRect(172, 0, 8, 1058);
+      ctx.fillRect(0, 1240, canvas.width, 110);
+
+      ctx.fillStyle = hexToRgba(accentColor, 0.18);
+      ctx.beginPath();
+      ctx.roundRect(365, 575, 560, 430, 88);
+      ctx.fill();
+
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.roundRect(365, 575, 560, 430, 88);
+      ctx.stroke();
+
+      const logo = await loadCanvasImage(logoUrl).catch(() => null);
+      const drawLogoCircle = (cx, cy, size) => {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        ctx.lineWidth = 9;
+        ctx.strokeStyle = '#111217';
+        ctx.stroke();
+
+        if (logo) {
+          ctx.clip();
+          const padding = size * 0.22;
+          const innerSize = size - padding * 2;
+          const ratio = logo.width / logo.height;
+          let drawWidth = innerSize;
+          let drawHeight = innerSize;
+          let dx = cx - innerSize / 2;
+          let dy = cy - innerSize / 2;
+          if (ratio > 1) {
+            drawHeight = innerSize / ratio;
+            dy = cy - drawHeight / 2;
+          } else {
+            drawWidth = innerSize * ratio;
+            dx = cx - drawWidth / 2;
+          }
+          ctx.drawImage(logo, dx, dy, drawWidth, drawHeight);
+        } else {
+          ctx.fillStyle = '#111217';
+          ctx.font = '800 34px Inter, Arial, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(logoFallback, cx, cy + 12);
+        }
+        ctx.restore();
+      };
+
+      drawLogoCircle(820, 165, 146);
+      drawLogoCircle(365, 575, 146);
+
+      ctx.textAlign = 'left';
+      ctx.fillStyle = textColor;
+      ctx.font = '900 50px Poppins, Arial, sans-serif';
+      ctx.fillText(firstName, 448, 724);
+
+      ctx.font = '600 34px Poppins, Arial, sans-serif';
+      const messageWithoutName = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
+      const lines = wrapCanvasText(ctx, messageWithoutName, 390);
+      lines.slice(0, 6).forEach((line, index) => {
+        ctx.fillText(line, 448, 780 + index * 44);
+      });
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '800 28px Inter, Arial, sans-serif';
+      ctx.fillText(programData.churchName || 'Ingather', 72, 1288);
+      ctx.font = '700 26px Inter, Arial, sans-serif';
+      ctx.fillText(programData.title || 'Ingather Event', 72, 1330);
+      ctx.font = '500 24px Inter, Arial, sans-serif';
+      ctx.fillText([dateText, timeText].filter(Boolean).join(' | '), 600, 1330);
+
+      const link = document.createElement('a');
+      link.download = `${firstName.toLowerCase()}-ingather-flyer.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      toast?.error('Unable to download this flyer. Please try again.');
+    }
+  };
+
+  const handleShare = async () => {
+    const shareText = `${message} - ${programData.title || 'Ingather Event'}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My Ingather Flyer', text: shareText });
+        return;
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast?.success('Personalized message copied.');
+    } catch (error) {
+      toast?.info('Download the flyer to share it.');
+    }
+  };
+
+  const content = (
+    <div className="personalized-viewer-card">
+      <div className="personalized-viewer-header">
+        <div>
+          <p className="personalized-viewer-kicker">{programData.churchName}</p>
+          <h2>Your Personalized Flyer</h2>
+        </div>
+        {!standalone && (
+          <button type="button" className="flyer-viewer-close" onClick={onClose} aria-label="Close personalized flyer">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <line x1="5" y1="5" x2="15" y2="15" />
+              <line x1="15" y1="5" x2="5" y2="15" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      <div
+        className="personalized-card-preview"
+        style={{
+          '--personalized-brand': brandColor,
+          '--personalized-text': textColor,
+          '--personalized-accent': accentColor,
+          '--personalized-bg-image': backgroundUrl ? `url(${backgroundUrl})` : 'none'
+        }}
+      >
+        <span className="personalized-card-bg-logo personalized-card-bg-logo-top">
+          {logoUrl ? <img src={logoUrl} alt="" /> : logoFallback}
+        </span>
+        <div className="personalized-card-stage">
+          <div className="personalized-quote-panel">
+            <span className="personalized-card-logo">
+              {logoUrl ? (
+                <img src={logoUrl} alt={`${programData.churchName || 'Church'} logo`} />
+              ) : (
+                <span>{logoFallback}</span>
+              )}
+            </span>
+            <p className="personalized-message">
+              <strong>{firstName}</strong>
+              {' '}
+              <span>{message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message}</span>
+            </p>
+          </div>
+        </div>
+        <div className="personalized-card-footer">
+          <strong>{programData.title || 'Ingather Event'}</strong>
+          <span>{[dateText, timeText].filter(Boolean).join(' | ')}</span>
+        </div>
+      </div>
+
+      <div className="personalized-actions">
+        <button type="button" className="flyer-share-primary" onClick={handleDownload}>
+          Download flyer
+        </button>
+        <button type="button" className="personalized-share-secondary" onClick={handleShare}>
+          Share message
+        </button>
+      </div>
+    </div>
+  );
+
+  if (standalone) return content;
+
+  return (
+    <div className="flyer-viewer-overlay" onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()}>
+        {content}
+      </div>
+    </div>
   );
 }
 
@@ -449,13 +776,24 @@ function ScanPage() {
   };
 
   const flyerDetailsOverlay = showFlyerDetails && !detailsOnly ? (
-    <FlyerDetailsViewer
-      programData={programData}
-      programId={programId}
-      onClose={() => setShowFlyerDetails(false)}
-      toast={toast}
-    />
+    isPersonalizedFlyer(programData) ? (
+      <PersonalizedFlyerViewer
+        programData={programData}
+        attendeeName={formData.fullName}
+        onClose={() => setShowFlyerDetails(false)}
+        toast={toast}
+      />
+    ) : (
+      <FlyerDetailsViewer
+        programData={programData}
+        programId={programId}
+        onClose={() => setShowFlyerDetails(false)}
+        toast={toast}
+      />
+    )
   ) : null;
+
+  const feedbackPageClass = 'scan-page scan-feedback-page';
 
   // LOADING
   if (loading) {
@@ -470,10 +808,19 @@ function ScanPage() {
   }
 
   if (detailsOnly) {
+    const hasEventDetails = isPersonalizedFlyer(programData) || Boolean(programData?.flyerUrl);
+
     return (
-      <div className="scan-page">
+      <div className={hasEventDetails ? 'scan-page' : feedbackPageClass}>
         <div className="scan-container">
-          {programData?.flyerUrl ? (
+          {isPersonalizedFlyer(programData) ? (
+            <PersonalizedFlyerViewer
+              programData={programData}
+              attendeeName="Friend"
+              standalone
+              toast={toast}
+            />
+          ) : programData?.flyerUrl ? (
             <FlyerDetailsViewer
               programData={programData}
               programId={programId}
@@ -500,7 +847,7 @@ function ScanPage() {
   // ALREADY SCANNED
   if (alreadyScanned) {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar orange"></div>
@@ -523,6 +870,67 @@ function ScanPage() {
 
   // GENDER SELECTION FORM (Count-Only Mode)
   if (showGenderForm && programData) {
+    return (
+      <ScanFormShell
+        badge="Check-in"
+        programData={programData}
+        helperText="Please provide a few quick details to complete your check-in."
+        mode="count"
+      >
+        <div className="scan-figma-form scan-count-form">
+          <div className="scan-figma-field">
+            <label>Select Your Gender *</label>
+            <div className="scan-gender-grid" role="radiogroup" aria-label="Select your gender">
+              <button
+                type="button"
+                className={`scan-gender-card ${gender === 'male' ? 'selected' : ''}`}
+                onClick={() => setGender('male')}
+                aria-pressed={gender === 'male'}
+              >
+                <span className="scan-gender-icon scan-gender-icon-male">
+                  <GenderIcon type="male" />
+                </span>
+                <strong>Male</strong>
+              </button>
+
+              <button
+                type="button"
+                className={`scan-gender-card ${gender === 'female' ? 'selected' : ''}`}
+                onClick={() => setGender('female')}
+                aria-pressed={gender === 'female'}
+              >
+                <span className="scan-gender-icon scan-gender-icon-female">
+                  <GenderIcon type="female" />
+                </span>
+                <strong>Female</strong>
+              </button>
+            </div>
+          </div>
+
+          <label className={`scan-figma-checkbox ${isFirstTimer ? 'checked' : ''}`}>
+            <input
+              type="checkbox"
+              checked={isFirstTimer}
+              onChange={(e) => setIsFirstTimer(e.target.checked)}
+            />
+            <span className="scan-checkbox-box" aria-hidden="true"></span>
+            <span>I am a first-timer</span>
+          </label>
+
+          <button
+            type="button"
+            className="scan-figma-submit"
+            onClick={handleGenderSubmit}
+            disabled={submittingGender || !gender}
+          >
+            {submittingGender ? 'Submitting...' : 'Submit'}
+          </button>
+        </div>
+      </ScanFormShell>
+    );
+  }
+
+  if (!ScanFormShell && showGenderForm && programData) {
     return (
       <div className="scan-page">
         <div className="scan-container">
@@ -649,6 +1057,137 @@ function ScanPage() {
 
   // SHOW FORM
   if (showForm && programData && !result) {
+    return (
+      <ScanFormShell
+        badge="Welcome"
+        programData={programData}
+        helperText={programData.giftingEnabled
+          ? 'Fill this form for a chance to win a special gift from the church.'
+          : 'Fill in your details to complete your check-in.'}
+        mode="collect"
+      >
+        <form className="scan-figma-form" onSubmit={handleSubmit}>
+          <div className="scan-figma-fields">
+            {programData.dataFields.fullName && (
+              <ScanInputField
+                label="Full Name *"
+                type="text"
+                id="fullName"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                placeholder="John Doe"
+                error={formErrors.fullName}
+              />
+            )}
+
+            {programData.dataFields.phoneNumber && (
+              <ScanInputField
+                label="Phone Number *"
+                type="tel"
+                id="phoneNumber"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="+234 800 000 0000"
+                error={formErrors.phoneNumber}
+              />
+            )}
+
+            {programData.dataFields.address && (
+              <ScanInputField
+                label="Address *"
+                type="text"
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Your address"
+                error={formErrors.address}
+              />
+            )}
+
+            {programData.dataFields.department && (
+              <ScanInputField
+                label="Department *"
+                type="text"
+                id="department"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                placeholder="e.g., Youth, Men, Women, Choir"
+                error={formErrors.department}
+              />
+            )}
+
+            {programData.dataFields.fellowship && (
+              <ScanInputField
+                label="Fellowship"
+                type="text"
+                id="fellowship"
+                name="fellowship"
+                value={formData.fellowship}
+                onChange={handleChange}
+                placeholder="Your fellowship group"
+              />
+            )}
+
+            {programData.dataFields.age && (
+              <ScanInputField
+                label="Age"
+                type="number"
+                id="age"
+                name="age"
+                value={formData.age}
+                onChange={handleChange}
+                placeholder="25"
+                min="1"
+                max="120"
+              />
+            )}
+
+            {programData.dataFields.sex && (
+              <ScanSelectField
+                label="Gender *"
+                id="sex"
+                name="sex"
+                value={formData.sex}
+                onChange={handleChange}
+                error={formErrors.sex}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </ScanSelectField>
+            )}
+
+            {programData.dataFields.firstTimer && (
+              <label className={`scan-figma-checkbox ${formData.firstTimer ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  name="firstTimer"
+                  checked={formData.firstTimer}
+                  onChange={handleChange}
+                />
+                <span className="scan-checkbox-box" aria-hidden="true"></span>
+                <span>I am a first-timer</span>
+              </label>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            className="scan-figma-submit"
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting...' : 'Submit'}
+          </button>
+        </form>
+      </ScanFormShell>
+    );
+  }
+
+  if (!ScanFormShell && showForm && programData && !result) {
     return (
       <div className="scan-page">
         <div className="scan-container">
@@ -801,7 +1340,7 @@ function ScanPage() {
   // RESULT SCREENS
   if (result === 'winner') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar green"></div>
@@ -827,7 +1366,7 @@ function ScanPage() {
 
   if (result === 'no-win') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar orange"></div>
@@ -862,7 +1401,7 @@ function ScanPage() {
   // FIRST-TIMER WINNER (Gifting Enabled + First Timer + Winner)
   if (result === 'first-timer-winner') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar green"></div>
@@ -889,7 +1428,7 @@ function ScanPage() {
   // FIRST-TIMER MESSAGE (Count-Only or Collect-Data without winning)
   if (result === 'first-timer-message') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar orange"></div>
@@ -924,7 +1463,7 @@ function ScanPage() {
   // COUNT-ONLY SUCCESS
   if (result === 'count-only-success') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
             <div className="modal-card-topbar orange"></div>
@@ -955,7 +1494,7 @@ function ScanPage() {
   // NO-GIFTING SUCCESS (Collect Data mode without gifting)
   if (result === 'no-gifting') {
     return (
-      <div className="scan-page">
+      <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="message-card success">
             <div className="message-icon">✅</div>
@@ -971,7 +1510,7 @@ function ScanPage() {
   }
 
   return (
-    <div className="scan-page">
+    <div className={feedbackPageClass}>
       <div className="scan-container">
         <div className="modal-card">
           <div className="modal-card-topbar red"></div>

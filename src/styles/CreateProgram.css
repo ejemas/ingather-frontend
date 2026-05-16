@@ -206,6 +206,50 @@
   display: none;
 }
 
+.flyer-type-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.flyer-type-card {
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.flyer-type-card:hover {
+  border-color: rgba(232, 89, 12, 0.42);
+}
+
+.flyer-type-card.selected {
+  border-color: var(--color-orange);
+  background: var(--color-orange-lighter);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.08);
+}
+
+.flyer-type-title {
+  color: var(--text-heading);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.flyer-type-copy {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .flyer-upload-zone {
   width: 100%;
   border: 1.5px dashed var(--border-color);
@@ -302,6 +346,36 @@
   display: block;
 }
 
+.logo-upload-zone .flyer-upload-icon {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.logo-upload-zone .flyer-upload-icon img {
+  max-width: 30px;
+  max-height: 30px;
+  object-fit: contain;
+}
+
+.logo-preview-panel {
+  grid-template-columns: 82px 1fr;
+}
+
+.logo-preview-image-wrap {
+  width: 82px;
+  aspect-ratio: 1;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-preview-image-wrap img {
+  object-fit: contain;
+  padding: 10px;
+}
+
 .flyer-preview-meta {
   display: flex;
   align-items: center;
@@ -358,6 +432,58 @@
   background: rgba(239, 68, 68, 0.06);
 }
 
+.personalized-flyer-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.personalized-rule-callout {
+  border: 1px solid rgba(232, 89, 12, 0.22);
+  background: var(--color-orange-lighter);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.form-textarea {
+  min-height: 116px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.personalized-color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.color-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.color-control input {
+  width: 38px;
+  height: 32px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
 /* Select wrapper */
 .select-wrapper {
   position: relative;
@@ -390,6 +516,11 @@
   border-color: var(--color-orange);
   border-width: 2px;
   padding: 19.5px; /* compensate for thicker border */
+}
+
+.tracking-option.disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
 }
 
 /* Option layout: title + radio on same row, description below */
@@ -472,6 +603,25 @@
 .checkbox-card.checked {
   border-color: var(--color-orange);
   background-color: rgba(232, 89, 12, 0.03);
+}
+
+.checkbox-card.locked {
+  cursor: not-allowed;
+  border-color: var(--color-orange);
+  background-color: rgba(232, 89, 12, 0.07);
+}
+
+.checkbox-card.locked .checkbox-label::after {
+  content: "Required";
+  display: inline-flex;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-orange);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 /* Reset all children inside checkbox-card to remove inherited borders */
@@ -661,6 +811,11 @@
   .tracking-options {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .flyer-type-options,
+  .personalized-color-grid {
+    grid-template-columns: 1fr;
   }
 
   .data-fields-grid {
