@@ -92,15 +92,6 @@ const personalizeTemplate = (template, firstName) => (
     .replace(/\[FirstName\]/gi, firstName)
 );
 
-const hexToRgba = (hex, alpha = 1) => {
-  const normalized = /^#[0-9A-Fa-f]{6}$/.test(hex || '') ? hex : '#E8590C';
-  const value = normalized.slice(1);
-  const r = parseInt(value.slice(0, 2), 16);
-  const g = parseInt(value.slice(2, 4), 16);
-  const b = parseInt(value.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
 const loadCanvasImage = (src) => new Promise((resolve, reject) => {
   if (!src) return resolve(null);
   const img = new Image();
@@ -109,6 +100,24 @@ const loadCanvasImage = (src) => new Promise((resolve, reject) => {
   img.onerror = reject;
   img.src = src;
 });
+
+const wrapWordsToCanvasLines = (ctx, words, maxWidth) => {
+  const lines = [];
+  let line = '';
+
+  words.forEach((word) => {
+    const testLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines;
+};
 
 function EventDetailsButton({ programData, onClick }) {
   const personalized = isPersonalizedFlyer(programData);
@@ -208,40 +217,46 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
   const textColor = ['#fff', '#ffffff', 'white'].includes(String(configuredTextColor).trim().toLowerCase())
     ? '#111217'
     : configuredTextColor;
-  const accentColor = config.accentColor || '#FFB86B';
   const logoUrl = config.logoUrl || programData.personalizedLogoUrl || programData.churchLogo;
   const logoFallback = (programData.churchName || 'Ingather').slice(0, 2).toUpperCase();
   const messageWithoutName = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
+  const motivationalWords = messageWithoutName.split(/\s+/).filter(Boolean);
+  const firstMessageLine = motivationalWords.slice(0, 5).join(' ') || messageWithoutName;
+  const secondMessageLine = motivationalWords.slice(5).join(' ');
 
   const handleDownload = async () => {
     try {
-      const flyerWidth = 741;
-      const flyerHeight = 780;
+      const flyerSize = 800;
+      const pathThickness = 5;
+      const pathRadius = 55;
+      const logoSize = 96;
       const scale = 2;
       const canvas = document.createElement('canvas');
-      canvas.width = flyerWidth * scale;
-      canvas.height = flyerHeight * scale;
+      canvas.width = flyerSize * scale;
+      canvas.height = flyerSize * scale;
       const ctx = canvas.getContext('2d');
       ctx.scale(scale, scale);
 
-      ctx.beginPath();
-      ctx.roundRect(0, 0, flyerWidth, flyerHeight, 32);
-      ctx.clip();
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, flyerWidth, flyerHeight);
+      ctx.fillRect(0, 0, flyerSize, flyerSize);
 
-      ctx.fillStyle = brandColor;
-      ctx.fillRect(333, 0, 4, 563);
-
-      ctx.fillStyle = hexToRgba(brandColor, 0.82);
-      ctx.fillRect(0, 672, flyerWidth, 54);
-      ctx.fillStyle = brandColor;
-      ctx.fillRect(0, 726, flyerWidth, 54);
-
-      ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = brandColor;
+      ctx.lineWidth = pathThickness;
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'round';
       ctx.beginPath();
-      ctx.roundRect(333, 315, 357, 222, [0, 64, 64, 64]);
+      ctx.moveTo(102.5, 0);
+      ctx.lineTo(102.5, 400);
+      ctx.moveTo(102.5, 400);
+      ctx.lineTo(102.5, 650 - pathRadius);
+      ctx.quadraticCurveTo(102.5, 647.5, 100 + pathRadius, 647.5);
+      ctx.lineTo(600 - pathRadius, 647.5);
+      ctx.quadraticCurveTo(597.5, 647.5, 597.5, 650 - pathRadius);
+      ctx.lineTo(597.5, 400);
+      ctx.moveTo(350, 252.5);
+      ctx.lineTo(600 - pathRadius, 252.5);
+      ctx.quadraticCurveTo(597.5, 252.5, 597.5, 250 + pathRadius);
+      ctx.lineTo(597.5, 400);
       ctx.stroke();
 
       const logo = await loadCanvasImage(logoUrl).catch(() => null);
@@ -253,67 +268,71 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
         ctx.fillStyle = '#FFFFFF';
         ctx.fill();
-        ctx.lineWidth = 9;
-        ctx.strokeStyle = '#111217';
+        ctx.lineWidth = pathThickness;
+        ctx.strokeStyle = brandColor;
         ctx.stroke();
 
         if (logo) {
           ctx.clip();
-          const padding = size * 0.22;
-          const innerSize = size - padding * 2;
           const ratio = logo.width / logo.height;
-          let drawWidth = innerSize;
-          let drawHeight = innerSize;
-          let dx = cx - innerSize / 2;
-          let dy = cy - innerSize / 2;
+          let drawWidth = size;
+          let drawHeight = size;
+          let dx = x;
+          let dy = y;
           if (ratio > 1) {
-            drawHeight = innerSize / ratio;
-            dy = cy - drawHeight / 2;
-          } else {
-            drawWidth = innerSize * ratio;
+            drawWidth = size * ratio;
             dx = cx - drawWidth / 2;
+          } else {
+            drawHeight = size / ratio;
+            dy = cy - drawHeight / 2;
           }
           ctx.drawImage(logo, dx, dy, drawWidth, drawHeight);
         } else {
-          ctx.fillStyle = '#111217';
-          ctx.font = '800 34px Inter, Arial, sans-serif';
+          ctx.fillStyle = brandColor;
+          ctx.font = '600 16px Inter, Arial, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(logoFallback, cx, cy + 12);
+          ctx.textBaseline = 'middle';
+          ctx.fillText(logoFallback, cx, cy);
         }
         ctx.restore();
       };
 
-      drawLogoCircle(510, 32, 109);
-      drawLogoCircle(251, 267, 109);
+      drawLogoCircle(520, 60, logoSize);
+      drawLogoCircle(254, 204.5, logoSize);
 
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      const textLeft = 245;
+      const textRight = 585;
+      const firstLineY = 397;
+      const secondaryY = 427;
+      const displayName = `“${firstName}`;
+      ctx.font = '800 42px Poppins, Arial, sans-serif';
+      let nameFontSize = 42;
+      while (ctx.measureText(displayName).width > 220 && nameFontSize > 30) {
+        nameFontSize -= 1;
+        ctx.font = `800 ${nameFontSize}px Poppins, Arial, sans-serif`;
+      }
+      ctx.fillStyle = brandColor;
+      ctx.fillText(displayName, textLeft, firstLineY);
+
+      const descriptionX = textLeft + ctx.measureText(displayName).width + 8;
+      ctx.font = '400 17px Inter, Arial, sans-serif';
       ctx.fillStyle = textColor;
-      ctx.font = '400 32px Poppins, Arial, sans-serif';
-      ctx.fillText('"', 251, 424);
+      const words = messageWithoutName.split(/\s+/).filter(Boolean);
+      const firstLine = [];
+      let firstLineText = '';
+      while (words.length) {
+        const testLine = firstLineText ? `${firstLineText} ${words[0]}` : words[0];
+        if (ctx.measureText(testLine).width > Math.max(80, textRight - descriptionX) && firstLineText) break;
+        firstLine.push(words.shift());
+        firstLineText = firstLine.join(' ');
+      }
+      if (firstLineText) ctx.fillText(firstLineText, descriptionX, firstLineY);
 
-      ctx.font = '900 32px Poppins, Arial, sans-serif';
-      const nameX = 269;
-      ctx.fillText(firstName, nameX, 424);
-      const firstLineX = nameX + ctx.measureText(firstName).width + 8;
-
-      ctx.font = '400 16px Poppins, Arial, sans-serif';
-      const firstLineWords = messageWithoutName.split(/\s+/).filter(Boolean);
-      const lines = [];
-      let line = '';
-      let maxWidth = Math.max(70, 607 - firstLineX);
-      firstLineWords.forEach((word) => {
-        const testLine = line ? `${line} ${word}` : word;
-        if (ctx.measureText(testLine).width > maxWidth && line) {
-          lines.push(line);
-          line = word;
-          maxWidth = 356;
-        } else {
-          line = testLine;
-        }
-      });
-      if (line) lines.push(line);
-      lines.slice(0, 4).forEach((textLine, index) => {
-        ctx.fillText(textLine, index === 0 ? firstLineX : 251, index === 0 ? 424 : 448 + (index - 1) * 24);
+      const remainingLines = wrapWordsToCanvasLines(ctx, words, textRight - textLeft);
+      remainingLines.slice(0, 3).forEach((textLine, index) => {
+        ctx.fillText(textLine, textLeft + 2, secondaryY + index * 24);
       });
 
       const link = document.createElement('a');
@@ -365,30 +384,31 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         className="personalized-card-preview"
         style={{
           '--personalized-brand': brandColor,
-          '--personalized-text': textColor,
-          '--personalized-accent': accentColor
+          '--personalized-text': textColor
         }}
       >
-        <span className="personalized-card-line" aria-hidden="true" />
-        <span className="personalized-card-bg-logo personalized-card-bg-logo-top">
-          {logoUrl ? <img src={logoUrl} alt="" /> : logoFallback}
+        <div className="path-left-extension" aria-hidden="true" />
+        <div className="path-main-u" aria-hidden="true" />
+        <div className="path-top-hook" aria-hidden="true" />
+
+        <span className="logo-circle top-logo">
+          {logoUrl ? <img src={logoUrl} alt="" /> : <span>{logoFallback}</span>}
         </span>
-        <div className="personalized-quote-panel" aria-hidden="true" />
-        <span className="personalized-card-logo">
+        <span className="logo-circle inline-logo">
           {logoUrl ? (
             <img src={logoUrl} alt={`${programData.churchName || 'Church'} logo`} />
           ) : (
             <span>{logoFallback}</span>
           )}
         </span>
-        <p className="personalized-message">
-          <span className="personalized-message-quote" aria-hidden="true">&ldquo;</span>
-          <strong>{firstName}</strong>
-          {' '}
-          <span>{messageWithoutName}</span>
-        </p>
-        <div className="personalized-card-strip personalized-card-strip-muted" aria-hidden="true" />
-        <div className="personalized-card-strip personalized-card-strip-brand" aria-hidden="true" />
+
+        <div className="personalized-text-content">
+          <div className="personalized-line-primary">
+            <span className="personalized-brand-name"><span>&ldquo;</span>{firstName}</span>
+            <span className="personalized-description">{firstMessageLine}</span>
+          </div>
+          {secondMessageLine && <div className="personalized-line-secondary">{secondMessageLine}</div>}
+        </div>
       </div>
 
       <div className="personalized-actions">
