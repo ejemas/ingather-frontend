@@ -16,6 +16,7 @@ function Login() {
 
   const [errors, setErrors] = useState({});
   const [rememberMe, setRememberMe] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [successMessage] = useState(
     location.state?.verified ? 'Email verified successfully! You can now login.' :
       location.state?.passwordReset ? 'Password reset successfully! Login with your new password.' : ''
@@ -54,12 +55,16 @@ function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (loading) return;
+
     const newErrors = validateForm();
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
+
+    setLoading(true);
 
     try {
       const response = await login(formData.email, formData.password);
@@ -81,6 +86,8 @@ function Login() {
 
       const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
       toast.error(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,7 +96,10 @@ function Login() {
       <div className="auth-modern-shell">
         <aside
           className="auth-modern-panel"
-          style={{ '--auth-panel-image': "url('/ingather-landing-hero.png')" }}
+          style={{
+            '--auth-panel-image': "url('/ingather-landing-hero.png')",
+            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
+          }}
         >
           <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
             <img src="/ingather-logo.png" alt="" />
@@ -170,8 +180,14 @@ function Login() {
               <a href="/forgot-password">Forgot password?</a>
             </div>
 
-            <button type="submit" className="auth-modern-submit">
-              Login
+            <button
+              type="submit"
+              className="auth-modern-submit"
+              disabled={loading}
+              aria-busy={loading}
+            >
+              {loading && <span className="auth-submit-spinner" aria-hidden="true"></span>}
+              <span>{loading ? 'Logging in...' : 'Login'}</span>
             </button>
 
             <p className="auth-modern-switch">

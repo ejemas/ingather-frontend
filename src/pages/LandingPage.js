@@ -103,7 +103,11 @@ function LandingPage() {
 
       <main>
         <section className="lp-hero">
-          <img className="lp-hero-bg" src="/ingather-landing-hero.png" alt="" />
+          <picture>
+            <source srcSet="/ingather-landing-hero.avif" type="image/avif" />
+            <source srcSet="/ingather-landing-hero.webp" type="image/webp" />
+            <img className="lp-hero-bg" src="/ingather-landing-hero.png" alt="" />
+          </picture>
           <div className="lp-hero-overlay"></div>
           <div className="lp-container lp-hero-content">
             <p className="lp-kicker">Church attendance, finally effortless</p>

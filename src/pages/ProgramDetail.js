@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { QRCodeCanvas } from 'qrcode.react';
-import io from 'socket.io-client';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { getProgramById, getAttendees, getAttendanceData, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
+import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
 import { useToast } from '../components/Toast';
 import '../styles/Dashboard.css';
 import '../styles/ProgramDetail.css';
+
+const QRCodeCanvas = React.lazy(() => (
+  import('qrcode.react').then(module => ({ default: module.QRCodeCanvas }))
+));
 
 /* ============================================
    SVG ICON COMPONENTS
@@ -399,8 +399,14 @@ function ProgramDetail() {
 
   // Socket.io real-time
   useEffect(() => {
+    let socket;
+    let isMounted = true;
+
     fetchProgramData();
-    const socket = io(process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000');
+    import('socket.io-client').then(({ default: io }) => {
+      if (!isMounted) return;
+
+      socket = io(process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000');
     socket.emit('join-program', id);
     socket.on(`program-${id}-update`, (data) => {
       if (data.totalScans !== undefined) {
@@ -427,7 +433,12 @@ function ProgramDetail() {
         if (data.giftedAttendeeId) setAttendees(prev => prev.map(a => a.id === data.giftedAttendeeId ? { ...a, isGifted: true } : a));
       }
     });
-    return () => socket.disconnect();
+    }).catch(err => console.error('Socket connection error:', err));
+
+    return () => {
+      isMounted = false;
+      if (socket) socket.disconnect();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -435,6 +446,51 @@ function ProgramDetail() {
     try {
       const token = localStorage.getItem('token');
       if (!token) { window.location.href = '/login'; return; }
+
+      try {
+        const bootstrap = await getProgramDetailBootstrap(id);
+        const church = bootstrap.church;
+        setChurchData({
+          name: church.churchName,
+          branch: church.branchName,
+          email: church.email || '',
+          logo: church.logoUrl
+        });
+        setUnreadCount(bootstrap.unreadCount || 0);
+
+        const programData = bootstrap.program;
+        setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
+        setTotalScans(programData.totalScans);
+        setWinnersGifted(programData.winnersGifted || 0);
+
+        const attendeesData = { attendees: bootstrap.attendees || [] };
+        setAttendees(attendeesData.attendees);
+
+        const chartResponse = bootstrap.attendanceData;
+        if (chartResponse?.buckets && chartResponse.startTime && chartResponse.endTime) {
+          setAttendanceData(mergeChartData(chartResponse.buckets, chartResponse.startTime, chartResponse.endTime, chartResponse.scanRangeStart, chartResponse.scanRangeEnd));
+        } else {
+          console.warn('Chart: unexpected response shape', chartResponse);
+        }
+
+        if (programData.trackingMode === 'count-only') {
+          setCountOnlyStats(bootstrap.countOnlyStats || { maleCount: 0, femaleCount: 0, firstTimerCount: 0 });
+          setCountOnlyScans(bootstrap.countOnlyScans || []);
+        } else {
+          const maleCount = attendeesData.attendees.filter(a => a.sex === 'Male').length;
+          const femaleCount = attendeesData.attendees.filter(a => a.sex === 'Female').length;
+          const firstTimerCount = attendeesData.attendees.filter(a => a.firstTimer).length;
+          setCollectDataStats({ maleCount, femaleCount, firstTimerCount });
+          setFormsSubmitted(attendeesData.attendees.length);
+        }
+
+        setLoading(false);
+        return;
+      } catch (bootstrapError) {
+        console.error('Error fetching program bootstrap:', bootstrapError);
+        if (bootstrapError.response?.status === 401) throw bootstrapError;
+      }
+
       const { getCurrentChurch } = await import('../api/authService');
       const church = await getCurrentChurch();
       setChurchData({ name: church.churchName, branch: church.branchName, email: church.email || '', logo: church.logoUrl });
@@ -502,6 +558,10 @@ function ProgramDetail() {
 
   const handleDownloadQR = () => {
     const canvas = document.getElementById('qr-code-canvas');
+    if (!canvas) {
+      toast.info('QR code is still loading. Please try again in a moment.');
+      return;
+    }
     const pngUrl = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
     const link = document.createElement('a');
     link.href = pngUrl;
@@ -515,10 +575,9 @@ function ProgramDetail() {
 
   const handleExportPDF = async () => {
     try {
+      const { jsPDF } = await import('jspdf');
       const { getCurrentChurch } = await import('../api/authService');
       const church = await getCurrentChurch();
-      const attendeesData = await getAttendees(id);
-      const attendeesList = attendeesData.attendees;
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
@@ -859,7 +918,9 @@ function ProgramDetail() {
               <h3 className="pd-qr-card-title">QR Code</h3>
               <p className="pd-qr-card-sub">Deploy this QR Code at your Church Entrance</p>
               <div className="pd-qr-canvas" id="qr-print-area">
-                <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
+                <React.Suspense fallback={<div style={{ width: 160, height: 160 }} aria-hidden="true"></div>}>
+                  <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
+                </React.Suspense>
               </div>
               <h4 className="pd-qr-program-title">{program.title}</h4>
               <p className="pd-qr-scan-text">Scan to check in</p>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getDashboardStats, deleteProgram } from '../api/programService';
+import { getDashboardBootstrap, getDashboardStats, deleteProgram } from '../api/programService';
 import { getCurrentChurch } from '../api/authService';
 import { useToast } from '../components/Toast';
 import '../styles/Dashboard.css';
@@ -684,105 +684,110 @@ function Dashboard() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // Fetch church data and unread notification count on mount
+  const applyChurchData = (church) => {
+    setChurchData({
+      name: church.churchName,
+      branch: church.branchName,
+      email: church.email || '',
+      logo: church.logoUrl
+    });
+  };
+
+  const applyDashboardStats = (stats) => {
+    setTotalPrograms(stats.totalPrograms);
+    setTotalAttendance(stats.totalAttendance);
+    setUpcomingPrograms(stats.upcomingPrograms);
+
+    const formattedPrograms = stats.recentPrograms.map(p => ({
+      id: p.id,
+      title: p.title,
+      date: p.date,
+      startTime: p.startTime,
+      endTime: p.endTime,
+      totalScans: p.totalScans,
+      status: p.isActive ? 'active' : 'completed',
+      dataCollection: p.trackingMode === 'collect-data'
+    }));
+    setPrograms(formattedPrograms);
+
+    setChartData(stats.attendanceOvertime && stats.attendanceOvertime.length > 0
+      ? stats.attendanceOvertime
+      : []);
+
+    const gb = stats.genderBreakdown;
+    if (gb && (gb.femalePercent > 0 || gb.malePercent > 0 || gb.firstTimerPercent > 0)) {
+      setDonutData([
+        { label: 'Female Attendance', value: gb.femalePercent, color: '#7C3AED' },
+        { label: 'Male Attendance', value: gb.malePercent, color: '#10B981' },
+        { label: 'First Timer Attendance', value: gb.firstTimerPercent, color: '#F59E0B' },
+      ]);
+    } else {
+      setDonutData([
+        { label: 'Female Attendance', value: 0, color: '#7C3AED' },
+        { label: 'Male Attendance', value: 0, color: '#10B981' },
+        { label: 'First Timer Attendance', value: 0, color: '#F59E0B' },
+      ]);
+    }
+  };
+
+  // Fetch dashboard bootstrap data whenever dateRange changes
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   useEffect(() => {
-    const fetchChurchData = async () => {
+    const fetchDashboardData = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
           window.location.href = '/login';
           return;
         }
-        const church = await getCurrentChurch();
-        setChurchData({
-          name: church.churchName,
-          branch: church.branchName,
-          email: church.email || '',
-          logo: church.logoUrl
-        });
-        // Fetch unread notification count
-        try {
-          const axios = (await import('axios')).default;
-          const countRes = await axios.get(
-            `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
-            { headers: { 'Authorization': `Bearer ${token}` } }
-          );
-          setUnreadCount(countRes.data.unreadCount || 0);
-        } catch (err) {
-          console.error('Error fetching unread count:', err);
-        }
-      } catch (error) {
-        console.error('Error fetching church data:', error);
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-        }
-      }
-    };
-    fetchChurchData();
-  }, []);
 
-  // Fetch dashboard stats whenever dateRange changes
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
         if (!initialLoadDone) setLoading(true);
-        const stats = await getDashboardStats(dateRange.startDate, dateRange.endDate);
-
-        setTotalPrograms(stats.totalPrograms);
-        setTotalAttendance(stats.totalAttendance);
-        setUpcomingPrograms(stats.upcomingPrograms);
-
-        // Format programs for the table
-        const formattedPrograms = stats.recentPrograms.map(p => ({
-          id: p.id,
-          title: p.title,
-          date: p.date,
-          startTime: p.startTime,
-          endTime: p.endTime,
-          totalScans: p.totalScans,
-          status: p.isActive ? 'active' : 'completed',
-          dataCollection: p.trackingMode === 'collect-data'
-        }));
-        setPrograms(formattedPrograms);
-
-        // Chart data
-        if (stats.attendanceOvertime && stats.attendanceOvertime.length > 0) {
-          setChartData(stats.attendanceOvertime);
-        } else {
-          setChartData([]);
-        }
-
-        // Donut data from real percentages
-        const gb = stats.genderBreakdown;
-        if (gb && (gb.femalePercent > 0 || gb.malePercent > 0 || gb.firstTimerPercent > 0)) {
-          setDonutData([
-            { label: 'Female Attendance', value: gb.femalePercent, color: '#7C3AED' },
-            { label: 'Male Attendance', value: gb.malePercent, color: '#10B981' },
-            { label: 'First Timer Attendance', value: gb.firstTimerPercent, color: '#F59E0B' },
-          ]);
-        } else {
-          setDonutData([
-            { label: 'Female Attendance', value: 0, color: '#7C3AED' },
-            { label: 'Male Attendance', value: 0, color: '#10B981' },
-            { label: 'First Timer Attendance', value: 0, color: '#F59E0B' },
-          ]);
-        }
+        const bootstrap = await getDashboardBootstrap(dateRange.startDate, dateRange.endDate);
+        applyChurchData(bootstrap.church);
+        setUnreadCount(bootstrap.unreadCount || 0);
+        applyDashboardStats(bootstrap.stats);
 
         setLoading(false);
         setInitialLoadDone(true);
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        console.error('Error fetching dashboard bootstrap:', error);
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
           window.location.href = '/login';
+          return;
         }
+
+        try {
+          const token = localStorage.getItem('token');
+          const church = await getCurrentChurch();
+          applyChurchData(church);
+
+          try {
+            const axios = (await import('axios')).default;
+            const countRes = await axios.get(
+              `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            setUnreadCount(countRes.data.unreadCount || 0);
+          } catch (countError) {
+            console.error('Error fetching unread count:', countError);
+          }
+
+          const stats = await getDashboardStats(dateRange.startDate, dateRange.endDate);
+          applyDashboardStats(stats);
+        } catch (fallbackError) {
+          console.error('Error fetching dashboard fallback data:', fallbackError);
+          if (fallbackError.response?.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+          }
+        }
+
         setLoading(false);
         setInitialLoadDone(true);
       }
     };
-    fetchDashboardStats();
+    fetchDashboardData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange]);
 

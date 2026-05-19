@@ -1,39 +1,50 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Settings from './pages/Settings';
-import AllPrograms from './pages/AllPrograms';
-import LandingPage from './pages/LandingPage';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import CreateProgram from './pages/CreateProgram';
-import ProgramDetail from './pages/ProgramDetail';
-import ScanPage from './pages/ScanPage';
-import VerifyEmail from './pages/VerifyEmail';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
 import { ToastProvider } from './components/Toast';
 import './styles/globals.css';
+
+const Settings = lazy(() => import('./pages/Settings'));
+const AllPrograms = lazy(() => import('./pages/AllPrograms'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const Register = lazy(() => import('./pages/Register'));
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CreateProgram = lazy(() => import('./pages/CreateProgram'));
+const ProgramDetail = lazy(() => import('./pages/ProgramDetail'));
+const ScanPage = lazy(() => import('./pages/ScanPage'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+
+function RouteFallback() {
+  return (
+    <div className="app-route-loading" aria-live="polite" aria-label="Loading page">
+      <div className="spinner"></div>
+    </div>
+  );
+}
 
 function App() {
   return (
     <ToastProvider>
       <Router>
         <div className="App">
-          <Routes>
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/programs" element={<AllPrograms />} />
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/create-program" element={<CreateProgram />} />
-            <Route path="/program/:id" element={<ProgramDetail />} />
-            <Route path="/scan/:programId" element={<ScanPage />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-          </Routes>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/programs" element={<AllPrograms />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/create-program" element={<CreateProgram />} />
+              <Route path="/program/:id" element={<ProgramDetail />} />
+              <Route path="/scan/:programId" element={<ScanPage />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+            </Routes>
+          </Suspense>
         </div>
       </Router>
     </ToastProvider>

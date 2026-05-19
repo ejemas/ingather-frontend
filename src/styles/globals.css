@@ -1,7 +1,5 @@
 /* Ingather Global Styles — Light/Dark Theme System */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&display=swap');
-
 /* ============================================
    LIGHT THEME (DEFAULT)
    ============================================ */
@@ -310,6 +308,13 @@ label {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--spacing-md);
+}
+
+.app-route-loading {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg-body);
 }
 
 /* ============================================

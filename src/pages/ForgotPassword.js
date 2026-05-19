@@ -40,7 +40,10 @@ function ForgotPassword() {
       <div className="auth-modern-shell auth-recovery-shell">
         <aside
           className="auth-modern-panel auth-recovery-panel"
-          style={{ '--auth-panel-image': "url('/ingather-landing-hero.png')" }}
+          style={{
+            '--auth-panel-image': "url('/ingather-landing-hero.png')",
+            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
+          }}
         >
           <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
             <img src="/ingather-logo.png" alt="" />

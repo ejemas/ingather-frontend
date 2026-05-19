@@ -10,6 +10,14 @@ export const getPrograms = async () => {
   return response.data;
 };
 
+export const getDashboardBootstrap = async (startDate, endDate) => {
+  const params = {};
+  if (startDate) params.startDate = startDate;
+  if (endDate) params.endDate = endDate;
+  const response = await API.get('/programs/dashboard-bootstrap', { params });
+  return response.data;
+};
+
 export const getDashboardStats = async (startDate, endDate) => {
   const params = {};
   if (startDate) params.startDate = startDate;
@@ -20,6 +28,11 @@ export const getDashboardStats = async (startDate, endDate) => {
 
 export const getProgramById = async (id) => {
   const response = await API.get(`/programs/${id}`);
+  return response.data;
+};
+
+export const getProgramDetailBootstrap = async (id) => {
+  const response = await API.get(`/programs/${id}/detail-bootstrap`);
   return response.data;
 };
 

@@ -1,7 +1,6 @@
 // CHANGE THIS LINE:
 import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
-import FingerprintJS from '@fingerprintjs/fingerprintjs';
 import { useParams } from 'react-router-dom';
 import { getProgramInfo, submitScan, submitFormData, updateScanData } from '../api/scanService';
 import { useToast } from '../components/Toast';
@@ -38,6 +37,7 @@ const getDeviceFingerprint = async () => {
   if (cachedFingerprint) return cachedFingerprint;
 
   try {
+    const { default: FingerprintJS } = await import('@fingerprintjs/fingerprintjs');
     const fp = await FingerprintJS.load();
     const result = await fp.get();
     setCachedFingerprint(result.visitorId);

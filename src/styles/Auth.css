@@ -635,6 +635,10 @@
 .auth-modern-submit {
   min-height: 54px;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   border: 0;
   border-radius: 8px;
   background: #e8590c;
@@ -647,10 +651,25 @@
   transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.auth-modern-submit:hover {
+.auth-modern-submit:hover:not(:disabled) {
   background: #d14e0a;
   transform: translateY(-1px);
   box-shadow: 0 18px 38px rgba(232, 89, 12, 0.3);
+}
+
+.auth-submit-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.38);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: authButtonSpin 0.75s linear infinite;
+}
+
+@keyframes authButtonSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .auth-modern-switch {
@@ -733,6 +752,26 @@
   background:
     linear-gradient(160deg, rgba(17, 18, 23, 0.94), rgba(17, 18, 23, 0.8)),
     var(--auth-panel-image) center / cover;
+}
+
+@supports (background-image: image-set(url('/ingather-landing-hero.png') type('image/png'))) {
+  .auth-modern-panel {
+    background:
+      linear-gradient(160deg, rgba(17, 18, 23, 0.92), rgba(17, 18, 23, 0.82)),
+      var(--auth-panel-image-modern, var(--auth-panel-image)) center / cover;
+  }
+
+  .auth-register-panel {
+    background:
+      linear-gradient(160deg, rgba(17, 18, 23, 0.94), rgba(17, 18, 23, 0.76)),
+      var(--auth-panel-image-modern, var(--auth-panel-image)) center / cover;
+  }
+
+  .auth-recovery-panel {
+    background:
+      linear-gradient(160deg, rgba(17, 18, 23, 0.94), rgba(17, 18, 23, 0.8)),
+      var(--auth-panel-image-modern, var(--auth-panel-image)) center / cover;
+  }
 }
 
 .auth-recovery-proof {
