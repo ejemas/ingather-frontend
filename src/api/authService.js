@@ -22,6 +22,11 @@ export const getCurrentChurch = async () => {
   return response.data;
 };
 
+export const updateOrganizationType = async (organizationType) => {
+  const response = await API.put('/auth/organization-type', { organizationType });
+  return response.data;
+};
+
 export const verifyOtp = async (email, otp) => {
   const response = await API.post('/auth/verify-otp', { email, otp });
   return response.data;

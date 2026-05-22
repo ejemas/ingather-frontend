@@ -38,22 +38,22 @@ const features = [
   {
     icon: Icon.qr,
     title: 'QR check-in',
-    text: 'Generate a clean check-in link for every program and let people scan in from any phone.'
+    text: 'Generate a clean check-in link for every event and let people scan in from any phone.'
   },
   {
     icon: Icon.chart,
     title: 'Live attendance',
-    text: 'Watch attendance, gender, first-timer, and arrival patterns update while service is running.'
+    text: 'Watch attendance, participant details, first-time guests, and arrival patterns update while your event is running.'
   },
   {
     icon: Icon.form,
-    title: 'Visitor forms',
-    text: 'Collect only the fields you need, from names and phone numbers to fellowship and department.'
+    title: 'Attendee forms',
+    text: 'Collect only the fields you need, from names and phone numbers to departments, teams, or communities.'
   },
   {
     icon: Icon.gift,
     title: 'Gifting moments',
-    text: 'Run simple winner selection for events where you want visitors to engage and feel seen.'
+    text: 'Run simple winner selection for events where you want attendees to engage and feel seen.'
   },
   {
     icon: Icon.report,
@@ -63,9 +63,18 @@ const features = [
 ];
 
 const steps = [
-  ['Create', 'Add the program name, date, time, tracking mode, and optional event flyer.'],
-  ['Share', 'Display the generated QR code at the entrance, on screen, or in a service group.'],
-  ['Track', 'Follow scans, forms, and gifting status from a dashboard built for church teams.']
+  ['Create', 'Add the event name, date, time, tracking mode, and optional event flyer.'],
+  ['Share', 'Display the generated QR code at the entrance, on screen, or in your event channels.'],
+  ['Track', 'Follow scans, forms, and engagement status from a dashboard built for event organizers.']
+];
+
+const segments = [
+  'Tech Meetups',
+  'Conferences',
+  'Bootcamps',
+  'Corporate Events',
+  'Community Gatherings',
+  'Church'
 ];
 
 function LandingPage() {
@@ -110,15 +119,15 @@ function LandingPage() {
           </picture>
           <div className="lp-hero-overlay"></div>
           <div className="lp-container lp-hero-content">
-            <p className="lp-kicker">Church attendance, finally effortless</p>
-            <h1>Ingather</h1>
+            <p className="lp-kicker">Event intelligence, finally effortless</p>
+            <h1>Turn Every Gathering Into Actionable Data.</h1>
             <p className="lp-hero-lead">
-              Modern QR attendance tracking for churches that want accurate counts,
-              visitor insight, and live event reports without paper lists.
+              Ingather is the intelligent platform that helps event organizers capture attendees,
+              manage frictionless check-ins, and engage participants in real-time.
             </p>
             <div className="lp-hero-actions">
               <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={() => goTo('/register')}>
-                Create your first program
+                Create your first event
                 <span className="lp-btn-icon">{Icon.arrow}</span>
               </button>
               <button type="button" className="lp-btn lp-btn-glass lp-btn-large" onClick={() => scrollTo('how-it-works')}>
@@ -139,14 +148,19 @@ function LandingPage() {
                 <span>to start</span>
               </div>
             </div>
+            <div className="lp-segment-pills" aria-label="Supported event segments">
+              {segments.map((segment) => (
+                <span key={segment}>{segment}</span>
+              ))}
+            </div>
           </div>
         </section>
 
         <section id="features" className="lp-section lp-features">
           <div className="lp-container">
             <div className="lp-section-heading">
-              <p className="lp-eyebrow">Built for Sunday flow</p>
-              <h2>Everything your team needs before, during, and after a program.</h2>
+              <p className="lp-eyebrow">Built for live gatherings</p>
+              <h2>Everything your team needs before, during, and after an event.</h2>
             </div>
             <div className="lp-feature-grid">
               {features.map((feature) => (
@@ -186,8 +200,8 @@ function LandingPage() {
               <p className="lp-eyebrow">Free plan</p>
               <h2>Start tracking attendance today.</h2>
               <p>
-                Create programs, generate QR codes, collect visitor details, and view
-                live attendance without adding another manual process to your team.
+                Create events, generate QR codes, collect attendee details, and view
+                live participation without adding another manual process to your team.
               </p>
             </div>
             <div className="lp-price-panel">
@@ -203,8 +217,8 @@ function LandingPage() {
 
         <section className="lp-final-cta">
           <div className="lp-container lp-final-inner">
-            <h2>Replace the attendance sheet with a QR code.</h2>
-            <p>Set up your church account and launch your first event in minutes.</p>
+            <h2>Replace the attendance sheet with intelligent check-ins.</h2>
+            <p>Set up your organization workspace and launch your first event in minutes.</p>
             <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={() => goTo('/register')}>
               Start with Ingather
               <span className="lp-btn-icon">{Icon.arrow}</span>
@@ -216,7 +230,7 @@ function LandingPage() {
       <footer className="lp-footer">
         <div className="lp-container lp-footer-inner">
           <span>Ingather</span>
-          <p>Modern attendance tracking for churches.</p>
+          <p>Modern event intelligence for organizers.</p>
           <small>&copy; 2026 Ingather. All rights reserved.</small>
         </div>
       </footer>

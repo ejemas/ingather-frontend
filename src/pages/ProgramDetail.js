@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
 import '../styles/ProgramDetail.css';
 
@@ -355,6 +356,7 @@ function ProgramDetail() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
   const [chartPage, setChartPage] = useState(0);
   const toast = useToast();
+  const { template, setTemplateKey } = useEventTemplate();
   const BARS_PER_PAGE = 8;
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -456,6 +458,7 @@ function ProgramDetail() {
           email: church.email || '',
           logo: church.logoUrl
         });
+        setTemplateKey(church.organizationType || 'general');
         setUnreadCount(bootstrap.unreadCount || 0);
 
         const programData = bootstrap.program;
@@ -494,6 +497,7 @@ function ProgramDetail() {
       const { getCurrentChurch } = await import('../api/authService');
       const church = await getCurrentChurch();
       setChurchData({ name: church.churchName, branch: church.branchName, email: church.email || '', logo: church.logoUrl });
+      setTemplateKey(church.organizationType || 'general');
       // Fetch unread notification count
       try {
         const axios = (await import('axios')).default;
@@ -547,12 +551,12 @@ function ProgramDetail() {
   };
 
   const handleStopProgram = async () => {
-    toast.confirm('Are you sure you want to end this program? The QR code will be disabled.', async () => {
+    toast.confirm(`Are you sure you want to end this ${template.event.singular.toLowerCase()}? The QR code will be disabled.`, async () => {
       try {
         await stopProgramAPI(id);
         setProgram({ ...program, isActive: false, status: 'completed' });
-        toast.success('Program ended successfully!');
-      } catch (error) { toast.error('Failed to stop program.'); }
+        toast.success(`${template.event.singular} ended successfully!`);
+      } catch (error) { toast.error(`Failed to stop ${template.event.singular.toLowerCase()}.`); }
     });
   };
 
@@ -590,14 +594,14 @@ function ProgramDetail() {
       let yPos = 55;
       doc.setFillColor(248, 248, 248); doc.rect(14, yPos - 5, pageWidth - 28, 38, 'F');
       doc.setTextColor(0, 0, 0); doc.setFontSize(13); doc.setFont(undefined, 'bold');
-      doc.text('CHURCH INFORMATION', 18, yPos); yPos += 8;
+      doc.text('WORKSPACE INFORMATION', 18, yPos); yPos += 8;
       doc.setFontSize(10); const col1 = 18; const col2 = pageWidth / 2 + 5;
-      doc.setFont(undefined, 'bold'); doc.text('Church Name:', col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.churchName, col1 + 32, yPos);
+      doc.setFont(undefined, 'bold'); doc.text(`${template.organization.nameLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.churchName, col1 + 32, yPos);
       doc.setFont(undefined, 'bold'); doc.text('Email:', col2, yPos); doc.setFont(undefined, 'normal'); doc.text(church.email, col2 + 15, yPos); yPos += 6;
-      doc.setFont(undefined, 'bold'); doc.text('Branch:', col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.branchName, col1 + 32, yPos);
+      doc.setFont(undefined, 'bold'); doc.text(`${template.organization.branchLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.branchName, col1 + 32, yPos);
       doc.setFont(undefined, 'bold'); doc.text('Location:', col2, yPos); doc.setFont(undefined, 'normal'); doc.text(church.location, col2 + 15, yPos); yPos += 15;
-      doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text('PROGRAM INFORMATION', 18, yPos); yPos += 8;
-      doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.text('Title:', col1, yPos); doc.setFont(undefined, 'normal'); doc.text(program.title, col1 + 32, yPos); yPos += 6;
+      doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text(`${template.event.singular.toUpperCase()} INFORMATION`, 18, yPos); yPos += 8;
+      doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.text(`${template.event.titleLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(program.title, col1 + 32, yPos); yPos += 6;
       doc.setFont(undefined, 'bold'); doc.text('Date:', col1, yPos); doc.setFont(undefined, 'normal');
       doc.text(new Date(program.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }), col1 + 32, yPos); yPos += 15;
       const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-Report.pdf`;
@@ -634,7 +638,7 @@ function ProgramDetail() {
           <div className="sidebar-logo"><a href="/dashboard" className="sidebar-logo-link"><span className="sidebar-logo-icon">{Icons.logo}</span><span className="sidebar-logo-text">Ingather</span></a></div>
         </aside>
         <main className="dashboard-main">
-          <div className="dashboard-loading"><div className="spinner"></div><p>Loading program...</p></div>
+          <div className="dashboard-loading"><div className="spinner"></div><p>Loading {template.event.singular.toLowerCase()}...</p></div>
         </main>
       </div>
     );
@@ -647,7 +651,7 @@ function ProgramDetail() {
           <div className="sidebar-logo"><a href="/dashboard" className="sidebar-logo-link"><span className="sidebar-logo-icon">{Icons.logo}</span><span className="sidebar-logo-text">Ingather</span></a></div>
         </aside>
         <main className="dashboard-main">
-          <div className="dashboard-loading"><p>Program not found</p></div>
+          <div className="dashboard-loading"><p>{template.event.singular} not found</p></div>
         </main>
       </div>
     );
@@ -667,8 +671,8 @@ function ProgramDetail() {
         </div>
         <nav className="sidebar-nav">
           <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
-          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
+          <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>{template.event.create}</span></a>
+          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>{template.event.all}</span></a>
           <a href="/settings" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
@@ -719,9 +723,9 @@ function ProgramDetail() {
               <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
             </button>
             {program.isActive ? (
-              <button className="btn-end-program" onClick={handleStopProgram}>End Current Program</button>
+              <button className="btn-end-program" onClick={handleStopProgram}>End Current {template.event.singular}</button>
             ) : (
-              <button className="btn-end-program" disabled>Program Ended</button>
+              <button className="btn-end-program" disabled>{template.event.singular} Ended</button>
             )}
             <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>{Icons.notification}{unreadCount > 0 && <span className="icon-badge"></span>}</button>
             <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>{Icons.gear}</button>
@@ -891,7 +895,7 @@ function ProgramDetail() {
           <div className="pd-middle-row">
             {/* Chart Card */}
             <div className="pd-chart-card">
-              <h3 className="pd-chart-title">Attendance Overtime</h3>
+              <h3 className="pd-chart-title">Attendance Over Time</h3>
               <div className="pd-chart-area">
                 {(() => {
                   const startIdx = chartPage * BARS_PER_PAGE;
@@ -916,7 +920,7 @@ function ProgramDetail() {
             {/* QR Code Card */}
             <div className="pd-qr-card">
               <h3 className="pd-qr-card-title">QR Code</h3>
-              <p className="pd-qr-card-sub">Deploy this QR Code at your Church Entrance</p>
+              <p className="pd-qr-card-sub">Deploy this QR code at your event entrance or check-in desk</p>
               <div className="pd-qr-canvas" id="qr-print-area">
                 <React.Suspense fallback={<div style={{ width: 160, height: 160 }} aria-hidden="true"></div>}>
                   <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
@@ -964,8 +968,8 @@ function ProgramDetail() {
             <div className="pd-attendee-card">
               <div className="pd-attendee-header">
                 <div>
-                  <h3 className="pd-attendee-title">Attendee Data</h3>
-                  <p className="pd-attendee-sub">People who submitted the form</p>
+                  <h3 className="pd-attendee-title">{template.attendee.singular} Data</h3>
+                  <p className="pd-attendee-sub">People who completed check-in details</p>
                 </div>
               </div>
               <div className="pd-table-container">
@@ -990,14 +994,14 @@ function ProgramDetail() {
             <div className="pd-attendee-card">
               <div className="pd-attendee-header">
                 <div>
-                  <h3 className="pd-attendee-title">Attendee Data</h3>
+                  <h3 className="pd-attendee-title">{template.attendee.singular} Data</h3>
                   <p className="pd-attendee-sub">People who submitted the form</p>
                 </div>
               </div>
               <div className="pd-attendee-toolbar">
                 <div className="pd-search-box">
                   {Icons.search}
-                  <input type="text" placeholder="Search attendees..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                  <input type="text" placeholder={`Search ${template.attendee.plural.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
                 <button className="pd-btn-export" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>
               </div>
@@ -1006,7 +1010,7 @@ function ProgramDetail() {
                   <thead>
                     <tr>
                       {program.dataFields?.fullName && <th>Name</th>}
-                      {program.dataFields?.fellowship && <th>Fellowship</th>}
+                      {program.dataFields?.fellowship && <th>Group</th>}
                       {program.dataFields?.age && <th>Age</th>}
                       {program.giftingEnabled && <th>Winner</th>}
                       {program.giftingEnabled && <th>Gifted</th>}
@@ -1017,7 +1021,7 @@ function ProgramDetail() {
                     {attendees.filter(a => !searchQuery.trim() || (a.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())).map(attendee => (
                       <tr key={attendee.id}>
                         {program.dataFields?.fullName && <td data-label="Name"><strong>{attendee.fullName || '-'}</strong></td>}
-                        {program.dataFields?.fellowship && <td data-label="Fellowship">{attendee.fellowship || '-'}</td>}
+                        {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
                         {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
                         {program.giftingEnabled && (
                           <td data-label="Winner">

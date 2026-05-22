@@ -573,7 +573,8 @@
   font-weight: 750;
 }
 
-.auth-modern-field input {
+.auth-modern-field input,
+.auth-modern-field select {
   min-height: 52px;
   width: 100%;
   padding: 0 15px;
@@ -589,7 +590,8 @@
   color: #9a9da5;
 }
 
-.auth-modern-field input:focus {
+.auth-modern-field input:focus,
+.auth-modern-field select:focus {
   outline: none;
   border-color: rgba(232, 89, 12, 0.68);
   background: #ffffff;

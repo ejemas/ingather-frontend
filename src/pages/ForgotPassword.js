@@ -52,10 +52,10 @@ function ForgotPassword() {
 
           <div className="auth-panel-content">
             <span className="auth-panel-pill">Secure recovery</span>
-            <h1>Get back to your church workspace quickly.</h1>
+            <h1>Get back to your event workspace quickly.</h1>
             <p>
               Receive a short verification code, confirm ownership, and return
-              to managing programs without disrupting your team.
+              to managing events without disrupting your team.
             </p>
           </div>
 
@@ -86,7 +86,7 @@ function ForgotPassword() {
                 id="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                placeholder="admin@church.com"
+                placeholder="admin@organization.com"
               />
               {error && <span className="error">{error}</span>}
             </div>

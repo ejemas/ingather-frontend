@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getProgramInfo, submitScan, submitFormData, updateScanData } from '../api/scanService';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/ScanPage.css';
 
 const INGATHER_PUBLIC_ORIGIN = 'https://ingather.app';
@@ -396,7 +397,7 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         </span>
         <span className="logo-circle inline-logo">
           {logoUrl ? (
-            <img src={logoUrl} alt={`${programData.churchName || 'Church'} logo`} />
+            <img src={logoUrl} alt={`${programData.churchName || 'Organization'} logo`} />
           ) : (
             <span>{logoFallback}</span>
           )}
@@ -534,6 +535,7 @@ function FlyerDetailsViewer({ programData, programId, onClose, standalone = fals
 function ScanPage() {
   const { programId } = useParams();
   const toast = useToast();
+  const { template } = useEventTemplate();
   const detailsOnly = new URLSearchParams(window.location.search).get('details') === '1';
 
 
@@ -866,7 +868,7 @@ function ScanPage() {
                   <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 </div>
                 <h2>Event Details Unavailable</h2>
-                <p className="modal-subtitle">No flyer has been added for this program yet.</p>
+                <p className="modal-subtitle">No flyer has been added for this event yet.</p>
               </div>
             </div>
           )}
@@ -887,7 +889,7 @@ function ScanPage() {
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               </div>
               <h2>Already Checked In</h2>
-              <p className="modal-subtitle">You have already scanned the QR code. Each device can only scan once per program.</p>
+              <p className="modal-subtitle">{template.scan.alreadyScanned}</p>
               <div className="modal-callout">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">If you believe this is an error, please contact an usher</span>
@@ -1093,7 +1095,7 @@ function ScanPage() {
         badge="Welcome"
         programData={programData}
         helperText={programData.giftingEnabled
-          ? 'Fill this form for a chance to win a special gift from the church.'
+          ? template.scan.giftHelper
           : 'Fill in your details to complete your check-in.'}
         mode="collect"
       >
@@ -1146,20 +1148,20 @@ function ScanPage() {
                 name="department"
                 value={formData.department}
                 onChange={handleChange}
-                placeholder="e.g., Youth, Men, Women, Choir"
+                placeholder="e.g., Product, Marketing, Community"
                 error={formErrors.department}
               />
             )}
 
             {programData.dataFields.fellowship && (
               <ScanInputField
-                label="Fellowship"
+                label="Group"
                 type="text"
                 id="fellowship"
                 name="fellowship"
                 value={formData.fellowship}
                 onChange={handleChange}
-                placeholder="Your fellowship group"
+                placeholder="Your group or community"
               />
             )}
 
@@ -1228,7 +1230,7 @@ function ScanPage() {
             <h2>{programData.title}</h2>
             {programData.giftingEnabled && (
               <div className="incentive-banner">
-                🎁 Fill this form for a chance to win a special gift from the church!
+                Fill this form for a chance to win a special gift from the organizer!
               </div>
             )}
           </div>
@@ -1288,7 +1290,7 @@ function ScanPage() {
                   name="department"
                   value={formData.department}
                   onChange={handleChange}
-                  placeholder="e.g., Youth, Men, Women, Choir"
+                  placeholder="e.g., Product, Marketing, Community"
                 />
                 {formErrors.department && <span className="error">{formErrors.department}</span>}
               </div>
@@ -1296,14 +1298,14 @@ function ScanPage() {
 
             {programData.dataFields.fellowship && (
               <div className="form-group">
-                <label htmlFor="fellowship">Fellowship</label>
+                <label htmlFor="fellowship">Group</label>
                 <input
                   type="text"
                   id="fellowship"
                   name="fellowship"
                   value={formData.fellowship}
                   onChange={handleChange}
-                  placeholder="Your fellowship group"
+                  placeholder="Your group or community"
                 />
               </div>
             )}
@@ -1380,7 +1382,7 @@ function ScanPage() {
                 <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
               <h2>Congratulations !</h2>
-              <p className="modal-subtitle">You have been selected to receive a gift from the Church, Thank you for being in Church today.</p>
+              <p className="modal-subtitle">You have been selected to receive a gift from the organizer. Thank you for joining us today.</p>
               <div className="modal-callout-action">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
@@ -1418,7 +1420,7 @@ function ScanPage() {
               <p className="modal-subtitle">Your Information has been submitted successfully</p>
               <div className="modal-callout">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">You didn't win this time, but we are glad you are here. Enjoy the rest of the service</span>
+                <span className="callout-text">{template.scan.noWin}</span>
               </div>
               <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
@@ -1441,10 +1443,10 @@ function ScanPage() {
                 <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
               <h2>Welcome &amp; Congratulations !</h2>
-              <p className="modal-subtitle">Welcome first timer! You have been selected to receive a gift from the Church</p>
+              <p className="modal-subtitle">Welcome first-timer! You have been selected to receive a gift from the organizer.</p>
               <div className="modal-callout-action">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">Please kindly wait at the close of service, we look forward to connecting with you</span>
+                <span className="callout-text">Please wait after the event. We look forward to connecting with you.</span>
                 <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
               <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
@@ -1480,7 +1482,7 @@ function ScanPage() {
               <p className="modal-subtitle">Thank you for joining us today we look forward to connecting with you.</p>
               <div className="modal-callout">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">Please kindly wait behind at the close of service</span>
+                <span className="callout-text">Please wait after the event so the team can connect with you.</span>
               </div>
               <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
@@ -1512,7 +1514,7 @@ function ScanPage() {
                 </div>
               </div>
               <h2>Thank You!</h2>
-              <p className="modal-subtitle">You have been checked in successfully<br />Enjoy the service!</p>
+              <p className="modal-subtitle">{template.scan.success}</p>
               <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
             </div>
           </div>
@@ -1531,7 +1533,7 @@ function ScanPage() {
             <div className="message-icon">✅</div>
             <h2>Thank You!</h2>
             <p>Your information has been submitted successfully.</p>
-            <p className="sub-message">Thank you for coming to church today, do enjoy the rest of the service!</p>
+            <p className="sub-message">Thank you for joining us today. Enjoy the rest of the event!</p>
             <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
           </div>
           {flyerDetailsOverlay}
@@ -1549,8 +1551,8 @@ function ScanPage() {
             <div className="modal-closed-icon">
               <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </div>
-            <h2>Program Already Closed</h2>
-            <p className="modal-subtitle">This program may have ended or no longer active.</p>
+            <h2>{template.scan.closedTitle}</h2>
+            <p className="modal-subtitle">{template.scan.closedBody}</p>
           </div>
         </div>
       </div>

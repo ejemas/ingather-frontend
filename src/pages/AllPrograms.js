@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPrograms, deleteProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
 
 /* SVG Icons (shared with Dashboard) */
@@ -107,6 +108,7 @@ function AllPrograms() {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
   const toast = useToast();
+  const { template, setTemplateKey } = useEventTemplate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
@@ -169,6 +171,7 @@ function AllPrograms() {
         email: church.email || '',
         logo: church.logoUrl
       });
+      setTemplateKey(church.organizationType || 'general');
 
       // Fetch unread notification count
       try {
@@ -212,14 +215,14 @@ function AllPrograms() {
 
   const handleDeleteProgram = (program) => {
     toast.confirm(
-      `Are you sure you want to delete "${program.title}"? This will permanently remove all its data.`,
+      template.dashboard.deleteConfirm.replace('{title}', program.title),
       async () => {
         try {
           await deleteProgram(program.id);
           setPrograms(prev => prev.filter(p => p.id !== program.id));
-          toast.success('Program deleted successfully!');
+          toast.success(template.dashboard.deleteSuccess);
         } catch (error) {
-          toast.error(error.response?.data?.error || 'Failed to delete program.');
+          toast.error(error.response?.data?.error || template.dashboard.deleteFailure);
         }
       }
     );
@@ -280,7 +283,7 @@ function AllPrograms() {
         <main className="dashboard-main">
           <div className="dashboard-loading">
             <div className="spinner"></div>
-            <p>Loading programs...</p>
+            <p>Loading {template.event.plural.toLowerCase()}...</p>
           </div>
         </main>
       </div>
@@ -308,11 +311,11 @@ function AllPrograms() {
           </a>
           <a href="/create-program" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
-            <span>Create Program</span>
+            <span>{template.event.create}</span>
           </a>
           <a href="/programs" className="nav-item active" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>All Program</span>
+            <span>{template.event.all}</span>
           </a>
           <a href="/settings" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.settings}</span>
@@ -372,7 +375,7 @@ function AllPrograms() {
               <span></span>
               <span></span>
             </button>
-            <span className="navbar-church-name">All Programs</span>
+            <span className="navbar-church-name">{template.event.all}</span>
           </div>
           <div className="navbar-right">
             <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -415,7 +418,7 @@ function AllPrograms() {
         </header>
 
         <div className="dashboard-content">
-          <h2 className="overview-title" style={{ marginBottom: '24px' }}>All Programs</h2>
+          <h2 className="overview-title" style={{ marginBottom: '24px' }}>{template.event.all}</h2>
 
           <div className="programs-section">
             <div className="section-header">
@@ -452,7 +455,7 @@ function AllPrograms() {
               <table className="programs-table">
                 <thead>
                   <tr>
-                    <th>Program Title</th>
+                    <th>{template.event.titleLabel}</th>
                     <th>Date</th>
                     <th>Time</th>
                     <th>Status</th>
@@ -466,14 +469,14 @@ function AllPrograms() {
                     <tr>
                       <td colSpan="7">
                         <div className="empty-state">
-                          <p>No programs found for this filter.</p>
+                          <p>{template.dashboard.emptyState}</p>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filteredPrograms.map(program => (
                       <tr key={program.id}>
-                        <td className="program-title-cell" data-label="Program">{program.title}</td>
+                        <td className="program-title-cell" data-label={template.event.singular}>{program.title}</td>
                         <td data-label="Date">{formatDate(program.date)}</td>
                         <td data-label="Time">{formatTime(program.startTime)} - {formatTime(program.endTime)}</td>
                         <td data-label="Status">
@@ -498,7 +501,7 @@ function AllPrograms() {
                             <button
                               className="btn-action btn-delete"
                               onClick={() => handleDeleteProgram(program)}
-                              title="Delete program"
+                              title={`Delete ${template.event.singular.toLowerCase()}`}
                             >
                               {Icons.trash}
                             </button>

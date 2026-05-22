@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../api/authService';
 import { useToast } from '../components/Toast';
+import { DEFAULT_EVENT_TEMPLATE, getEventTemplate } from '../config/eventTemplates';
 import '../styles/Auth.css';
 
 function Register() {
   const navigate = useNavigate();
   const toast = useToast();
+  const template = getEventTemplate(DEFAULT_EVENT_TEMPLATE);
   const [formData, setFormData] = useState({
     churchName: '',
     branchName: '',
@@ -53,11 +55,11 @@ function Register() {
     const newErrors = {};
 
     if (!formData.churchName.trim()) {
-      newErrors.churchName = 'Church name is required';
+      newErrors.churchName = `${template.organization.nameLabel} is required`;
     }
 
     if (!formData.branchName.trim()) {
-      newErrors.branchName = 'Branch name is required';
+      newErrors.branchName = `${template.organization.branchLabel} is required`;
     }
 
     if (!formData.email.trim()) {
@@ -122,9 +124,9 @@ function Register() {
 
           <div className="auth-panel-content">
             <span className="auth-panel-pill">Start in minutes</span>
-            <h1>Give your church a cleaner way to welcome people.</h1>
+            <h1>Give your organization a cleaner way to welcome people.</h1>
             <p>
-              Create programs, collect visitor information, prevent duplicate scans,
+              Create events, collect attendee information, prevent duplicate scans,
               and keep attendance records organized from day one.
             </p>
           </div>
@@ -139,34 +141,34 @@ function Register() {
         <main className="auth-modern-card auth-register-card">
           <div className="auth-modern-header">
             <p className="auth-modern-kicker">Create account</p>
-            <h2>Set up your church workspace</h2>
-            <span>Tell us about your church so Ingather can prepare your dashboard.</span>
+            <h2>Set up your event workspace</h2>
+            <span>Tell us about your organization so Ingather can prepare your dashboard.</span>
           </div>
 
           <form className="auth-modern-form" onSubmit={handleSubmit}>
             <div className="auth-modern-grid">
               <div className="auth-modern-field">
-                <label htmlFor="churchName">Church name</label>
+                <label htmlFor="churchName">{template.organization.nameLabel}</label>
                 <input
                   type="text"
                   id="churchName"
                   name="churchName"
                   value={formData.churchName}
                   onChange={handleChange}
-                  placeholder="e.g., Grace Assembly"
+                  placeholder="e.g., Ingather Labs"
                 />
                 {errors.churchName && <span className="error">{errors.churchName}</span>}
               </div>
 
               <div className="auth-modern-field">
-                <label htmlFor="branchName">Branch name</label>
+                <label htmlFor="branchName">{template.organization.branchLabel}</label>
                 <input
                   type="text"
                   id="branchName"
                   name="branchName"
                   value={formData.branchName}
                   onChange={handleChange}
-                  placeholder="e.g., Lekki Branch"
+                  placeholder="e.g., Lagos Team"
                 />
                 {errors.branchName && <span className="error">{errors.branchName}</span>}
               </div>
@@ -180,7 +182,7 @@ function Register() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="admin@church.com"
+                placeholder="admin@organization.com"
               />
               {errors.email && <span className="error">{errors.email}</span>}
             </div>
@@ -214,7 +216,7 @@ function Register() {
                   )}
                 </span>
                 <span>
-                  <strong>{logoPreview ? 'Logo selected' : 'Add church logo'}</strong>
+                  <strong>{logoPreview ? 'Logo selected' : 'Add organization logo'}</strong>
                   <small>Optional, JPG or PNG</small>
                 </span>
               </label>

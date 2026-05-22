@@ -122,7 +122,7 @@ function VerifyEmail() {
             <span className="auth-panel-pill">Email verification</span>
             <h1>Confirm the workspace belongs to you.</h1>
             <p>
-              One quick code protects your church data before your account is
+              One quick code protects your organization data before your account is
               activated.
             </p>
           </div>

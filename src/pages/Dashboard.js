@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getDashboardBootstrap, getDashboardStats, deleteProgram } from '../api/programService';
-import { getCurrentChurch } from '../api/authService';
+import { getCurrentChurch, updateOrganizationType } from '../api/authService';
+import OnboardingModal from '../components/OnboardingModal';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
 
 /* ============================================
@@ -579,15 +581,18 @@ function Dashboard() {
     name: '',
     branch: '',
     email: '',
-    logo: null
+    logo: null,
+    organizationType: ''
   });
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
   const toast = useToast();
+  const { template, setTemplateKey } = useEventTemplate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
@@ -685,12 +690,49 @@ function Dashboard() {
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   const applyChurchData = (church) => {
+    const organizationType = church.organizationType || '';
+
     setChurchData({
       name: church.churchName,
       branch: church.branchName,
       email: church.email || '',
-      logo: church.logoUrl
+      logo: church.logoUrl,
+      organizationType
     });
+
+    if (organizationType) {
+      setTemplateKey(organizationType);
+      setShowOnboarding(false);
+    } else {
+      setTemplateKey('general');
+      setShowOnboarding(true);
+    }
+  };
+
+  const updateStoredChurch = (organizationType) => {
+    try {
+      const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
+      localStorage.setItem('church', JSON.stringify({
+        ...storedChurch,
+        organizationType
+      }));
+    } catch (error) {
+      localStorage.setItem('church', JSON.stringify({ organizationType }));
+    }
+  };
+
+  const handleOnboardingSelect = async (organizationType) => {
+    const response = await updateOrganizationType(organizationType);
+    const savedType = response.church?.organizationType || organizationType;
+
+    setTemplateKey(savedType);
+    updateStoredChurch(savedType);
+    setChurchData(prev => ({
+      ...prev,
+      organizationType: savedType
+    }));
+    setShowOnboarding(false);
+    toast.success('Workspace personalized successfully!');
   };
 
   const applyDashboardStats = (stats) => {
@@ -833,16 +875,16 @@ function Dashboard() {
 
   const handleDeleteProgram = (program) => {
     toast.confirm(
-      `Are you sure you want to delete "${program.title}"? This will permanently remove all its data.`,
+      template.dashboard.deleteConfirm.replace('{title}', program.title),
       async () => {
         try {
           await deleteProgram(program.id);
           setPrograms(prev => prev.filter(p => p.id !== program.id));
           // Refresh stats after delete
           setDateRange(prev => ({ ...prev }));
-          toast.success('Program deleted successfully!');
+          toast.success(template.dashboard.deleteSuccess);
         } catch (error) {
-          toast.error(error.response?.data?.error || 'Failed to delete program.');
+          toast.error(error.response?.data?.error || template.dashboard.deleteFailure);
         }
       }
     );
@@ -953,11 +995,11 @@ function Dashboard() {
           </a>
           <a href="/create-program" className="nav-item" id="nav-create-program" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
-            <span>Create Program</span>
+            <span>{template.event.create}</span>
           </a>
           <a href="/programs" className="nav-item" id="nav-all-programs" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>All Program</span>
+            <span>{template.event.all}</span>
           </a>
           <a href="/settings" className="nav-item" id="nav-settings" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.settings}</span>
@@ -978,7 +1020,7 @@ function Dashboard() {
           </button>
         </div>
 
-        {/* Church Profile */}
+        {/* Workspace Profile */}
         <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
           <div className="sidebar-profile-avatar">
             {churchData.logo ? (
@@ -1019,7 +1061,7 @@ function Dashboard() {
               <span></span>
               <span></span>
             </button>
-            <span className="navbar-church-name">{churchData.name || 'Deeper Life Church'}</span>
+            <span className="navbar-church-name">{churchData.name || 'Ingather Workspace'}</span>
           </div>
           <div className="navbar-right">
             {/* Day/Night Mode Toggle */}
@@ -1030,13 +1072,13 @@ function Dashboard() {
               </span>
             </button>
 
-            {/* Create New Program CTA */}
+            {/* Create New Event CTA */}
             <button
               className="navbar-cta"
               onClick={() => window.location.href = '/create-program'}
               id="btn-create-program"
             >
-              <span>Create New Program</span>
+              <span>{template.event.createNew}</span>
               {Icons.plus}
             </button>
 
@@ -1163,16 +1205,16 @@ function Dashboard() {
 
           {/* Stat Cards */}
           <div className="stats-grid">
-            {/* Total Programs */}
+            {/* Total Events */}
             <div className="stat-card" id="stat-total-programs">
               <div className="stat-icon">
                 {Icons.totalPrograms}
               </div>
               <div className="stat-info">
-                <span className="stat-label">Total Programs</span>
+                <span className="stat-label">{template.dashboard.totalTitle}</span>
                 <h2 className="stat-value">{totalPrograms}</h2>
               </div>
-              <div className="stat-card-info" title="Total number of programs created">
+              <div className="stat-card-info" title={`Total number of ${template.event.plural.toLowerCase()} created`}>
                 {Icons.info}
               </div>
             </div>
@@ -1191,16 +1233,16 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Upcoming Programs */}
+            {/* Upcoming Events */}
             <div className="stat-card" id="stat-upcoming-programs">
               <div className="stat-icon">
                 {Icons.upcomingPrograms}
               </div>
               <div className="stat-info">
-                <span className="stat-label">Upcoming Programs</span>
+                <span className="stat-label">{template.dashboard.upcomingTitle}</span>
                 <h2 className="stat-value">{upcomingPrograms}</h2>
               </div>
-              <div className="stat-card-info" title="Programs scheduled in the future">
+              <div className="stat-card-info" title={`${template.event.plural} scheduled in the future`}>
                 {Icons.info}
               </div>
             </div>
@@ -1211,7 +1253,7 @@ function Dashboard() {
             {/* Attendance Over Time - Bar Chart */}
             <div className="chart-card" id="chart-attendance-overtime">
               <div className="chart-header">
-                <h3 className="chart-title">Attendance Overtime</h3>
+                <h3 className="chart-title">Attendance Over Time</h3>
                 <span className="chart-filter-label">{presetButtonText}</span>
               </div>
               <div className="bar-chart-container">
@@ -1225,10 +1267,10 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* Recent Programs */}
+          {/* Recent Events */}
           <div className="programs-section" id="recent-programs">
             <div className="section-header">
-              <h2>Recent Programs</h2>
+              <h2>{template.event.recent}</h2>
               <div className="filter-tabs">
                 <button
                   className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
@@ -1268,7 +1310,7 @@ function Dashboard() {
               <table className="programs-table" id="programs-table">
                 <thead>
                   <tr>
-                    <th>Program Title</th>
+                    <th>{template.event.titleLabel}</th>
                     <th>Date</th>
                     <th>Time</th>
                     <th>Status</th>
@@ -1282,14 +1324,14 @@ function Dashboard() {
                     <tr>
                       <td colSpan="7">
                         <div className="empty-state">
-                          <p>No programs found for this filter.</p>
+                          <p>{template.dashboard.emptyState}</p>
                         </div>
                       </td>
                     </tr>
                   ) : (
                     filteredPrograms.map(program => (
                       <tr key={program.id}>
-                        <td className="program-title-cell" data-label="Program">
+                        <td className="program-title-cell" data-label={template.event.singular}>
                           {program.title}
                         </td>
                         <td data-label="Date">{formatDate(program.date)}</td>
@@ -1319,7 +1361,7 @@ function Dashboard() {
                             <button
                               className="btn-action btn-delete"
                               onClick={() => handleDeleteProgram(program)}
-                              title="Delete program"
+                              title={`Delete ${template.event.singular.toLowerCase()}`}
                               id={`btn-delete-${program.id}`}
                             >
                               {Icons.trash}
@@ -1335,6 +1377,7 @@ function Dashboard() {
           </div>
         </div>
       </main>
+      {showOnboarding && <OnboardingModal onSelect={handleOnboardingSelect} />}
     </div>
   );
 }

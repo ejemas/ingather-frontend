@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { login } from '../api/authService';
 import { useToast } from '../components/Toast';
+import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, eventTemplates } from '../config/eventTemplates';
 import '../styles/Auth.css';
 
 function Login() {
@@ -71,6 +72,11 @@ function Login() {
 
       localStorage.setItem('token', response.token);
       localStorage.setItem('church', JSON.stringify(response.church));
+      if (response.church?.organizationType && eventTemplates[response.church.organizationType]) {
+        localStorage.setItem(EVENT_TEMPLATE_STORAGE_KEY, response.church.organizationType);
+      } else {
+        localStorage.setItem(EVENT_TEMPLATE_STORAGE_KEY, DEFAULT_EVENT_TEMPLATE);
+      }
 
       window.location.href = '/dashboard';
     } catch (error) {
@@ -107,18 +113,18 @@ function Login() {
           </button>
 
           <div className="auth-panel-content">
-            <span className="auth-panel-pill">Live church attendance</span>
+            <span className="auth-panel-pill">Live event intelligence</span>
             <h1>Welcome back to your event command center.</h1>
             <p>
-              Track scans, visitor forms, gifting, and program reports from one
-              calm dashboard built for church teams.
+              Track scans, attendee forms, gifting, and event reports from one
+              calm dashboard built for event organizers.
             </p>
           </div>
 
           <div className="auth-panel-preview" aria-hidden="true">
             <div className="preview-card preview-card-main">
-              <span>Current Program</span>
-              <strong>Sunday Service</strong>
+              <span>Current Event</span>
+              <strong>Builder Summit</strong>
               <div className="preview-bars">
                 <i></i><i></i><i></i><i></i>
               </div>
@@ -150,7 +156,7 @@ function Login() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="admin@church.com"
+                placeholder="admin@organization.com"
               />
               {errors.email && <span className="error">{errors.email}</span>}
             </div>

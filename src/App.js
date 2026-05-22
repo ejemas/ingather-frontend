@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
+import { EventTemplateProvider } from './context/EventTemplateContext';
 import './styles/globals.css';
 
 const Settings = lazy(() => import('./pages/Settings'));
@@ -27,26 +28,28 @@ function RouteFallback() {
 function App() {
   return (
     <ToastProvider>
-      <Router>
-        <div className="App">
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/programs" element={<AllPrograms />} />
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/create-program" element={<CreateProgram />} />
-              <Route path="/program/:id" element={<ProgramDetail />} />
-              <Route path="/scan/:programId" element={<ScanPage />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-            </Routes>
-          </Suspense>
-        </div>
-      </Router>
+      <EventTemplateProvider>
+        <Router>
+          <div className="App">
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/programs" element={<AllPrograms />} />
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/create-program" element={<CreateProgram />} />
+                <Route path="/program/:id" element={<ProgramDetail />} />
+                <Route path="/scan/:programId" element={<ScanPage />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Routes>
+            </Suspense>
+          </div>
+        </Router>
+      </EventTemplateProvider>
     </ToastProvider>
   );
 }

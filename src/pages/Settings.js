@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getCurrentChurch } from '../api/authService';
+import { getCurrentChurch, updateOrganizationType } from '../api/authService';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
 import '../styles/Settings.css';
 
@@ -61,18 +62,20 @@ function Settings() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialTab = urlParams.get('tab') === 'notifications' ? 'notifications' : 'church';
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [churchData, setChurchData] = useState({ churchName: '', branchName: '', email: '', location: '', logoUrl: '' });
+  const [churchData, setChurchData] = useState({ churchName: '', branchName: '', email: '', location: '', logoUrl: '', organizationType: '' });
   const [formData, setFormData] = useState({ churchName: '', branchName: '', location: '' });
   const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', repeatPassword: '' });
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [templateSaving, setTemplateSaving] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [logoPreview, setLogoPreview] = useState(null);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
   const toast = useToast();
+  const { template, templateKey, templateOptions, setTemplateKey } = useEventTemplate();
   const logoInputRef = React.useRef(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -112,7 +115,7 @@ function Settings() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  // Fetch church data
+  // Fetch workspace data
   useEffect(() => {
     fetchChurchData();
   }, []);
@@ -127,8 +130,14 @@ function Settings() {
         branchName: church.branchName,
         email: church.email,
         location: church.location,
-        logoUrl: church.logoUrl
+        logoUrl: church.logoUrl,
+        organizationType: church.organizationType || ''
       });
+      if (church.organizationType) {
+        setTemplateKey(church.organizationType);
+      } else {
+        setTemplateKey('general');
+      }
       setFormData({
         churchName: church.churchName,
         branchName: church.branchName,
@@ -138,7 +147,7 @@ function Settings() {
       fetchNotifications();
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching church data:', error);
+      console.error('Error fetching workspace data:', error);
       if (error.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
       setLoading(false);
     }
@@ -171,6 +180,40 @@ function Settings() {
 
   const handlePasswordChange = (e) => {
     setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+  };
+
+  const handleTemplateChange = async (e) => {
+    const nextTemplateKey = e.target.value;
+    const previousTemplateKey = templateKey;
+
+    setTemplateSaving(true);
+    setTemplateKey(nextTemplateKey);
+
+    try {
+      const response = await updateOrganizationType(nextTemplateKey);
+      const savedType = response.church?.organizationType || nextTemplateKey;
+
+      setTemplateKey(savedType);
+      setChurchData(prev => ({ ...prev, organizationType: savedType }));
+
+      try {
+        const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
+        localStorage.setItem('church', JSON.stringify({
+          ...storedChurch,
+          organizationType: savedType
+        }));
+      } catch (storageError) {
+        localStorage.setItem('church', JSON.stringify({ organizationType: savedType }));
+      }
+
+      toast.success('Event template updated successfully!');
+    } catch (error) {
+      setTemplateKey(previousTemplateKey);
+      const errorMessage = error.response?.data?.error || 'Failed to update event template.';
+      toast.error(errorMessage);
+    } finally {
+      setTemplateSaving(false);
+    }
   };
 
   /* ---- Logo upload: resize to 200x200, convert to base64 ---- */
@@ -216,7 +259,7 @@ function Settings() {
     e.target.value = '';
   };
 
-  /* ---- Save Church Info ---- */
+  /* ---- Save Workspace Info ---- */
   const handleSaveChurch = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -239,7 +282,8 @@ function Settings() {
         churchName: response.data.church.churchName,
         branchName: response.data.church.branchName,
         location: response.data.church.location,
-        logoUrl: response.data.church.logoUrl
+        logoUrl: response.data.church.logoUrl,
+        organizationType: response.data.church.organizationType || churchData.organizationType
       });
       setLogoPreview(null); // Clear preview since it's now the real logo
       const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
@@ -248,9 +292,10 @@ function Settings() {
         churchName: response.data.church.churchName,
         branchName: response.data.church.branchName,
         location: response.data.church.location,
-        logoUrl: response.data.church.logoUrl
+        logoUrl: response.data.church.logoUrl,
+        organizationType: response.data.church.organizationType || churchData.organizationType
       }));
-      toast.success('Settings updated successfully!');
+      toast.success('Workspace settings updated successfully!');
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Failed to update settings.';
       toast.error(errorMessage);
@@ -341,7 +386,7 @@ function Settings() {
 
   /* ===== SUB-NAV TABS ===== */
   const tabs = [
-    { key: 'church', label: 'Church Information', icon: Icons.user },
+    { key: 'church', label: 'Workspace Information', icon: Icons.user },
     { key: 'password', label: 'Password', icon: Icons.lock },
     { key: 'notifications', label: 'Notification', icon: Icons.bell },
   ];
@@ -360,8 +405,8 @@ function Settings() {
         </div>
         <nav className="sidebar-nav">
           <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>Create Program</span></a>
-          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>All Program</span></a>
+          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>{template.event.create}</span></a>
+          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>{template.event.all}</span></a>
           <a href="/settings" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
         </nav>
         <div className="sidebar-footer">
@@ -456,10 +501,10 @@ function Settings() {
             {/* Dynamic Content */}
             <div className="settings-content">
 
-              {/* ===== CHURCH INFORMATION ===== */}
+              {/* ===== WORKSPACE INFORMATION ===== */}
               {activeTab === 'church' && (
                 <>
-                  <h2 className="settings-content-title">Manage your Church Information</h2>
+                  <h2 className="settings-content-title">Manage your Workspace Information</h2>
                   <div className="settings-card">
                     <form onSubmit={handleSaveChurch}>
                       {/* Avatar */}
@@ -481,9 +526,24 @@ function Settings() {
                         />
                       </div>
 
+                      <div className="settings-field">
+                        <label className="settings-field-label" htmlFor="eventTemplate">Event template</label>
+                        <select
+                          className="settings-field-input"
+                          id="eventTemplate"
+                          value={templateKey}
+                          onChange={handleTemplateChange}
+                          disabled={templateSaving}
+                        >
+                          {templateOptions.map(option => (
+                            <option key={option.id} value={option.id}>{option.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       {/* Fields */}
                       <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="churchName">Church Name</label>
+                        <label className="settings-field-label" htmlFor="churchName">{template.organization.nameLabel}</label>
                         <input
                           className="settings-field-input"
                           type="text"
@@ -491,12 +551,12 @@ function Settings() {
                           name="churchName"
                           value={formData.churchName}
                           onChange={handleFormChange}
-                          placeholder="Enter church name"
+                          placeholder="Enter organization name"
                           required
                         />
                       </div>
                       <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="branchName">Branch Name</label>
+                        <label className="settings-field-label" htmlFor="branchName">{template.organization.branchLabel}</label>
                         <input
                           className="settings-field-input"
                           type="text"
@@ -504,7 +564,7 @@ function Settings() {
                           name="branchName"
                           value={formData.branchName}
                           onChange={handleFormChange}
-                          placeholder="Enter branch name"
+                          placeholder="Enter team, branch, or location"
                           required
                         />
                       </div>

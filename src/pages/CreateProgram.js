@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
+import { useEventTemplate } from '../context/EventTemplateContext';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
 import '../styles/Dashboard.css';
 import '../styles/CreateProgram.css';
@@ -117,6 +118,17 @@ const generateTimeOptions = () => {
 
 const timeOptions = generateTimeOptions();
 
+const dataFieldLabels = {
+  fullName: 'Full Name',
+  address: 'Address',
+  firstTimer: 'First-Timer',
+  phoneNumber: 'Phone Number',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age',
+  sex: 'Gender'
+};
+
 /* ============================================
    MAIN COMPONENT
    ============================================ */
@@ -183,6 +195,7 @@ function CreateProgram() {
     return localStorage.getItem('ingather-theme') === 'dark';
   });
   const toast = useToast();
+  const { template, setTemplateKey } = useEventTemplate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
@@ -271,6 +284,7 @@ function CreateProgram() {
         email: church.email || '',
         logo: church.logoUrl
       });
+      setTemplateKey(church.organizationType || 'general');
       // Fetch unread notification count
       try {
         const axios = (await import('axios')).default;
@@ -283,7 +297,7 @@ function CreateProgram() {
         console.error('Error fetching unread count:', err);
       }
     } catch (error) {
-      console.error('Error fetching church data:', error);
+      console.error('Error fetching workspace data:', error);
     }
   };
 
@@ -543,7 +557,7 @@ function CreateProgram() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.programTitle.trim()) newErrors.programTitle = 'Program title is required';
+    if (!formData.programTitle.trim()) newErrors.programTitle = `${template.event.titleLabel} is required`;
     if (!formData.date) newErrors.date = 'Date is required';
     if (!formData.startTime) newErrors.startTime = 'Start time is required';
     if (!formData.endTime) newErrors.endTime = 'End time is required';
@@ -629,13 +643,13 @@ function CreateProgram() {
         personalizedBackground,
         personalizedLogo
       });
-      toast.success('Program created successfully!');
+      toast.success(`${template.event.singular} created successfully!`);
       setTimeout(() => {
         window.location.href = `/program/${response.program.id}`;
       }, 1500);
     } catch (error) {
-      console.error('Create program error:', error);
-      toast.error(error.response?.data?.error || 'Failed to create program. Please try again.');
+      console.error('Create event error:', error);
+      toast.error(error.response?.data?.error || `Failed to create ${template.event.singular.toLowerCase()}. Please try again.`);
       setIsSubmitting(false);
     }
   };
@@ -675,11 +689,11 @@ function CreateProgram() {
           </a>
           <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
-            <span>Create Program</span>
+            <span>{template.event.create}</span>
           </a>
           <a href="/programs" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>All Program</span>
+            <span>{template.event.all}</span>
           </a>
           <a href="/settings" className="nav-item" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.settings}</span>
@@ -739,7 +753,7 @@ function CreateProgram() {
               <span></span>
               <span></span>
             </button>
-            <span className="navbar-church-name">Create Program</span>
+            <span className="navbar-church-name">{template.event.create}</span>
           </div>
           <div className="navbar-right">
             <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -784,24 +798,24 @@ function CreateProgram() {
         {/* Page Content */}
         <div className="dashboard-content">
           <div className="cp-page-title">
-            <h2>Create A New Program</h2>
+            <h2>Create A New {template.event.singular}</h2>
           </div>
 
           <form className="create-program-form" onSubmit={handleSubmit}>
             {/* Basic Information Card */}
             <div className="form-card" id="basic-info-card">
               <h3 className="card-title">Basic Information</h3>
-              <p className="card-description">Set up a new event and configure Date and Time of event</p>
+              <p className="card-description">Set up a new {template.event.singular.toLowerCase()} and configure date and time.</p>
 
               <div className="form-group">
-                <label htmlFor="programTitle">Program Title</label>
+                <label htmlFor="programTitle">{template.event.titleLabel}</label>
                 <input
                   type="text"
                   id="programTitle"
                   name="programTitle"
                   value={formData.programTitle}
                   onChange={handleChange}
-                  placeholder="e.g., Sunday Service, Revival Hub"
+                  placeholder={template.event.titlePlaceholder}
                   className={`form-input ${errors.programTitle ? 'input-error' : ''}`}
                 />
                 {errors.programTitle && <span className="error-text">{errors.programTitle}</span>}
@@ -952,7 +966,7 @@ function CreateProgram() {
               ) : (
                 <div className="personalized-flyer-builder">
                   <div className="personalized-rule-callout">
-                    Personalized flyers require Collect Data mode and Full Name. Ingather has enabled both for this program.
+                    Personalized flyers require Collect Data mode and Full Name. Ingather has enabled both for this {template.event.singular.toLowerCase()}.
                   </div>
 
                   <div className="form-group">
@@ -1072,7 +1086,7 @@ function CreateProgram() {
                         )}
                       </span>
                       <span className="flyer-upload-copy">
-                        <strong>{personalizedLogoProcessing ? 'Compressing logo...' : 'Add church or event logo'}</strong>
+                        <strong>{personalizedLogoProcessing ? 'Compressing logo...' : 'Add organization or event logo'}</strong>
                         <span>Optional. This logo appears on the personalized card and downloaded flyer.</span>
                       </span>
                     </button>
@@ -1141,7 +1155,7 @@ function CreateProgram() {
                     </div>
                   </div>
                   <p className="option-detail">
-                    Track attendance and collect visitor information. Users fill a form after scanning. You can enable gifting to incentivize participation.
+                    Track attendance and collect attendee information. Users fill a form after scanning. You can enable gifting to incentivize participation.
                   </p>
                 </div>
               </div>
@@ -1161,7 +1175,7 @@ function CreateProgram() {
                       onClick={() => handleDataFieldToggle(field)}
                     >
                       <span className="checkbox-label">
-                        {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        {dataFieldLabels[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                       </span>
                       <span className="checkbox-icon">
                         {formData.dataFields[field] ? (
@@ -1240,7 +1254,7 @@ function CreateProgram() {
                 className="btn-create"
                 disabled={isSubmitting || flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing}
               >
-                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing) ? 'Preparing Flyer...' : 'Create Program'}
+                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing) ? 'Preparing Flyer...' : template.event.create}
               </button>
             </div>
           </form>
