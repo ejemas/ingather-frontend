@@ -608,15 +608,26 @@
 }
 
 .auth-modern-extras a,
-.auth-modern-switch a {
+.auth-modern-switch a,
+.auth-modern-link-button {
   color: #e8590c;
   font-weight: 800;
   text-decoration: none;
 }
 
 .auth-modern-extras a:hover,
-.auth-modern-switch a:hover {
+.auth-modern-switch a:hover,
+.auth-modern-link-button:hover {
   text-decoration: underline;
+}
+
+.auth-modern-link-button {
+  border: 0;
+  background: transparent;
+  padding: 0 0 0 4px;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
 }
 
 .auth-modern-checkbox {

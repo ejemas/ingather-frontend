@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { login } from '../api/authService';
 import { useToast } from '../components/Toast';
+import SignupIntentModal from '../components/SignupIntentModal';
 import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, eventTemplates } from '../config/eventTemplates';
 import '../styles/Auth.css';
 
@@ -18,6 +19,7 @@ function Login() {
   const [errors, setErrors] = useState({});
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSignupIntent, setShowSignupIntent] = useState(false);
   const [successMessage] = useState(
     location.state?.verified ? 'Email verified successfully! You can now login.' :
       location.state?.passwordReset ? 'Password reset successfully! Login with your new password.' : ''
@@ -35,6 +37,10 @@ function Login() {
         [name]: ''
       });
     }
+  };
+
+  const handleSignupIntentSelect = (intent) => {
+    window.location.href = `/register?type=${intent}`;
   };
 
   const validateForm = () => {
@@ -198,11 +204,23 @@ function Login() {
 
             <p className="auth-modern-switch">
               New to Ingather?
-              <a href="/register"> Create an account</a>
+              <button
+                type="button"
+                className="auth-modern-link-button"
+                onClick={() => setShowSignupIntent(true)}
+              >
+                Create an account
+              </button>
             </p>
           </form>
         </main>
       </div>
+      {showSignupIntent && (
+        <SignupIntentModal
+          onClose={() => setShowSignupIntent(false)}
+          onSelect={handleSignupIntentSelect}
+        />
+      )}
     </div>
   );
 }

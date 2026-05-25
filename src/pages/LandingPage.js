@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import SignupIntentModal from '../components/SignupIntentModal';
 import '../styles/LandingPage.css';
 
 const Icon = {
@@ -78,8 +79,18 @@ const segments = [
 ];
 
 function LandingPage() {
+  const [showSignupIntent, setShowSignupIntent] = useState(false);
+
   const goTo = (path) => {
     window.location.href = path;
+  };
+
+  const openSignupIntent = () => {
+    setShowSignupIntent(true);
+  };
+
+  const handleSignupIntentSelect = (intent) => {
+    goTo(`/register?type=${intent}`);
   };
 
   const scrollTo = (id) => {
@@ -103,7 +114,7 @@ function LandingPage() {
             <button type="button" className="lp-btn lp-btn-ghost" onClick={() => goTo('/login')}>
               Login
             </button>
-            <button type="button" className="lp-btn lp-btn-primary" onClick={() => goTo('/register')}>
+            <button type="button" className="lp-btn lp-btn-primary" onClick={openSignupIntent}>
               Start free
             </button>
           </div>
@@ -126,7 +137,7 @@ function LandingPage() {
               manage frictionless check-ins, and engage participants in real-time.
             </p>
             <div className="lp-hero-actions">
-              <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={() => goTo('/register')}>
+              <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
                 Create your first event
                 <span className="lp-btn-icon">{Icon.arrow}</span>
               </button>
@@ -208,7 +219,7 @@ function LandingPage() {
               <span>Ingather Free</span>
               <strong>$0</strong>
               <p>No credit card required.</p>
-              <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={() => goTo('/register')}>
+              <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
                 Get started free
               </button>
             </div>
@@ -219,7 +230,7 @@ function LandingPage() {
           <div className="lp-container lp-final-inner">
             <h2>Replace the attendance sheet with intelligent check-ins.</h2>
             <p>Set up your organization workspace and launch your first event in minutes.</p>
-            <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={() => goTo('/register')}>
+            <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
               Start with Ingather
               <span className="lp-btn-icon">{Icon.arrow}</span>
             </button>
@@ -234,6 +245,12 @@ function LandingPage() {
           <small>&copy; 2026 Ingather. All rights reserved.</small>
         </div>
       </footer>
+      {showSignupIntent && (
+        <SignupIntentModal
+          onClose={() => setShowSignupIntent(false)}
+          onSelect={handleSignupIntentSelect}
+        />
+      )}
     </div>
   );
 }

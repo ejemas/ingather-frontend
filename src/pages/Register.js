@@ -1,14 +1,28 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { register } from '../api/authService';
 import { useToast } from '../components/Toast';
-import { DEFAULT_EVENT_TEMPLATE, getEventTemplate } from '../config/eventTemplates';
+import { SIGNUP_INTENT_STORAGE_KEY } from '../components/SignupIntentModal';
+import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, getEventTemplate } from '../config/eventTemplates';
 import '../styles/Auth.css';
 
 function Register() {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
-  const template = getEventTemplate(DEFAULT_EVENT_TEMPLATE);
+  const signupIntent = useMemo(() => {
+    const queryType = new URLSearchParams(location.search).get('type');
+    if (queryType === 'church' || queryType === 'general') return queryType;
+
+    try {
+      const storedIntent = localStorage.getItem(SIGNUP_INTENT_STORAGE_KEY);
+      return storedIntent === 'church' ? 'church' : 'general';
+    } catch (error) {
+      return 'general';
+    }
+  }, [location.search]);
+  const templateKey = signupIntent === 'church' ? 'church' : DEFAULT_EVENT_TEMPLATE;
+  const template = getEventTemplate(templateKey);
   const [formData, setFormData] = useState({
     churchName: '',
     branchName: '',
@@ -21,6 +35,15 @@ function Register() {
 
   const [errors, setErrors] = useState({});
   const [logoPreview, setLogoPreview] = useState(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIGNUP_INTENT_STORAGE_KEY, signupIntent);
+      localStorage.setItem(EVENT_TEMPLATE_STORAGE_KEY, templateKey);
+    } catch (error) {
+      // Local storage can be unavailable in restricted browser contexts.
+    }
+  }, [signupIntent, templateKey]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -96,7 +119,10 @@ function Register() {
     }
 
     try {
-      await register(formData);
+      await register({
+        ...formData,
+        organizationType: signupIntent === 'church' ? 'church' : undefined
+      });
 
       toast.success('Registration successful! Please check your email for the verification code.');
       navigate('/verify-email', { state: { email: formData.email } });
@@ -141,7 +167,7 @@ function Register() {
         <main className="auth-modern-card auth-register-card">
           <div className="auth-modern-header">
             <p className="auth-modern-kicker">Create account</p>
-            <h2>Set up your event workspace</h2>
+            <h2>Set up your {template.organization.workspaceLabel.toLowerCase()}</h2>
             <span>Tell us about your organization so Ingather can prepare your dashboard.</span>
           </div>
 
@@ -155,7 +181,7 @@ function Register() {
                   name="churchName"
                   value={formData.churchName}
                   onChange={handleChange}
-                  placeholder="e.g., Ingather Labs"
+                  placeholder={signupIntent === 'church' ? 'e.g., Grace Assembly' : 'e.g., Ingather Labs'}
                 />
                 {errors.churchName && <span className="error">{errors.churchName}</span>}
               </div>
@@ -168,7 +194,7 @@ function Register() {
                   name="branchName"
                   value={formData.branchName}
                   onChange={handleChange}
-                  placeholder="e.g., Lagos Team"
+                  placeholder={signupIntent === 'church' ? 'e.g., Lekki Branch' : 'e.g., Lagos Team'}
                 />
                 {errors.branchName && <span className="error">{errors.branchName}</span>}
               </div>

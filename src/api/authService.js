@@ -7,7 +7,8 @@ export const register = async (data) => {
     email: data.email,
     password: data.password,
     location: data.location,
-    logoUrl: data.logoUrl
+    logoUrl: data.logoUrl,
+    organizationType: data.organizationType
   });
   return response.data;
 };
