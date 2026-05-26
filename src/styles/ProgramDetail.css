@@ -336,8 +336,9 @@
 
 .pd-sponsored-insights-stack {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   gap: 20px;
+  align-items: stretch;
 }
 
 .pd-sponsored-insights-stack .pd-chart-area {
@@ -551,7 +552,7 @@
 
 .pd-qr-card-horizontal {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(240px, 0.9fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(190px, 240px) minmax(240px, 0.9fr);
   grid-template-areas:
     "heading qr actions"
     "details qr actions";
@@ -570,6 +571,10 @@
 .pd-qr-card-horizontal .pd-qr-canvas {
   grid-area: qr;
   justify-self: center;
+  align-self: center;
+  width: 100%;
+  display: flex;
+  justify-content: center;
   margin: 0;
 }
 
@@ -1071,6 +1076,10 @@
 
   .pd-sponsored-insights-stack .pd-chart-area {
     height: 280px;
+  }
+
+  .pd-sponsored-insights-stack {
+    grid-template-columns: 1fr;
   }
 
   .pd-qr-card-horizontal {
