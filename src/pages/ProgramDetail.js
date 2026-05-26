@@ -714,6 +714,85 @@ function ProgramDetail() {
     );
   }
 
+  const hasSponsorDashboard = sponsorAnalytics?.sponsorCount > 0;
+
+  const chartCard = (
+    <div className="pd-chart-card">
+      <h3 className="pd-chart-title">Attendance Over Time</h3>
+      <div className="pd-chart-area">
+        {(() => {
+          const startIdx = chartPage * BARS_PER_PAGE;
+          const slicedData = attendanceData.slice(startIdx, startIdx + BARS_PER_PAGE);
+          return <AttendanceBarChart data={slicedData} />;
+        })()}
+      </div>
+      <div className="pd-chart-pagination">
+        <button
+          title="Previous"
+          disabled={chartPage === 0}
+          onClick={() => setChartPage(p => Math.max(0, p - 1))}
+        >{Icons.arrowLeftSmall}</button>
+        <button
+          title="Next"
+          disabled={(chartPage + 1) * BARS_PER_PAGE >= attendanceData.length}
+          onClick={() => setChartPage(p => p + 1)}
+        >{Icons.arrowRight}</button>
+      </div>
+    </div>
+  );
+
+  const qrCodeCard = (
+    <div className={`pd-qr-card ${hasSponsorDashboard ? 'pd-qr-card-horizontal' : ''}`}>
+      <div className="pd-qr-card-heading">
+        <h3 className="pd-qr-card-title">QR Code</h3>
+        <p className="pd-qr-card-sub">Deploy this QR code at your event entrance or check-in desk</p>
+      </div>
+      <div className="pd-qr-canvas" id="qr-print-area">
+        <React.Suspense fallback={<div style={{ width: 160, height: 160 }} aria-hidden="true"></div>}>
+          <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
+        </React.Suspense>
+      </div>
+      <div className="pd-qr-card-details">
+        <h4 className="pd-qr-program-title">{program.title}</h4>
+        <p className="pd-qr-scan-text">Scan to check in</p>
+        <div className="pd-qr-link-row">
+          <p className="pd-qr-link">{program.qrCodeUrl}</p>
+          <button
+            className="pd-copy-btn"
+            title="Copy link"
+            onClick={(e) => {
+              navigator.clipboard.writeText(program.qrCodeUrl);
+              const btn = e.currentTarget;
+              btn.classList.add('copied');
+              setTimeout(() => btn.classList.remove('copied'), 1500);
+            }}
+          >
+            <svg className="copy-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+              <path d="M10.5 5.5V3.5a1.5 1.5 0 00-1.5-1.5H3.5A1.5 1.5 0 002 3.5V9A1.5 1.5 0 003.5 10.5H5.5" />
+            </svg>
+            <svg className="check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3,8 7,12 13,4" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="pd-qr-card-actions">
+        <button className="pd-qr-btn-download" onClick={handleDownloadQR}>
+          {Icons.download} Download QR Code
+        </button>
+        <button className="pd-qr-btn-print" onClick={handlePrintQR}>
+          {Icons.printer} Print QR Code
+        </button>
+        {program.isActive ? (
+          <span className="pd-qr-status active"><span className="status-dot"></span> QR Code is Active - Accepting Scans</span>
+        ) : (
+          <span className="pd-qr-status inactive"><span className="status-dot"></span> QR Code is Disabled</span>
+        )}
+      </div>
+    </div>
+  );
+
   /* ---- MAIN RENDER ---- */
   return (
     <div className="dashboard">
@@ -949,77 +1028,17 @@ function ProgramDetail() {
           )}
 
           {/* Middle Row: Chart + QR Code */}
-          <div className="pd-middle-row">
-            {/* Chart Card */}
-            <div className="pd-chart-card">
-              <h3 className="pd-chart-title">Attendance Over Time</h3>
-              <div className="pd-chart-area">
-                {(() => {
-                  const startIdx = chartPage * BARS_PER_PAGE;
-                  const slicedData = attendanceData.slice(startIdx, startIdx + BARS_PER_PAGE);
-                  return <AttendanceBarChart data={slicedData} />;
-                })()}
+          <div className={`pd-middle-row ${hasSponsorDashboard ? 'pd-middle-row-sponsored' : ''}`}>
+            {hasSponsorDashboard ? (
+              <div className="pd-sponsored-insights-stack">
+                {chartCard}
+                <SponsorEngagementCard analytics={sponsorAnalytics} />
               </div>
-              <div className="pd-chart-pagination">
-                <button
-                  title="Previous"
-                  disabled={chartPage === 0}
-                  onClick={() => setChartPage(p => Math.max(0, p - 1))}
-                >{Icons.arrowLeftSmall}</button>
-                <button
-                  title="Next"
-                  disabled={(chartPage + 1) * BARS_PER_PAGE >= attendanceData.length}
-                  onClick={() => setChartPage(p => p + 1)}
-                >{Icons.arrowRight}</button>
-              </div>
-            </div>
+            ) : (
+              chartCard
+            )}
 
-            <SponsorEngagementCard analytics={sponsorAnalytics} />
-
-            {/* QR Code Card */}
-            <div className="pd-qr-card">
-              <h3 className="pd-qr-card-title">QR Code</h3>
-              <p className="pd-qr-card-sub">Deploy this QR code at your event entrance or check-in desk</p>
-              <div className="pd-qr-canvas" id="qr-print-area">
-                <React.Suspense fallback={<div style={{ width: 160, height: 160 }} aria-hidden="true"></div>}>
-                  <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
-                </React.Suspense>
-              </div>
-              <h4 className="pd-qr-program-title">{program.title}</h4>
-              <p className="pd-qr-scan-text">Scan to check in</p>
-              <div className="pd-qr-link-row">
-                <p className="pd-qr-link">{program.qrCodeUrl}</p>
-                <button
-                  className="pd-copy-btn"
-                  title="Copy link"
-                  onClick={(e) => {
-                    navigator.clipboard.writeText(program.qrCodeUrl);
-                    const btn = e.currentTarget;
-                    btn.classList.add('copied');
-                    setTimeout(() => btn.classList.remove('copied'), 1500);
-                  }}
-                >
-                  <svg className="copy-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-                    <path d="M10.5 5.5V3.5a1.5 1.5 0 00-1.5-1.5H3.5A1.5 1.5 0 002 3.5V9A1.5 1.5 0 003.5 10.5H5.5" />
-                  </svg>
-                  <svg className="check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3,8 7,12 13,4" />
-                  </svg>
-                </button>
-              </div>
-              <button className="pd-qr-btn-download" onClick={handleDownloadQR}>
-                {Icons.download} Download QR Code
-              </button>
-              <button className="pd-qr-btn-print" onClick={handlePrintQR}>
-                {Icons.printer} Print QR Code
-              </button>
-              {program.isActive ? (
-                <span className="pd-qr-status active"><span className="status-dot"></span> QR Code is Active - Accepting Scans</span>
-              ) : (
-                <span className="pd-qr-status inactive"><span className="status-dot"></span> QR Code is Disabled</span>
-              )}
-            </div>
+            {qrCodeCard}
           </div>
 
           {/* Attendee Data Table — Count Only Mode */}

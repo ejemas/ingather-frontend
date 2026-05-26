@@ -325,9 +325,23 @@
 /* ---- Middle Section — Two Column ---- */
 .pd-middle-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px) 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 20px;
   margin-bottom: 20px;
+}
+
+.pd-middle-row-sponsored {
+  grid-template-columns: 1fr;
+}
+
+.pd-sponsored-insights-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.pd-sponsored-insights-stack .pd-chart-area {
+  height: 320px;
 }
 
 /* ---- Chart Card ---- */
@@ -524,6 +538,63 @@
   flex-direction: column;
   align-items: center;
   transition: all var(--transition-normal);
+}
+
+.pd-qr-card-heading,
+.pd-qr-card-details,
+.pd-qr-card-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pd-qr-card-horizontal {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto minmax(240px, 0.9fr);
+  grid-template-areas:
+    "heading qr actions"
+    "details qr actions";
+  align-items: center;
+  column-gap: 28px;
+  row-gap: 14px;
+  text-align: left;
+}
+
+.pd-qr-card-horizontal .pd-qr-card-heading {
+  grid-area: heading;
+  align-items: flex-start;
+  align-self: end;
+}
+
+.pd-qr-card-horizontal .pd-qr-canvas {
+  grid-area: qr;
+  justify-self: center;
+  margin: 0;
+}
+
+.pd-qr-card-horizontal .pd-qr-card-details {
+  grid-area: details;
+  align-items: flex-start;
+  align-self: start;
+}
+
+.pd-qr-card-horizontal .pd-qr-card-actions {
+  grid-area: actions;
+  align-items: stretch;
+}
+
+.pd-qr-card-horizontal .pd-qr-card-sub {
+  max-width: 260px;
+}
+
+.pd-qr-card-horizontal .pd-qr-link-row {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.pd-qr-card-horizontal .pd-qr-status {
+  justify-content: center;
 }
 
 .pd-qr-card-title {
@@ -996,6 +1067,34 @@
 @media (max-width: 1024px) {
   .pd-middle-row {
     grid-template-columns: 1fr;
+  }
+
+  .pd-sponsored-insights-stack .pd-chart-area {
+    height: 280px;
+  }
+
+  .pd-qr-card-horizontal {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .pd-qr-card-horizontal .pd-qr-card-heading,
+  .pd-qr-card-horizontal .pd-qr-card-details,
+  .pd-qr-card-horizontal .pd-qr-card-actions {
+    align-items: center;
+  }
+
+  .pd-qr-card-horizontal .pd-qr-card-sub {
+    max-width: 100%;
+  }
+
+  .pd-qr-card-horizontal .pd-qr-canvas {
+    margin-bottom: 12px;
+  }
+
+  .pd-qr-card-horizontal .pd-qr-link-row {
+    justify-content: center;
   }
 }
 
