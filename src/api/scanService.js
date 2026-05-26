@@ -37,3 +37,10 @@ export const updateScanData = async (programId, deviceFingerprint, gender, first
   });
   return response.data;
 };
+
+export const trackSponsorClick = async (sponsorId, deviceFingerprint) => {
+  const response = await SCAN_API.post(`/sponsors/${sponsorId}/click`, {
+    deviceFingerprint
+  });
+  return response.data;
+};

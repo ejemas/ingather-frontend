@@ -1877,6 +1877,131 @@
   box-shadow: none;
 }
 
+.post-checkin-sponsors {
+  width: 100%;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(232, 89, 12, 0.16);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(232, 89, 12, 0.08), rgba(255, 255, 255, 0.94));
+  text-align: left;
+}
+
+.post-checkin-sponsors-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.post-checkin-sponsors-header span {
+  color: #E8590C;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.post-checkin-sponsors-header strong {
+  color: #111217;
+  font-size: 0.84rem;
+}
+
+.post-checkin-sponsor-group + .post-checkin-sponsor-group {
+  margin-top: 16px;
+}
+
+.post-checkin-sponsor-group h3 {
+  margin: 0 0 10px;
+  color: #111217;
+  font-size: 0.95rem;
+}
+
+.post-checkin-sponsor-carousel {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+}
+
+.post-checkin-sponsor-card {
+  min-width: min(260px, 86vw);
+  overflow: hidden;
+  border: 1px solid rgba(17, 18, 23, 0.08);
+  border-radius: 14px;
+  background: #FFFFFF;
+  box-shadow: 0 14px 34px rgba(17, 18, 23, 0.08);
+  scroll-snap-align: start;
+}
+
+.post-checkin-sponsor-card.compact {
+  min-width: 0;
+}
+
+.post-checkin-sponsor-image {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: block;
+  border: 0;
+  padding: 0;
+  background: #111217;
+  cursor: pointer;
+}
+
+.post-checkin-sponsor-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.post-checkin-sponsor-copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+}
+
+.post-checkin-sponsor-kicker {
+  margin: 0 0 3px;
+  color: #E8590C;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.post-checkin-sponsor-copy h3 {
+  margin: 0;
+  color: #111217;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.post-checkin-sponsor-booth {
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(17, 18, 23, 0.06);
+  color: #4A4A4A;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.post-checkin-sponsor-cta {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 11px;
+  background: #E8590C;
+  color: #FFFFFF;
+  font: 800 0.78rem/1 'Inter', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(232, 89, 12, 0.22);
+}
+
 @media (max-width: 560px) {
   .scan-form-page {
     padding: 14px;
@@ -1907,5 +2032,19 @@
     align-items: center;
     justify-content: flex-start;
     padding: 20px;
+  }
+
+  .post-checkin-sponsors {
+    padding: 13px;
+  }
+
+  .post-checkin-sponsors-header,
+  .post-checkin-sponsor-copy {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .post-checkin-sponsor-cta {
+    width: 100%;
   }
 }

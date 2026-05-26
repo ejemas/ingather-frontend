@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
+import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
@@ -335,6 +335,56 @@ function mergeChartData(buckets, startTime, endTime, scanRangeStart, scanRangeEn
   }));
 }
 
+function SponsorEngagementCard({ analytics }) {
+  const sponsors = analytics?.sponsors || [];
+  const todayClicks = analytics?.todayClicks || 0;
+  const totalClicks = analytics?.totalClicks || 0;
+  const topSponsor = analytics?.topSponsor;
+
+  return (
+    <div className="pd-sponsor-engagement-card">
+      <div className="pd-sponsor-card-header">
+        <div>
+          <span className="pd-sponsor-kicker">Sponsor ROI</span>
+          <h3>Sponsor Engagement</h3>
+        </div>
+        <span className="pd-sponsor-count">{sponsors.length} active</span>
+      </div>
+
+      {sponsors.length === 0 ? (
+        <div className="pd-sponsor-empty">
+          <strong>No sponsor clicks yet.</strong>
+          <span>Add sponsors to this program to track post-check-in ROI.</span>
+        </div>
+      ) : (
+        <>
+          <p className="pd-sponsor-roi-line">
+            Your sponsor's link was clicked <strong>{todayClicks.toLocaleString()}</strong> times today.
+          </p>
+          <div className="pd-sponsor-metrics">
+            <div>
+              <span>Total clicks</span>
+              <strong>{totalClicks.toLocaleString()}</strong>
+            </div>
+            <div>
+              <span>Top sponsor</span>
+              <strong>{topSponsor?.sponsorName || '-'}</strong>
+            </div>
+          </div>
+          <div className="pd-sponsor-list">
+            {sponsors.slice(0, 4).map(sponsor => (
+              <div className="pd-sponsor-row" key={sponsor.id}>
+                <span>{sponsor.sponsorName}</span>
+                <strong>{sponsor.clickCount.toLocaleString()} clicks</strong>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ============================================
    MAIN COMPONENT
    ============================================ */
@@ -349,6 +399,7 @@ function ProgramDetail() {
   const [collectDataStats, setCollectDataStats] = useState({ maleCount: 0, femaleCount: 0, firstTimerCount: 0 });
   const [formsSubmitted, setFormsSubmitted] = useState(0);
   const [countOnlyScans, setCountOnlyScans] = useState([]);
+  const [sponsorAnalytics, setSponsorAnalytics] = useState({ sponsorCount: 0, totalClicks: 0, todayClicks: 0, topSponsor: null, sponsors: [] });
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [winnersGifted, setWinnersGifted] = useState(0);
@@ -465,6 +516,9 @@ function ProgramDetail() {
         setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
         setTotalScans(programData.totalScans);
         setWinnersGifted(programData.winnersGifted || 0);
+        getSponsorAnalytics(id)
+          .then(data => setSponsorAnalytics(data))
+          .catch(error => console.error('Error fetching sponsor analytics:', error));
 
         const attendeesData = { attendees: bootstrap.attendees || [] };
         setAttendees(attendeesData.attendees);
@@ -513,6 +567,9 @@ function ProgramDetail() {
       setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
       setTotalScans(programData.totalScans);
       setWinnersGifted(programData.winnersGifted || 0);
+      getSponsorAnalytics(id)
+        .then(data => setSponsorAnalytics(data))
+        .catch(error => console.error('Error fetching sponsor analytics:', error));
       const attendeesData = await getAttendees(id);
       setAttendees(attendeesData.attendees);
       // Fetch chart data, then merge into skeleton
@@ -916,6 +973,8 @@ function ProgramDetail() {
                 >{Icons.arrowRight}</button>
               </div>
             </div>
+
+            <SponsorEngagementCard analytics={sponsorAnalytics} />
 
             {/* QR Code Card */}
             <div className="pd-qr-card">

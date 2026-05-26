@@ -36,6 +36,11 @@ export const getProgramDetailBootstrap = async (id) => {
   return response.data;
 };
 
+export const getSponsorAnalytics = async (id) => {
+  const response = await API.get(`/programs/${id}/sponsor-analytics`);
+  return response.data;
+};
+
 export const stopProgram = async (id) => {
   const response = await API.put(`/programs/${id}/stop`);
   return response.data;

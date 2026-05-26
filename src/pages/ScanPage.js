@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
 import { useParams } from 'react-router-dom';
-import { getProgramInfo, submitScan, submitFormData, updateScanData } from '../api/scanService';
+import { getProgramInfo, submitScan, submitFormData, updateScanData, trackSponsorClick } from '../api/scanService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/ScanPage.css';
@@ -532,6 +532,80 @@ function FlyerDetailsViewer({ programData, programId, onClose, standalone = fals
   );
 }
 
+const groupSponsorsByTier = (sponsors = []) => {
+  const groups = [];
+  sponsors.forEach((sponsor) => {
+    const label = sponsor.tier || 'Featured Sponsors';
+    let group = groups.find(item => item.label === label);
+    if (!group) {
+      group = { label, sponsors: [] };
+      groups.push(group);
+    }
+    group.sponsors.push(sponsor);
+  });
+  return groups;
+};
+
+function SponsorCard({ sponsor, onSponsorClick, compact = false }) {
+  const handleClick = () => onSponsorClick(sponsor);
+
+  return (
+    <article className={`post-checkin-sponsor-card ${compact ? 'compact' : ''}`}>
+      <button type="button" className="post-checkin-sponsor-image" onClick={handleClick}>
+        <img src={sponsor.flyerUrl} alt={`${sponsor.sponsorName} sponsor flyer`} />
+      </button>
+      <div className="post-checkin-sponsor-copy">
+        <div>
+          <p className="post-checkin-sponsor-kicker">Sponsored by</p>
+          <h3>{sponsor.sponsorName}</h3>
+          {sponsor.boothText && <span className="post-checkin-sponsor-booth">{sponsor.boothText}</span>}
+        </div>
+        <button type="button" className="post-checkin-sponsor-cta" onClick={handleClick}>
+          {sponsor.ctaText || 'Learn More'}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function PostCheckInSponsors({ placement, onSponsorClick }) {
+  if (!placement) return null;
+
+  if (placement.mode === 'distribution' && placement.sponsor) {
+    return (
+      <section className="post-checkin-sponsors post-checkin-sponsors-single" aria-label="Event sponsor">
+        <div className="post-checkin-sponsors-header">
+          <span>Event Sponsor</span>
+          <strong>Recommended for you</strong>
+        </div>
+        <SponsorCard sponsor={placement.sponsor} onSponsorClick={onSponsorClick} compact />
+      </section>
+    );
+  }
+
+  const groups = groupSponsorsByTier(placement.sponsors || []);
+  if (groups.length === 0) return null;
+
+  return (
+    <section className="post-checkin-sponsors" aria-label="Event sponsors">
+      <div className="post-checkin-sponsors-header">
+        <span>Event Sponsors</span>
+        <strong>Explore partner offers</strong>
+      </div>
+      {groups.map(group => (
+        <div className="post-checkin-sponsor-group" key={group.label}>
+          <h3>{group.label}</h3>
+          <div className="post-checkin-sponsor-carousel">
+            {group.sponsors.map(sponsor => (
+              <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function ScanPage() {
   const { programId } = useParams();
   const toast = useToast();
@@ -553,6 +627,7 @@ function ScanPage() {
   const [programData, setProgramData] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showFlyerDetails, setShowFlyerDetails] = useState(false);
+  const [sponsorPlacement, setSponsorPlacement] = useState(null);
 
 
   // Form data
@@ -625,6 +700,7 @@ function ScanPage() {
       try {
         const scanResult = await submitScan(programId, fingerprint, null);
         scanSessionTokenRef.current = scanResult.scanSessionToken || '';
+        setSponsorPlacement(scanResult.sponsorPlacement || null);
         console.log('Scan recorded successfully:', scanResult);
 
         // Scan successful - decide what to show based on tracking mode
@@ -707,6 +783,7 @@ function ScanPage() {
     setAlreadyScanned(false);
     setShowForm(false);
     setResult(null);
+    setSponsorPlacement(null);
     deviceFingerprintRef.current = '';
     scanSessionTokenRef.current = '';
     setFormData({
@@ -787,6 +864,7 @@ function ScanPage() {
 
       // Submit only the form data (scan was already recorded)
       const response = await submitFormData(programId, fingerprint, formData, scanSessionTokenRef.current);
+      setSponsorPlacement(response.sponsorPlacement || sponsorPlacement);
       console.log('Form submitted successfully:', response);
 
       if (formData.firstTimer && response.isWinner) {
@@ -825,6 +903,27 @@ function ScanPage() {
       />
     )
   ) : null;
+
+  const handleSponsorClick = async (sponsor) => {
+    if (!sponsor?.ctaLink) return;
+
+    try {
+      const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
+      await trackSponsorClick(sponsor.id, fingerprint);
+    } catch (error) {
+      console.error('Sponsor click tracking failed:', error);
+    } finally {
+      window.open(sponsor.ctaLink, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const successActions = (
+    <>
+      <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+      <PostCheckInSponsors placement={sponsorPlacement} onSponsorClick={handleSponsorClick} />
+    </>
+  );
 
   const feedbackPageClass = 'scan-page scan-feedback-page';
 
@@ -1388,7 +1487,7 @@ function ScanPage() {
                 <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
                 <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
-              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+              {successActions}
             </div>
           </div>
           {flyerDetailsOverlay}
@@ -1422,7 +1521,7 @@ function ScanPage() {
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">{template.scan.noWin}</span>
               </div>
-              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+              {successActions}
             </div>
           </div>
           {flyerDetailsOverlay}
@@ -1449,7 +1548,7 @@ function ScanPage() {
                 <span className="callout-text">Please wait after the event. We look forward to connecting with you.</span>
                 <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
               </div>
-              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+              {successActions}
             </div>
           </div>
           {flyerDetailsOverlay}
@@ -1484,7 +1583,7 @@ function ScanPage() {
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please wait after the event so the team can connect with you.</span>
               </div>
-              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+              {successActions}
             </div>
           </div>
           {flyerDetailsOverlay}
@@ -1515,7 +1614,7 @@ function ScanPage() {
               </div>
               <h2>Thank You!</h2>
               <p className="modal-subtitle">{template.scan.success}</p>
-              <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+              {successActions}
             </div>
           </div>
           {flyerDetailsOverlay}
@@ -1534,7 +1633,7 @@ function ScanPage() {
             <h2>Thank You!</h2>
             <p>Your information has been submitted successfully.</p>
             <p className="sub-message">Thank you for joining us today. Enjoy the rest of the event!</p>
-            <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
+            {successActions}
           </div>
           {flyerDetailsOverlay}
         </div>

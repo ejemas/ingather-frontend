@@ -129,6 +129,24 @@ const dataFieldLabels = {
   sex: 'Gender'
 };
 
+const createEmptySponsor = () => ({
+  clientId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  sponsorName: '',
+  ctaText: 'Learn More',
+  ctaLink: '',
+  boothText: '',
+  campaignTag: '',
+  tier: '',
+  distributionPercentage: '',
+  compressedFile: null,
+  previewUrl: '',
+  originalName: '',
+  originalSize: 0,
+  compressedSize: 0,
+  processing: false,
+  error: ''
+});
+
 /* ============================================
    MAIN COMPONENT
    ============================================ */
@@ -152,6 +170,8 @@ function CreateProgram() {
     enableGifting: false,
     numberOfWinners: 0,
     flyerType: 'standard',
+    sponsorDisplayMode: 'carousel',
+    sponsorExpectedAttendees: '',
     personalizedFlyerConfig: {
       template: '[FirstName], you are deeply loved and created for purpose.',
       brandColor: '#E8590C',
@@ -173,6 +193,7 @@ function CreateProgram() {
     compressedSize: 0,
     error: ''
   });
+  const [sponsors, setSponsors] = useState([]);
   const [personalizedBackgroundData, setPersonalizedBackgroundData] = useState({
     compressedFile: null,
     previewUrl: '',
@@ -200,6 +221,7 @@ function CreateProgram() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const flyerInputRef = useRef(null);
+  const sponsorsRef = useRef([]);
   const personalizedBackgroundInputRef = useRef(null);
   const personalizedLogoInputRef = useRef(null);
 
@@ -224,6 +246,18 @@ function CreateProgram() {
       }
     };
   }, [flyerData.previewUrl]);
+
+  useEffect(() => {
+    sponsorsRef.current = sponsors;
+  }, [sponsors]);
+
+  useEffect(() => {
+    return () => {
+      sponsorsRef.current.forEach(sponsor => {
+        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
+      });
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -365,6 +399,83 @@ function CreateProgram() {
         error: ''
       };
     });
+  };
+
+  const handleSponsorDisplayModeChange = (mode) => {
+    setFormData(prev => ({
+      ...prev,
+      sponsorDisplayMode: mode,
+      sponsorExpectedAttendees: mode === 'distribution' ? prev.sponsorExpectedAttendees : ''
+    }));
+    setErrors(prev => ({ ...prev, sponsors: '', sponsorExpectedAttendees: '' }));
+  };
+
+  const handleAddSponsor = () => {
+    setSponsors(prev => [...prev, createEmptySponsor()]);
+  };
+
+  const handleRemoveSponsor = (clientId) => {
+    setSponsors(prev => {
+      const sponsor = prev.find(item => item.clientId === clientId);
+      if (sponsor?.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
+      return prev.filter(item => item.clientId !== clientId);
+    });
+  };
+
+  const handleSponsorFieldChange = (clientId, field, value) => {
+    setSponsors(prev => prev.map(sponsor => (
+      sponsor.clientId === clientId ? { ...sponsor, [field]: value, error: '' } : sponsor
+    )));
+    if (errors.sponsors) {
+      setErrors(prev => ({ ...prev, sponsors: '' }));
+    }
+  };
+
+  const handleSponsorFlyerSelect = async (clientId, file) => {
+    if (!file) return;
+
+    setSponsors(prev => prev.map(sponsor => (
+      sponsor.clientId === clientId ? { ...sponsor, processing: true, error: '' } : sponsor
+    )));
+
+    try {
+      const compressedFile = await compressFlyerImage(file);
+      const previewUrl = URL.createObjectURL(compressedFile);
+
+      setSponsors(prev => prev.map(sponsor => {
+        if (sponsor.clientId !== clientId) return sponsor;
+        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
+        return {
+          ...sponsor,
+          compressedFile,
+          previewUrl,
+          originalName: file.name,
+          originalSize: file.size,
+          compressedSize: compressedFile.size,
+          processing: false,
+          error: ''
+        };
+      }));
+
+      toast.success(`Sponsor flyer compressed to ${formatFileSize(compressedFile.size)}.`);
+    } catch (error) {
+      const message = error.message || 'Sponsor flyer compression failed. Please try another image.';
+      setSponsors(prev => prev.map(sponsor => {
+        if (sponsor.clientId !== clientId) return sponsor;
+        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
+        return {
+          ...sponsor,
+          compressedFile: null,
+          previewUrl: '',
+          originalName: '',
+          originalSize: 0,
+          compressedSize: 0,
+          processing: false,
+          error: message
+        };
+      }));
+      toast.error(message);
+    }
   };
 
   const handlePersonalizedBackgroundSelect = async (e) => {
@@ -582,6 +693,34 @@ function CreateProgram() {
     if (formData.enableGifting && (!formData.numberOfWinners || formData.numberOfWinners <= 0)) {
       newErrors.numberOfWinners = 'Number of winners must be greater than 0';
     }
+    if (sponsors.length > 0) {
+      sponsors.forEach((sponsor, index) => {
+        const label = `Sponsor ${index + 1}`;
+        if (!sponsor.sponsorName.trim()) newErrors.sponsors = `${label} needs a sponsor name`;
+        else if (!sponsor.compressedFile) newErrors.sponsors = `${label} needs a compressed flyer image`;
+        else if (!sponsor.ctaText.trim()) newErrors.sponsors = `${label} needs CTA text`;
+        else if (!/^https?:\/\//i.test(sponsor.ctaLink.trim())) newErrors.sponsors = `${label} needs a valid CTA link starting with http:// or https://`;
+      });
+
+      if (formData.sponsorDisplayMode === 'distribution') {
+        const expectedAttendees = Number(formData.sponsorExpectedAttendees);
+        if (!Number.isInteger(expectedAttendees) || expectedAttendees < 1) {
+          newErrors.sponsorExpectedAttendees = 'Expected attendees is required for distribution mode';
+        }
+
+        const totalPercentage = sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0);
+        const hasInvalidPercentage = sponsors.some(sponsor => {
+          const percentage = Number(sponsor.distributionPercentage);
+          return !Number.isInteger(percentage) || percentage < 1 || percentage > 100;
+        });
+
+        if (hasInvalidPercentage) {
+          newErrors.sponsors = 'Each sponsor needs a distribution percentage between 1 and 100';
+        } else if (totalPercentage !== 100) {
+          newErrors.sponsors = `Distribution percentages must add up to exactly 100%. Current total is ${totalPercentage}%.`;
+        }
+      }
+    }
     return newErrors;
   };
 
@@ -602,6 +741,10 @@ function CreateProgram() {
     }
     if (personalizedLogoProcessing) {
       toast.info('Please wait for the personalized logo compression to finish.');
+      return;
+    }
+    if (sponsors.some(sponsor => sponsor.processing)) {
+      toast.info('Please wait for sponsor flyer compression to finish.');
       return;
     }
     setIsSubmitting(true);
@@ -627,6 +770,22 @@ function CreateProgram() {
             size: personalizedLogoData.compressedSize
           }
         : null;
+      const sponsorPayloads = await Promise.all(sponsors.map(async sponsor => ({
+        sponsorName: sponsor.sponsorName.trim(),
+        ctaText: sponsor.ctaText.trim(),
+        ctaLink: sponsor.ctaLink.trim(),
+        boothText: sponsor.boothText.trim(),
+        campaignTag: sponsor.campaignTag.trim(),
+        tier: sponsor.tier.trim(),
+        distributionPercentage: formData.sponsorDisplayMode === 'distribution'
+          ? Number(sponsor.distributionPercentage)
+          : null,
+        flyer: {
+          dataUrl: await fileToDataUrl(sponsor.compressedFile),
+          originalName: sponsor.originalName,
+          size: sponsor.compressedSize
+        }
+      })));
 
       const response = await createProgram({
         programTitle: formData.programTitle,
@@ -641,7 +800,12 @@ function CreateProgram() {
         flyerType: formData.flyerType,
         personalizedFlyerConfig: formData.personalizedFlyerConfig,
         personalizedBackground,
-        personalizedLogo
+        personalizedLogo,
+        sponsorDisplayMode: formData.sponsorDisplayMode,
+        sponsorExpectedAttendees: formData.sponsorDisplayMode === 'distribution'
+          ? Number(formData.sponsorExpectedAttendees)
+          : null,
+        sponsors: sponsorPayloads
       });
       toast.success(`${template.event.singular} created successfully!`);
       setTimeout(() => {
@@ -1117,6 +1281,199 @@ function CreateProgram() {
                   {personalizedLogoData.error && <span className="error-text">{personalizedLogoData.error}</span>}
                 </div>
               )}
+
+              <div className="sponsor-setup-panel">
+                <div className="sponsor-setup-header">
+                  <div>
+                    <h4>Event Sponsors</h4>
+                    <p>Monetize the post-check-in moment with sponsor flyers, booth CTAs, and click tracking.</p>
+                  </div>
+                  <button type="button" className="sponsor-add-btn" onClick={handleAddSponsor}>
+                    Add Sponsor
+                  </button>
+                </div>
+
+                <div className="sponsor-mode-toggle" role="group" aria-label="Sponsor display mode">
+                  <button
+                    type="button"
+                    className={formData.sponsorDisplayMode === 'carousel' ? 'active' : ''}
+                    onClick={() => handleSponsorDisplayModeChange('carousel')}
+                  >
+                    Carousel & Tiers
+                  </button>
+                  <button
+                    type="button"
+                    className={formData.sponsorDisplayMode === 'distribution' ? 'active' : ''}
+                    onClick={() => handleSponsorDisplayModeChange('distribution')}
+                  >
+                    Percentage Distribution
+                  </button>
+                </div>
+
+                {formData.sponsorDisplayMode === 'distribution' && (
+                  <div className="form-group sponsor-expected-field">
+                    <label htmlFor="sponsorExpectedAttendees">Expected Attendees</label>
+                    <input
+                      type="number"
+                      id="sponsorExpectedAttendees"
+                      name="sponsorExpectedAttendees"
+                      min="1"
+                      value={formData.sponsorExpectedAttendees}
+                      onChange={handleChange}
+                      className={`form-input ${errors.sponsorExpectedAttendees ? 'input-error' : ''}`}
+                      placeholder="500"
+                    />
+                    {errors.sponsorExpectedAttendees && <span className="error-text">{errors.sponsorExpectedAttendees}</span>}
+                  </div>
+                )}
+
+                {sponsors.length === 0 ? (
+                  <div className="sponsor-empty-state">
+                    <strong>No sponsors added yet.</strong>
+                    <span>Add sponsor flyers when this program has paid partners or booth campaigns.</span>
+                  </div>
+                ) : (
+                  <div className="sponsor-list">
+                    {sponsors.map((sponsor, index) => (
+                      <div className="sponsor-editor" key={sponsor.clientId}>
+                        <div className="sponsor-editor-top">
+                          <span className="sponsor-number">Sponsor {index + 1}</span>
+                          <button type="button" className="sponsor-remove-btn" onClick={() => handleRemoveSponsor(sponsor.clientId)}>
+                            Remove
+                          </button>
+                        </div>
+
+                        <div className="sponsor-editor-grid">
+                          <div className="form-group">
+                            <label htmlFor={`sponsor-name-${sponsor.clientId}`}>Sponsor Name</label>
+                            <input
+                              id={`sponsor-name-${sponsor.clientId}`}
+                              type="text"
+                              value={sponsor.sponsorName}
+                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'sponsorName', e.target.value)}
+                              className="form-input"
+                              placeholder="Acme Media"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor={`sponsor-cta-${sponsor.clientId}`}>CTA Text</label>
+                            <input
+                              id={`sponsor-cta-${sponsor.clientId}`}
+                              type="text"
+                              value={sponsor.ctaText}
+                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'ctaText', e.target.value)}
+                              className="form-input"
+                              placeholder="Visit Booth"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor={`sponsor-link-${sponsor.clientId}`}>CTA Link</label>
+                            <input
+                              id={`sponsor-link-${sponsor.clientId}`}
+                              type="url"
+                              value={sponsor.ctaLink}
+                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'ctaLink', e.target.value)}
+                              className="form-input"
+                              placeholder="https://example.com"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor={`sponsor-booth-${sponsor.clientId}`}>Booth / Location</label>
+                            <input
+                              id={`sponsor-booth-${sponsor.clientId}`}
+                              type="text"
+                              value={sponsor.boothText}
+                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'boothText', e.target.value)}
+                              className="form-input"
+                              placeholder="Booth A12"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor={`sponsor-campaign-${sponsor.clientId}`}>Campaign Tag</label>
+                            <input
+                              id={`sponsor-campaign-${sponsor.clientId}`}
+                              type="text"
+                              value={sponsor.campaignTag}
+                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'campaignTag', e.target.value)}
+                              className="form-input"
+                              placeholder="youth-conference-2026-sponsor-a"
+                            />
+                          </div>
+                          {formData.sponsorDisplayMode === 'carousel' ? (
+                            <div className="form-group">
+                              <label htmlFor={`sponsor-tier-${sponsor.clientId}`}>Tier</label>
+                              <input
+                                id={`sponsor-tier-${sponsor.clientId}`}
+                                type="text"
+                                value={sponsor.tier}
+                                onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'tier', e.target.value)}
+                                className="form-input"
+                                placeholder="Headline Sponsor"
+                              />
+                            </div>
+                          ) : (
+                            <div className="form-group">
+                              <label htmlFor={`sponsor-percentage-${sponsor.clientId}`}>Distribution %</label>
+                              <input
+                                id={`sponsor-percentage-${sponsor.clientId}`}
+                                type="number"
+                                min="1"
+                                max="100"
+                                value={sponsor.distributionPercentage}
+                                onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'distributionPercentage', e.target.value)}
+                                className="form-input"
+                                placeholder="20"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <label className={`sponsor-flyer-upload ${sponsor.processing ? 'processing' : ''}`}>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              e.target.value = '';
+                              handleSponsorFlyerSelect(sponsor.clientId, file);
+                            }}
+                          />
+                          {sponsor.previewUrl ? (
+                            <>
+                              <span className="sponsor-flyer-thumb">
+                                <img src={sponsor.previewUrl} alt={`${sponsor.sponsorName || 'Sponsor'} flyer preview`} />
+                              </span>
+                              <span>
+                                <strong>{sponsor.originalName}</strong>
+                                <small>{formatFileSize(sponsor.originalSize)} compressed to {formatFileSize(sponsor.compressedSize)}</small>
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="flyer-upload-icon">
+                                {sponsor.processing ? <span className="flyer-mini-spinner"></span> : Icons.calendar}
+                              </span>
+                              <span>
+                                <strong>{sponsor.processing ? 'Compressing sponsor flyer...' : 'Upload sponsor flyer'}</strong>
+                                <small>JPEG, PNG, or WebP. The sponsor logo should be part of the flyer.</small>
+                              </span>
+                            </>
+                          )}
+                        </label>
+                        {sponsor.error && <span className="error-text">{sponsor.error}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {formData.sponsorDisplayMode === 'distribution' && sponsors.length > 0 && (
+                  <div className={`sponsor-percentage-total ${sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0) === 100 ? 'complete' : ''}`}>
+                    Total distribution: {sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0)}%
+                  </div>
+                )}
+
+                {errors.sponsors && <span className="error-text">{errors.sponsors}</span>}
+              </div>
             </div>
 
             {/* Tracking Mode Card */}
@@ -1252,9 +1609,9 @@ function CreateProgram() {
               <button
                 type="submit"
                 className="btn-create"
-                disabled={isSubmitting || flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing}
+                disabled={isSubmitting || flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing || sponsors.some(sponsor => sponsor.processing)}
               >
-                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing) ? 'Preparing Flyer...' : template.event.create}
+                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing || sponsors.some(sponsor => sponsor.processing)) ? 'Preparing Flyer...' : template.event.create}
               </button>
             </div>
           </form>
