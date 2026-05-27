@@ -967,6 +967,45 @@
   height: 280px;
 }
 
+.dashboard-chart-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.dashboard-chart-pagination button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-chart-pagination button:hover:not(:disabled),
+.dashboard-chart-pagination button:focus-visible:not(:disabled) {
+  border-color: var(--color-orange);
+  color: var(--color-orange);
+}
+
+.dashboard-chart-pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dashboard-chart-pagination button svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Custom SVG Bar Chart */
 .custom-bar-chart {
   width: 100%;

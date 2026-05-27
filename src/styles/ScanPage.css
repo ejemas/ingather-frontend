@@ -1880,31 +1880,35 @@
 .post-checkin-sponsors {
   width: 100%;
   margin-top: 18px;
-  padding: 16px;
-  border: 1px solid rgba(232, 89, 12, 0.16);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(232, 89, 12, 0.08), rgba(255, 255, 255, 0.94));
+  padding: 24px 16px;
+  border: 1px solid #F9DBCA;
+  border-radius: 10px;
+  background: #FFFFFF;
   text-align: left;
+  overflow: hidden;
 }
 
 .post-checkin-sponsors-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
 }
 
 .post-checkin-sponsors-header span {
   color: #E8590C;
-  font-size: 0.74rem;
-  font-weight: 900;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.33;
   text-transform: uppercase;
 }
 
 .post-checkin-sponsors-header strong {
-  color: #111217;
-  font-size: 0.84rem;
+  color: #323232;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.33;
 }
 
 .post-checkin-sponsor-group + .post-checkin-sponsor-group {
@@ -1919,34 +1923,57 @@
 
 .post-checkin-sponsor-carousel {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   overflow-x: auto;
-  padding-bottom: 6px;
+  padding: 0 0 8px;
   scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.post-checkin-sponsor-carousel::-webkit-scrollbar {
+  display: none;
 }
 
 .post-checkin-sponsor-card {
-  min-width: min(260px, 86vw);
+  position: relative;
+  flex: 0 0 241px;
+  min-width: 241px;
   overflow: hidden;
-  border: 1px solid rgba(17, 18, 23, 0.08);
-  border-radius: 14px;
+  border: 1px solid #D9D9D9;
+  border-radius: 10px;
   background: #FFFFFF;
-  box-shadow: 0 14px 34px rgba(17, 18, 23, 0.08);
+  box-shadow: none;
   scroll-snap-align: start;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.post-checkin-sponsor-card:hover,
+.post-checkin-sponsor-card:focus-within {
+  border-color: rgba(232, 89, 12, 0.42);
+  box-shadow: 0 16px 34px rgba(17, 18, 23, 0.1);
+  transform: translateY(-1px);
+}
+
+.post-checkin-sponsor-card.is-headline {
+  border-color: rgba(232, 89, 12, 0.34);
+  box-shadow: 0 14px 32px rgba(232, 89, 12, 0.12);
 }
 
 .post-checkin-sponsor-card.compact {
+  flex-basis: 100%;
   min-width: 0;
 }
 
 .post-checkin-sponsor-image {
+  position: relative;
   width: 100%;
-  aspect-ratio: 16 / 10;
+  height: 168px;
   display: block;
   border: 0;
   padding: 0;
-  background: #111217;
+  background: #2C2C2C;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .post-checkin-sponsor-image img {
@@ -1956,50 +1983,146 @@
   object-fit: cover;
 }
 
+.post-checkin-sponsor-image-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.post-checkin-sponsor-badge {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border: 1px solid #16A34A;
+  border-radius: 999px;
+  background: #EBFFF3;
+  color: #111217;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.33;
+  white-space: nowrap;
+  box-shadow: 0 0 0 0 rgba(232, 89, 12, 0.36);
+  animation: headlineSponsorPulse 2.4s ease-in-out infinite;
+}
+
 .post-checkin-sponsor-copy {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  min-height: 104px;
+  padding: 16px 8px;
 }
 
 .post-checkin-sponsor-kicker {
-  margin: 0 0 3px;
+  margin: 0 0 8px;
   color: #E8590C;
-  font-size: 0.68rem;
-  font-weight: 900;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.33;
 }
 
 .post-checkin-sponsor-copy h3 {
   margin: 0;
-  color: #111217;
-  font-size: 0.95rem;
-  line-height: 1.2;
+  color: #000000;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  word-break: break-word;
 }
 
 .post-checkin-sponsor-booth {
   display: inline-flex;
-  margin-top: 7px;
-  padding: 5px 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid #D5D9E0;
   border-radius: 999px;
-  background: rgba(17, 18, 23, 0.06);
-  color: #4A4A4A;
-  font-size: 0.72rem;
+  background: #F5F5F7;
+  color: #333333;
+  font-size: 0.75rem;
   font-weight: 800;
+  line-height: 1.33;
+  white-space: nowrap;
 }
 
 .post-checkin-sponsor-cta {
   flex: 0 0 auto;
   border: 0;
   border-radius: 999px;
-  padding: 9px 11px;
+  padding: 7px 12px;
   background: #E8590C;
   color: #FFFFFF;
-  font: 800 0.78rem/1 'Inter', sans-serif;
+  font: 800 0.75rem/1.33 'Inter', sans-serif;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(232, 89, 12, 0.22);
+  box-shadow: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.post-checkin-sponsor-cta:hover,
+.post-checkin-sponsor-cta:focus-visible {
+  background: #D14E0A;
+  transform: translateY(-1px);
+}
+
+.post-checkin-sponsor-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 8px;
+  margin-top: 8px;
+}
+
+.post-checkin-sponsor-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #D9D9D9;
+}
+
+.post-checkin-sponsor-dots span.active {
+  background: #E8590C;
+}
+
+@keyframes headlineSponsorPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 rgba(232, 89, 12, 0.26);
+  }
+
+  50% {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 6px rgba(232, 89, 12, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-checkin-sponsor-badge {
+    animation: none;
+  }
+
+  .post-checkin-sponsor-card,
+  .post-checkin-sponsor-cta {
+    transition: none;
+  }
 }
 
 @media (max-width: 560px) {
@@ -2035,13 +2158,26 @@
   }
 
   .post-checkin-sponsors {
-    padding: 13px;
+    padding: 20px 14px;
   }
 
-  .post-checkin-sponsors-header,
   .post-checkin-sponsor-copy {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .post-checkin-sponsor-card {
+    flex-basis: min(241px, 78vw);
+    min-width: min(241px, 78vw);
+  }
+
+  .post-checkin-sponsor-card.compact {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .post-checkin-sponsor-image {
+    height: 156px;
   }
 
   .post-checkin-sponsor-cta {

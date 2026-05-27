@@ -43,9 +43,9 @@ const Icons = {
     </svg>
   ),
   settings: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 1.75c.82 0 1.52.58 1.68 1.39l.22 1.09c.09.46.58.73 1.02.56l1.04-.4c.76-.29 1.63.02 2.05.72.41.7.27 1.6-.35 2.13l-.85.72c-.36.3-.36.86 0 1.16l.85.72c.62.53.76 1.43.35 2.13-.42.7-1.29 1.01-2.05.72l-1.04-.4c-.44-.17-.93.1-1.02.56l-.22 1.09A1.72 1.72 0 0110 18.25c-.82 0-1.52-.58-1.68-1.39l-.22-1.09a.78.78 0 00-1.02-.56l-1.04.4a1.72 1.72 0 01-2.05-.72 1.72 1.72 0 01.35-2.13l.85-.72c.36-.3.36-.86 0-1.16l-.85-.72A1.72 1.72 0 013.99 5.1c.42-.7 1.29-1.01 2.05-.72l1.04.4c.44.17.93-.1 1.02-.56l.22-1.09A1.72 1.72 0 0110 1.75z" />
-      <circle cx="10" cy="10" r="2.5" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
   notification: (
@@ -81,9 +81,9 @@ const Icons = {
     </svg>
   ),
   gear: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 1.75c.82 0 1.52.58 1.68 1.39l.22 1.09c.09.46.58.73 1.02.56l1.04-.4c.76-.29 1.63.02 2.05.72.41.7.27 1.6-.35 2.13l-.85.72c-.36.3-.36.86 0 1.16l.85.72c.62.53.76 1.43.35 2.13-.42.7-1.29 1.01-2.05.72l-1.04-.4c-.44-.17-.93.1-1.02.56l-.22 1.09A1.72 1.72 0 0110 18.25c-.82 0-1.52-.58-1.68-1.39l-.22-1.09a.78.78 0 00-1.02-.56l-1.04.4a1.72 1.72 0 01-2.05-.72 1.72 1.72 0 01.35-2.13l.85-.72c.36-.3.36-.86 0-1.16l-.85-.72A1.72 1.72 0 013.99 5.1c.42-.7 1.29-1.01 2.05-.72l1.04.4c.44.17.93-.1 1.02-.56l.22-1.09A1.72 1.72 0 0110 1.75z" />
-      <circle cx="10" cy="10" r="2.5" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
   chevronDown: (
@@ -219,9 +219,13 @@ function CreateProgram() {
   const { template, setTemplateKey } = useEventTemplate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showSponsorSetup, setShowSponsorSetup] = useState(false);
   const profileMenuRef = useRef(null);
   const flyerInputRef = useRef(null);
   const sponsorsRef = useRef([]);
+  const sponsorPanelRef = useRef(null);
+  const sponsorEditorRefs = useRef({});
+  const pendingSponsorFocusRef = useRef(null);
   const personalizedBackgroundInputRef = useRef(null);
   const personalizedLogoInputRef = useRef(null);
 
@@ -410,14 +414,40 @@ function CreateProgram() {
     setErrors(prev => ({ ...prev, sponsors: '', sponsorExpectedAttendees: '' }));
   };
 
-  const handleAddSponsor = () => {
-    setSponsors(prev => [...prev, createEmptySponsor()]);
+  const scrollToSponsorPanel = () => {
+    setShowSponsorSetup(true);
+    window.setTimeout(() => {
+      sponsorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sponsorPanelRef.current?.focus({ preventScroll: true });
+    }, 80);
   };
+
+  const handleAddSponsor = () => {
+    const sponsor = createEmptySponsor();
+    pendingSponsorFocusRef.current = sponsor.clientId;
+    setShowSponsorSetup(true);
+    setSponsors(prev => [...prev, sponsor]);
+  };
+
+  useEffect(() => {
+    const sponsorId = pendingSponsorFocusRef.current;
+    if (!sponsorId) return;
+
+    const timer = window.setTimeout(() => {
+      const editor = sponsorEditorRefs.current[sponsorId];
+      editor?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      editor?.querySelector('input')?.focus({ preventScroll: true });
+      pendingSponsorFocusRef.current = null;
+    }, 80);
+
+    return () => window.clearTimeout(timer);
+  }, [sponsors.length]);
 
   const handleRemoveSponsor = (clientId) => {
     setSponsors(prev => {
       const sponsor = prev.find(item => item.clientId === clientId);
       if (sponsor?.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
+      delete sponsorEditorRefs.current[clientId];
       return prev.filter(item => item.clientId !== clientId);
     });
   };
@@ -595,6 +625,8 @@ function CreateProgram() {
   };
 
   const handleFlyerTypeChange = (type) => {
+    setShowSponsorSetup(false);
+
     if (type === 'personalized') {
       setFormData(prev => ({
         ...prev,
@@ -729,6 +761,9 @@ function CreateProgram() {
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      if (newErrors.sponsors || newErrors.sponsorExpectedAttendees) {
+        setShowSponsorSetup(true);
+      }
       return;
     }
     if (flyerProcessing) {
@@ -827,6 +862,10 @@ function CreateProgram() {
   };
 
   const toggleTheme = () => setDarkMode(prev => !prev);
+
+  const shouldShowSponsorSetup = showSponsorSetup;
+  const shouldShowStandardFlyerSetup = !showSponsorSetup && formData.flyerType === 'standard';
+  const shouldShowPersonalizedFlyerSetup = !showSponsorSetup && formData.flyerType === 'personalized';
 
   const churchInitials = churchData.name
     ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -1055,7 +1094,7 @@ function CreateProgram() {
               <div className="flyer-type-options">
                 <button
                   type="button"
-                  className={`flyer-type-card ${formData.flyerType === 'standard' ? 'selected' : ''}`}
+                  className={`flyer-type-card ${shouldShowStandardFlyerSetup ? 'selected' : ''}`}
                   onClick={() => handleFlyerTypeChange('standard')}
                 >
                   <span className="flyer-type-title">Standard Event Flyer</span>
@@ -1063,11 +1102,22 @@ function CreateProgram() {
                 </button>
                 <button
                   type="button"
-                  className={`flyer-type-card ${formData.flyerType === 'personalized' ? 'selected' : ''}`}
+                  className={`flyer-type-card ${shouldShowPersonalizedFlyerSetup ? 'selected' : ''}`}
                   onClick={() => handleFlyerTypeChange('personalized')}
                 >
                   <span className="flyer-type-title">Personalized Flyer</span>
                   <span className="flyer-type-copy">Generate a branded card with each attendee's first name.</span>
+                </button>
+                <button
+                  type="button"
+                  className={`flyer-type-card flyer-type-action-card ${shouldShowSponsorSetup ? 'selected' : ''} ${sponsors.length > 0 ? 'has-sponsors' : ''}`}
+                  onClick={scrollToSponsorPanel}
+                >
+                  <span className="flyer-type-title">Event Sponsors</span>
+                  <span className="flyer-type-copy">Add sponsor flyers, booth CTAs, and post-check-in engagement tracking.</span>
+                  {sponsors.length > 0 && (
+                    <span className="flyer-type-count">{sponsors.length} added</span>
+                  )}
                 </button>
               </div>
               {errors.flyerType && <span className="error-text">{errors.flyerType}</span>}
@@ -1080,7 +1130,7 @@ function CreateProgram() {
                 className="flyer-file-input"
               />
 
-              {formData.flyerType === 'standard' ? (
+              {shouldShowStandardFlyerSetup && (
                 <>
                   {!flyerData.compressedFile ? (
                     <button
@@ -1127,7 +1177,9 @@ function CreateProgram() {
 
                   {flyerData.error && <span className="error-text">{flyerData.error}</span>}
                 </>
-              ) : (
+              )}
+
+              {shouldShowPersonalizedFlyerSetup && (
                 <div className="personalized-flyer-builder">
                   <div className="personalized-rule-callout">
                     Personalized flyers require Collect Data mode and Full Name. Ingather has enabled both for this {template.event.singular.toLowerCase()}.
@@ -1282,7 +1334,8 @@ function CreateProgram() {
                 </div>
               )}
 
-              <div className="sponsor-setup-panel">
+              {shouldShowSponsorSetup && (
+              <div className="sponsor-setup-panel" ref={sponsorPanelRef} id="event-sponsors-setup" tabIndex="-1">
                 <div className="sponsor-setup-header">
                   <div>
                     <h4>Event Sponsors</h4>
@@ -1335,7 +1388,14 @@ function CreateProgram() {
                 ) : (
                   <div className="sponsor-list">
                     {sponsors.map((sponsor, index) => (
-                      <div className="sponsor-editor" key={sponsor.clientId}>
+                      <div
+                        className="sponsor-editor"
+                        key={sponsor.clientId}
+                        ref={(node) => {
+                          if (node) sponsorEditorRefs.current[sponsor.clientId] = node;
+                          else delete sponsorEditorRefs.current[sponsor.clientId];
+                        }}
+                      >
                         <div className="sponsor-editor-top">
                           <span className="sponsor-number">Sponsor {index + 1}</span>
                           <button type="button" className="sponsor-remove-btn" onClick={() => handleRemoveSponsor(sponsor.clientId)}>
@@ -1474,6 +1534,7 @@ function CreateProgram() {
 
                 {errors.sponsors && <span className="error-text">{errors.sponsors}</span>}
               </div>
+              )}
             </div>
 
             {/* Tracking Mode Card */}

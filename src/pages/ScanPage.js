@@ -546,17 +546,57 @@ const groupSponsorsByTier = (sponsors = []) => {
   return groups;
 };
 
-function SponsorCard({ sponsor, onSponsorClick, compact = false }) {
-  const handleClick = () => onSponsorClick(sponsor);
+const isHeadlineSponsor = (sponsor) => /headline/i.test(sponsor?.tier || '');
+
+const getSponsorFlyerUrl = (sponsor) => sponsor?.flyerUrl || sponsor?.flyer_url || '';
+
+const getOrderedSponsors = (sponsors = []) => {
+  return [...sponsors].sort((first, second) => {
+    const firstIsHeadline = isHeadlineSponsor(first);
+    const secondIsHeadline = isHeadlineSponsor(second);
+    if (firstIsHeadline === secondIsHeadline) return 0;
+    return firstIsHeadline ? -1 : 1;
+  });
+};
+
+function SponsorCarouselDots({ count }) {
+  if (count <= 1) return null;
 
   return (
-    <article className={`post-checkin-sponsor-card ${compact ? 'compact' : ''}`}>
+    <div className="post-checkin-sponsor-dots" aria-hidden="true">
+      {Array.from({ length: Math.min(count, 4) }).map((_, index) => (
+        <span key={index} className={index === 0 ? 'active' : ''} />
+      ))}
+    </div>
+  );
+}
+
+function SponsorCard({ sponsor, onSponsorClick, compact = false }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const handleClick = () => onSponsorClick(sponsor);
+  const headline = isHeadlineSponsor(sponsor);
+  const flyerUrl = getSponsorFlyerUrl(sponsor);
+  const canShowFlyer = flyerUrl && !imageFailed;
+
+  return (
+    <article className={`post-checkin-sponsor-card ${compact ? 'compact' : ''} ${headline ? 'is-headline' : ''}`}>
       <button type="button" className="post-checkin-sponsor-image" onClick={handleClick}>
-        <img src={sponsor.flyerUrl} alt={`${sponsor.sponsorName} sponsor flyer`} />
+        {headline && <span className="post-checkin-sponsor-badge">Headline Sponsor</span>}
+        {canShowFlyer ? (
+          <img
+            src={flyerUrl}
+            alt={`${sponsor.sponsorName} sponsor flyer`}
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <span className="post-checkin-sponsor-image-fallback">
+            Sponsor flyer unavailable
+          </span>
+        )}
       </button>
       <div className="post-checkin-sponsor-copy">
         <div>
-          <p className="post-checkin-sponsor-kicker">Sponsored by</p>
+          <p className="post-checkin-sponsor-kicker">Sponsored By</p>
           <h3>{sponsor.sponsorName}</h3>
           {sponsor.boothText && <span className="post-checkin-sponsor-booth">{sponsor.boothText}</span>}
         </div>
@@ -572,36 +612,36 @@ function PostCheckInSponsors({ placement, onSponsorClick }) {
   if (!placement) return null;
 
   if (placement.mode === 'distribution' && placement.sponsor) {
+    const sponsorCount = 1;
+
     return (
       <section className="post-checkin-sponsors post-checkin-sponsors-single" aria-label="Event sponsor">
         <div className="post-checkin-sponsors-header">
-          <span>Event Sponsor</span>
-          <strong>Recommended for you</strong>
+          <span>MEET OUR SPONSORS</span>
+          <strong>Get familiar with our sponsors and visit their booth</strong>
         </div>
         <SponsorCard sponsor={placement.sponsor} onSponsorClick={onSponsorClick} compact />
+        <SponsorCarouselDots count={sponsorCount} />
       </section>
     );
   }
 
   const groups = groupSponsorsByTier(placement.sponsors || []);
   if (groups.length === 0) return null;
+  const sponsors = getOrderedSponsors(groups.flatMap(group => group.sponsors));
 
   return (
     <section className="post-checkin-sponsors" aria-label="Event sponsors">
       <div className="post-checkin-sponsors-header">
-        <span>Event Sponsors</span>
-        <strong>Explore partner offers</strong>
+        <span>MEET OUR SPONSORS</span>
+        <strong>Get familiar with our sponsors and visit their booth</strong>
       </div>
-      {groups.map(group => (
-        <div className="post-checkin-sponsor-group" key={group.label}>
-          <h3>{group.label}</h3>
-          <div className="post-checkin-sponsor-carousel">
-            {group.sponsors.map(sponsor => (
-              <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="post-checkin-sponsor-carousel">
+        {sponsors.map(sponsor => (
+          <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} />
+        ))}
+      </div>
+      <SponsorCarouselDots count={sponsors.length} />
     </section>
   );
 }

@@ -43,9 +43,9 @@ const Icons = {
     </svg>
   ),
   settings: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 1.75c.82 0 1.52.58 1.68 1.39l.22 1.09c.09.46.58.73 1.02.56l1.04-.4c.76-.29 1.63.02 2.05.72.41.7.27 1.6-.35 2.13l-.85.72c-.36.3-.36.86 0 1.16l.85.72c.62.53.76 1.43.35 2.13-.42.7-1.29 1.01-2.05.72l-1.04-.4c-.44-.17-.93.1-1.02.56l-.22 1.09A1.72 1.72 0 0110 18.25c-.82 0-1.52-.58-1.68-1.39l-.22-1.09a.78.78 0 00-1.02-.56l-1.04.4a1.72 1.72 0 01-2.05-.72 1.72 1.72 0 01.35-2.13l.85-.72c.36-.3.36-.86 0-1.16l-.85-.72A1.72 1.72 0 013.99 5.1c.42-.7 1.29-1.01 2.05-.72l1.04.4c.44.17.93-.1 1.02-.56l.22-1.09A1.72 1.72 0 0110 1.75z" />
-      <circle cx="10" cy="10" r="2.5" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
   notification: (
@@ -64,6 +64,18 @@ const Icons = {
   chevronRight: (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="6,4 10,8 6,12" />
+    </svg>
+  ),
+  arrowRight: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="8" x2="13" y2="8" />
+      <polyline points="9,4 13,8 9,12" />
+    </svg>
+  ),
+  arrowLeftSmall: (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="13" y1="8" x2="3" y2="8" />
+      <polyline points="7,4 3,8 7,12" />
     </svg>
   ),
   sun: (
@@ -145,12 +157,14 @@ const Icons = {
     </svg>
   ),
   gear: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 1.75c.82 0 1.52.58 1.68 1.39l.22 1.09c.09.46.58.73 1.02.56l1.04-.4c.76-.29 1.63.02 2.05.72.41.7.27 1.6-.35 2.13l-.85.72c-.36.3-.36.86 0 1.16l.85.72c.62.53.76 1.43.35 2.13-.42.7-1.29 1.01-2.05.72l-1.04-.4c-.44-.17-.93.1-1.02.56l-.22 1.09A1.72 1.72 0 0110 18.25c-.82 0-1.52-.58-1.68-1.39l-.22-1.09a.78.78 0 00-1.02-.56l-1.04.4a1.72 1.72 0 01-2.05-.72 1.72 1.72 0 01.35-2.13l.85-.72c.36-.3.36-.86 0-1.16l-.85-.72A1.72 1.72 0 013.99 5.1c.42-.7 1.29-1.01 2.05-.72l1.04.4c.44.17.93-.1 1.02-.56l.22-1.09A1.72 1.72 0 0110 1.75z" />
-      <circle cx="10" cy="10" r="2.5" />
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
+      <circle cx="12" cy="12" r="3" />
     </svg>
   ),
 };
+
+const DASHBOARD_BARS_PER_PAGE = 12;
 
 /* ============================================
    DONUT CHART COMPONENT
@@ -620,6 +634,7 @@ function Dashboard() {
   const [totalAttendance, setTotalAttendance] = useState(0);
   const [upcomingPrograms, setUpcomingPrograms] = useState(0);
   const [chartData, setChartData] = useState([]);
+  const [dashboardChartPage, setDashboardChartPage] = useState(0);
   const [donutData, setDonutData] = useState([
     { label: 'Female Attendance', value: 0, color: '#7C3AED' },
     { label: 'Male Attendance', value: 0, color: '#10B981' },
@@ -688,6 +703,10 @@ function Dashboard() {
   }, [isMobileMenuOpen]);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+
+  useEffect(() => {
+    setDashboardChartPage(0);
+  }, [dateRange, chartData.length]);
 
   const applyChurchData = (church) => {
     const organizationType = church.organizationType || '';
@@ -939,6 +958,12 @@ function Dashboard() {
     'custom': 'Custom'
   };
   const presetButtonText = presetLabelMap[presetLabel] || 'Last 30 days';
+  const dashboardChartTotalPages = Math.max(1, Math.ceil(chartData.length / DASHBOARD_BARS_PER_PAGE));
+  const safeDashboardChartPage = Math.min(dashboardChartPage, dashboardChartTotalPages - 1);
+  const dashboardChartStartIndex = safeDashboardChartPage * DASHBOARD_BARS_PER_PAGE;
+  const dashboardChartData = chartData.slice(dashboardChartStartIndex, dashboardChartStartIndex + DASHBOARD_BARS_PER_PAGE);
+  const showDashboardChartPagination = chartData.length > DASHBOARD_BARS_PER_PAGE;
+  const isDashboardChartLastPage = dashboardChartStartIndex + DASHBOARD_BARS_PER_PAGE >= chartData.length;
 
   // Church initials for avatar fallback
   const churchInitials = churchData.name
@@ -1257,8 +1282,28 @@ function Dashboard() {
                 <span className="chart-filter-label">{presetButtonText}</span>
               </div>
               <div className="bar-chart-container">
-                <AttendanceBarChart data={chartData} />
+                <AttendanceBarChart data={dashboardChartData} />
               </div>
+              {showDashboardChartPagination && (
+                <div className="dashboard-chart-pagination">
+                  <button
+                    type="button"
+                    title="Previous"
+                    disabled={safeDashboardChartPage === 0}
+                    onClick={() => setDashboardChartPage(page => Math.max(0, page - 1))}
+                  >
+                    {Icons.arrowLeftSmall}
+                  </button>
+                  <button
+                    type="button"
+                    title="Next"
+                    disabled={isDashboardChartLastPage}
+                    onClick={() => setDashboardChartPage(page => Math.min(dashboardChartTotalPages - 1, page + 1))}
+                  >
+                    {Icons.arrowRight}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Donut Chart - Attendance Breakdown */}

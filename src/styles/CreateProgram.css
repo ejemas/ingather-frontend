@@ -208,7 +208,7 @@
 
 .flyer-type-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -232,10 +232,38 @@
   border-color: rgba(232, 89, 12, 0.42);
 }
 
+.flyer-type-card:focus-visible {
+  outline: 3px solid rgba(232, 89, 12, 0.2);
+  outline-offset: 2px;
+}
+
 .flyer-type-card.selected {
   border-color: var(--color-orange);
   background: var(--color-orange-lighter);
   box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.08);
+}
+
+.flyer-type-action-card {
+  position: relative;
+}
+
+.flyer-type-action-card.has-sponsors {
+  border-color: rgba(232, 89, 12, 0.32);
+  background: linear-gradient(180deg, rgba(232, 89, 12, 0.08), var(--bg-card));
+}
+
+.flyer-type-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-orange);
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 800;
 }
 
 .flyer-type-title {
@@ -442,6 +470,16 @@
   margin-top: 22px;
   padding-top: 22px;
   border-top: 1px solid var(--border-color);
+  scroll-margin-top: 96px;
+}
+
+.sponsor-setup-panel:focus {
+  outline: none;
+}
+
+.sponsor-setup-panel:focus-visible {
+  outline: 3px solid rgba(232, 89, 12, 0.18);
+  outline-offset: 8px;
 }
 
 .sponsor-setup-header {
@@ -479,13 +517,16 @@
 .sponsor-add-btn {
   flex: 0 0 auto;
   padding: 10px 14px;
-  background: var(--color-pumpkin);
+  background: #E8590C;
   color: #FFFFFF;
   box-shadow: 0 10px 24px rgba(232, 89, 12, 0.18);
 }
 
-.sponsor-add-btn:hover {
+.sponsor-add-btn:hover,
+.sponsor-add-btn:focus-visible {
   transform: translateY(-1px);
+  background: #D14E0A;
+  color: #FFFFFF;
   box-shadow: 0 14px 30px rgba(232, 89, 12, 0.24);
 }
 
