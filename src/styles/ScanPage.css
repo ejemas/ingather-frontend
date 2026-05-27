@@ -142,6 +142,7 @@
   text-align: center;
   animation: slideUp 0.5s ease;
   overflow: hidden;
+  position: relative;
 }
 
 .modal-card-topbar {
@@ -290,8 +291,69 @@
   height: 32px;
   stroke: #fff;
   fill: none;
-  stroke-width: 1.5;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   opacity: 0.8;
+}
+
+.winner-confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.winner-confetti-piece {
+  position: absolute;
+  width: 9px;
+  height: 15px;
+  border-radius: 3px;
+  background: var(--confetti-color);
+  opacity: 0;
+  animation: confettiCannon 1.65s cubic-bezier(0.16, 0.72, 0.28, 1) forwards;
+  animation-delay: calc(var(--confetti-index) * 42ms);
+}
+
+.winner-confetti-piece.left {
+  left: 8%;
+  top: 24%;
+  --confetti-x: 150px;
+  --confetti-y: -70px;
+  --confetti-rotate: 280deg;
+}
+
+.winner-confetti-piece.right {
+  right: 8%;
+  top: 24%;
+  --confetti-x: -150px;
+  --confetti-y: -70px;
+  --confetti-rotate: -280deg;
+}
+
+.winner-confetti-piece.top {
+  left: var(--confetti-left);
+  top: 4%;
+  --confetti-x: 20px;
+  --confetti-y: 150px;
+  --confetti-rotate: 210deg;
+}
+
+@keyframes confettiCannon {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(0.8);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--confetti-x), var(--confetti-y), 0) rotate(var(--confetti-rotate)) scale(1);
+  }
 }
 
 /* Event flyer details */
@@ -2086,19 +2148,30 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 8px;
   margin-top: 8px;
 }
 
-.post-checkin-sponsor-dots span {
+.post-checkin-sponsor-dots button {
   width: 8px;
   height: 8px;
+  padding: 0;
+  border: 0;
   border-radius: 999px;
   background: #D9D9D9;
+  cursor: pointer;
+  transition: width 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
-.post-checkin-sponsor-dots span.active {
+.post-checkin-sponsor-dots button.active {
+  width: 18px;
   background: #E8590C;
+}
+
+.post-checkin-sponsor-dots button:hover,
+.post-checkin-sponsor-dots button:focus-visible {
+  background: #D14E0A;
+  outline: none;
+  transform: scale(1.1);
 }
 
 @keyframes headlineSponsorPulse {
@@ -2115,12 +2188,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .winner-confetti-piece {
+    animation: none;
+    display: none;
+  }
+
   .post-checkin-sponsor-badge {
     animation: none;
   }
 
   .post-checkin-sponsor-card,
-  .post-checkin-sponsor-cta {
+  .post-checkin-sponsor-cta,
+  .post-checkin-sponsor-dots button {
     transition: none;
   }
 }

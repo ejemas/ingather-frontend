@@ -550,6 +550,42 @@ const isHeadlineSponsor = (sponsor) => /headline/i.test(sponsor?.tier || '');
 
 const getSponsorFlyerUrl = (sponsor) => sponsor?.flyerUrl || sponsor?.flyer_url || '';
 
+function GiftBoxIcon({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4" y="10" width="16" height="10" rx="2" />
+      <rect x="3" y="7" width="18" height="4" rx="1.5" />
+      <line x1="12" y1="7" x2="12" y2="20" />
+      <path d="M12 7C10.4 4.4 8.2 3.7 7 4.9C5.7 6.2 7.1 8 12 7Z" />
+      <path d="M12 7c1.6-2.6 3.8-3.3 5-2.1C18.3 6.2 16.9 8 12 7Z" />
+    </svg>
+  );
+}
+
+function WinnerConfetti() {
+  const pieces = [
+    ['left', '#E8590C'], ['left', '#16A34A'], ['left', '#F59E0B'], ['left', '#7C3AED'],
+    ['right', '#E8590C'], ['right', '#16A34A'], ['right', '#F59E0B'], ['right', '#2563EB'],
+    ['top', '#E8590C'], ['top', '#16A34A'], ['top', '#F59E0B'], ['top', '#EF4444']
+  ];
+
+  return (
+    <div className="winner-confetti" aria-hidden="true">
+      {pieces.map(([origin, color], index) => (
+        <span
+          key={`${origin}-${index}`}
+          className={`winner-confetti-piece ${origin}`}
+          style={{
+            '--confetti-color': color,
+            '--confetti-index': index,
+            '--confetti-left': `${18 + (index * 5)}%`
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 const getOrderedSponsors = (sponsors = []) => {
   return [...sponsors].sort((first, second) => {
     const firstIsHeadline = isHeadlineSponsor(first);
@@ -559,13 +595,20 @@ const getOrderedSponsors = (sponsors = []) => {
   });
 };
 
-function SponsorCarouselDots({ count }) {
+function SponsorCarouselDots({ count, activeIndex = 0, onSelect }) {
   if (count <= 1) return null;
 
   return (
-    <div className="post-checkin-sponsor-dots" aria-hidden="true">
-      {Array.from({ length: Math.min(count, 4) }).map((_, index) => (
-        <span key={index} className={index === 0 ? 'active' : ''} />
+    <div className="post-checkin-sponsor-dots" aria-label="Sponsor carousel position">
+      {Array.from({ length: count }).map((_, index) => (
+        <button
+          key={index}
+          type="button"
+          className={index === activeIndex ? 'active' : ''}
+          aria-label={`Show sponsor ${index + 1}`}
+          aria-current={index === activeIndex ? 'true' : undefined}
+          onClick={() => onSelect?.(index)}
+        />
       ))}
     </div>
   );
@@ -609,11 +652,55 @@ function SponsorCard({ sponsor, onSponsorClick, compact = false }) {
 }
 
 function PostCheckInSponsors({ placement, onSponsorClick }) {
+  const carouselRef = useRef(null);
+  const [activeSponsorIndex, setActiveSponsorIndex] = useState(0);
+
+  const updateActiveSponsorIndex = () => {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    const cards = Array.from(carousel.querySelectorAll('.post-checkin-sponsor-card'));
+    if (cards.length === 0) return;
+
+    const viewportCenter = carousel.scrollLeft + carousel.clientWidth / 2;
+    const closestIndex = cards.reduce((closest, card, index) => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - viewportCenter);
+      return distance < closest.distance ? { index, distance } : closest;
+    }, { index: 0, distance: Number.POSITIVE_INFINITY }).index;
+
+    setActiveSponsorIndex(closestIndex);
+  };
+
+  const scrollToSponsor = (index) => {
+    const carousel = carouselRef.current;
+    const card = carousel?.querySelectorAll('.post-checkin-sponsor-card')?.[index];
+    if (!carousel || !card) return;
+
+    carousel.scrollTo({
+      left: card.offsetLeft - carousel.offsetLeft,
+      behavior: 'smooth'
+    });
+    setActiveSponsorIndex(index);
+  };
+
+  useEffect(() => {
+    updateActiveSponsorIndex();
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    carousel.addEventListener('scroll', updateActiveSponsorIndex, { passive: true });
+    window.addEventListener('resize', updateActiveSponsorIndex);
+
+    return () => {
+      carousel.removeEventListener('scroll', updateActiveSponsorIndex);
+      window.removeEventListener('resize', updateActiveSponsorIndex);
+    };
+  }, [placement]);
+
   if (!placement) return null;
 
   if (placement.mode === 'distribution' && placement.sponsor) {
-    const sponsorCount = 1;
-
     return (
       <section className="post-checkin-sponsors post-checkin-sponsors-single" aria-label="Event sponsor">
         <div className="post-checkin-sponsors-header">
@@ -621,7 +708,6 @@ function PostCheckInSponsors({ placement, onSponsorClick }) {
           <strong>Get familiar with our sponsors and visit their booth</strong>
         </div>
         <SponsorCard sponsor={placement.sponsor} onSponsorClick={onSponsorClick} compact />
-        <SponsorCarouselDots count={sponsorCount} />
       </section>
     );
   }
@@ -636,12 +722,12 @@ function PostCheckInSponsors({ placement, onSponsorClick }) {
         <span>MEET OUR SPONSORS</span>
         <strong>Get familiar with our sponsors and visit their booth</strong>
       </div>
-      <div className="post-checkin-sponsor-carousel">
+      <div className="post-checkin-sponsor-carousel" ref={carouselRef}>
         {sponsors.map(sponsor => (
           <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} />
         ))}
       </div>
-      <SponsorCarouselDots count={sponsors.length} />
+      <SponsorCarouselDots count={sponsors.length} activeIndex={activeSponsorIndex} onSelect={scrollToSponsor} />
     </section>
   );
 }
@@ -1515,17 +1601,18 @@ function ScanPage() {
       <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
+            <WinnerConfetti />
             <div className="modal-card-topbar green"></div>
             <div className="modal-card-body">
               <div className="modal-icon-circle dark">
-                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
+                <GiftBoxIcon />
               </div>
               <h2>Congratulations !</h2>
               <p className="modal-subtitle">You have been selected to receive a gift from the organizer. Thank you for joining us today.</p>
               <div className="modal-callout-action">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
-                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
+                <GiftBoxIcon className="callout-gift-icon" />
               </div>
               {successActions}
             </div>
@@ -1576,17 +1663,18 @@ function ScanPage() {
       <div className={feedbackPageClass}>
         <div className="scan-container">
           <div className="modal-card">
+            <WinnerConfetti />
             <div className="modal-card-topbar green"></div>
             <div className="modal-card-body">
               <div className="modal-icon-circle dark">
-                <svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
+                <GiftBoxIcon />
               </div>
               <h2>Welcome &amp; Congratulations !</h2>
               <p className="modal-subtitle">Welcome first-timer! You have been selected to receive a gift from the organizer.</p>
               <div className="modal-callout-action">
                 <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
                 <span className="callout-text">Please wait after the event. We look forward to connecting with you.</span>
-                <svg className="callout-gift-icon" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="1" /><path d="M12 10V6" /><path d="M8 6c0 0 0 4 4 4" /><path d="M16 6c0 0 0 4 -4 4" /><line x1="5" y1="14" x2="19" y2="14" /></svg>
+                <GiftBoxIcon className="callout-gift-icon" />
               </div>
               {successActions}
             </div>
