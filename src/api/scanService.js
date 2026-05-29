@@ -19,21 +19,31 @@ export const submitScan = async (programId, deviceFingerprint, formData = null, 
   return response.data;
 };
 
-export const submitFormData = async (programId, deviceFingerprint, formData, scanSessionToken) => {
+export const submitFormData = async (programId, deviceFingerprint, formData, scanSessionToken, scanSessionId) => {
   const response = await SCAN_API.post(`/program/${programId}/form`, {
     deviceFingerprint,
     formData,
-    scanSessionToken
+    scanSessionToken,
+    scanSessionId
   });
   return response.data;
 };
 
-export const updateScanData = async (programId, deviceFingerprint, gender, firstTimer, scanSessionToken) => {
+export const submitProxyAttendee = async (programId, hostDeviceFingerprint, formData) => {
+  const response = await SCAN_API.post(`/program/${programId}/proxy`, {
+    hostDeviceFingerprint,
+    formData
+  });
+  return response.data;
+};
+
+export const updateScanData = async (programId, deviceFingerprint, gender, firstTimer, scanSessionToken, scanSessionId) => {
   const response = await SCAN_API.put(`/program/${programId}/update-scan`, {
     deviceFingerprint,
     gender,
     firstTimer,
-    scanSessionToken
+    scanSessionToken,
+    scanSessionId
   });
   return response.data;
 };

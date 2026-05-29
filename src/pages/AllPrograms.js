@@ -113,6 +113,16 @@ function AllPrograms() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
 
+  const getProgramStatus = (program) => {
+    if (program.status) return program.status;
+    if (!program.isActive) return 'completed';
+    const today = new Date().toISOString().split('T')[0];
+    const programDate = typeof program.date === 'string'
+      ? program.date.slice(0, 10)
+      : new Date(program.date).toISOString().split('T')[0];
+    return programDate > today ? 'upcoming' : 'active';
+  };
+
   // Theme effect
   useEffect(() => {
     if (darkMode) {
@@ -193,7 +203,8 @@ function AllPrograms() {
         startTime: p.startTime,
         endTime: p.endTime,
         totalScans: p.totalScans,
-        status: p.isActive ? 'active' : 'completed',
+        isActive: p.isActive,
+        status: getProgramStatus(p),
         dataCollection: p.trackingMode === 'collect-data'
       }));
 
@@ -261,13 +272,17 @@ function AllPrograms() {
     ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : 'IN';
 
-  const filteredPrograms = programs.filter(program => {
-    if (activeFilter === 'all') return true;
-    return program.status === activeFilter;
-  });
+  const filteredPrograms = programs
+    .filter(program => {
+      if (activeFilter === 'all') return true;
+      return program.status === activeFilter;
+    })
+    .sort((a, b) => {
+      if (activeFilter !== 'upcoming') return 0;
+      return `${a.date}T${a.startTime || '00:00'}`.localeCompare(`${b.date}T${b.startTime || '00:00'}`);
+    });
 
-  // Count active programs for the "Active" tab badge
-  const activeCount = programs.filter(p => p.status === 'active').length;
+  const upcomingCount = programs.filter(p => p.status === 'upcoming').length;
 
   if (loading) {
     return (
@@ -440,7 +455,7 @@ function AllPrograms() {
                   onClick={() => setActiveFilter('upcoming')}
                 >
                   Upcoming
-                  {activeCount > 0 && <span className="filter-tab-badge">{activeCount}</span>}
+                  {upcomingCount > 0 && <span className="filter-tab-badge">{upcomingCount}</span>}
                 </button>
                 <button
                   className={`filter-tab ${activeFilter === 'completed' ? 'active' : ''}`}

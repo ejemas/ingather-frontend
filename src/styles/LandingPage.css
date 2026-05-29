@@ -44,7 +44,7 @@
 .lp-brand {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   color: var(--lp-ink);
   font-size: 1.12rem;
   font-weight: 800;
@@ -52,9 +52,10 @@
 }
 
 .lp-brand img {
-  width: 34px;
-  height: 34px;
+  width: auto;
+  height: 28px;
   object-fit: contain;
+  display: block;
 }
 
 .lp-nav-links,

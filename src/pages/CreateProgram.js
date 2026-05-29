@@ -147,6 +147,31 @@ const createEmptySponsor = () => ({
   error: ''
 });
 
+function FingerprintWarningModal({ onCancel, onConfirm }) {
+  return (
+    <div className="fingerprint-warning-overlay" role="presentation" onMouseDown={onCancel}>
+      <div
+        className="fingerprint-warning-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fingerprint-warning-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <span className="fingerprint-warning-kicker">Attendance accuracy</span>
+        <h3 id="fingerprint-warning-title">Disable Strict Fingerprinting?</h3>
+        <p>
+          Allowing multiple scans from the same device can help attendees with poor network connections,
+          but it risks skewing your total attendance metrics with duplicate entries.
+        </p>
+        <div className="fingerprint-warning-actions">
+          <button type="button" className="fingerprint-warning-cancel" onClick={onCancel}>Cancel</button>
+          <button type="button" className="fingerprint-warning-confirm" onClick={onConfirm}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ============================================
    MAIN COMPONENT
    ============================================ */
@@ -167,6 +192,8 @@ function CreateProgram() {
       age: false,
       sex: false
     },
+    proxyCheckinEnabled: false,
+    strictDeviceFingerprinting: true,
     enableGifting: false,
     numberOfWinners: 0,
     flyerType: 'standard',
@@ -220,6 +247,7 @@ function CreateProgram() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSponsorSetup, setShowSponsorSetup] = useState(false);
+  const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
   const profileMenuRef = useRef(null);
   const flyerInputRef = useRef(null);
   const sponsorsRef = useRef([]);
@@ -292,18 +320,21 @@ function CreateProgram() {
 
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+        setShowFingerprintWarning(false);
+      }
     };
     const previousOverflow = document.body.style.overflow;
 
     document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+    if (isMobileMenuOpen || showFingerprintWarning) document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, showFingerprintWarning]);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -674,8 +705,30 @@ function CreateProgram() {
         fullName: false, address: false, firstTimer: false, phoneNumber: false,
         department: false, fellowship: false, age: false, sex: false
       } : formData.dataFields,
+      proxyCheckinEnabled: mode === 'count-only' ? false : formData.proxyCheckinEnabled,
+      strictDeviceFingerprinting: mode === 'count-only' ? true : formData.strictDeviceFingerprinting,
       enableGifting: mode === 'count-only' ? false : formData.enableGifting
     });
+  };
+
+  const handleStrictFingerprintingToggle = () => {
+    if (formData.strictDeviceFingerprinting) {
+      setShowFingerprintWarning(true);
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      strictDeviceFingerprinting: true
+    }));
+  };
+
+  const confirmDisableStrictFingerprinting = () => {
+    setFormData(prev => ({
+      ...prev,
+      strictDeviceFingerprinting: false
+    }));
+    setShowFingerprintWarning(false);
   };
 
   const handleDataFieldToggle = (field) => {
@@ -829,6 +882,10 @@ function CreateProgram() {
         endTime: formData.endTime,
         trackingMode: formData.trackingMode,
         dataFields: formData.dataFields,
+        proxyCheckinEnabled: formData.trackingMode === 'collect-data' && formData.proxyCheckinEnabled,
+        strictDeviceFingerprinting: formData.trackingMode === 'collect-data'
+          ? formData.strictDeviceFingerprinting
+          : true,
         enableGifting: formData.enableGifting,
         numberOfWinners: formData.numberOfWinners,
         eventFlyer,
@@ -999,7 +1056,7 @@ function CreateProgram() {
         </header>
 
         {/* Page Content */}
-        <div className="dashboard-content">
+        <div className="dashboard-content create-program-content">
           <div className="cp-page-title">
             <h2>Create A New {template.event.singular}</h2>
           </div>
@@ -1614,6 +1671,45 @@ function CreateProgram() {
               </div>
             )}
 
+            {formData.trackingMode === 'collect-data' && (
+              <div className="form-card fingerprint-control-card">
+                <div className="fingerprint-control-copy">
+                  <h3 className="card-title">Device Fingerprint Control</h3>
+                  <p className="card-description">Control whether one device can check in more than once.</p>
+                </div>
+                <button
+                  type="button"
+                  className={`fingerprint-toggle ${formData.strictDeviceFingerprinting ? 'checked' : ''}`}
+                  onClick={handleStrictFingerprintingToggle}
+                  aria-pressed={formData.strictDeviceFingerprinting}
+                >
+                  <span className="fingerprint-switch" aria-hidden="true"></span>
+                  <span>Strict Device Fingerprinting (1 Scan Per Device)</span>
+                </button>
+              </div>
+            )}
+
+            {formData.trackingMode === 'collect-data' && (
+              <div className="form-card proxy-checkin-card">
+                <div className="proxy-checkin-copy">
+                  <h3 className="card-title">Proxy Check-in</h3>
+                  <p className="card-description">Let one attendee check in up to 3 guests from the same device.</p>
+                </div>
+                <label className={`proxy-checkin-toggle ${formData.proxyCheckinEnabled ? 'checked' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={formData.proxyCheckinEnabled}
+                    onChange={(event) => setFormData(prev => ({
+                      ...prev,
+                      proxyCheckinEnabled: event.target.checked
+                    }))}
+                  />
+                  <span className="proxy-checkin-switch" aria-hidden="true"></span>
+                  <span>{formData.proxyCheckinEnabled ? 'Enabled' : 'Disabled'}</span>
+                </label>
+              </div>
+            )}
+
             {/* Gifting Configuration (conditional) */}
             {formData.trackingMode === 'collect-data' && (
               <div className="form-card" id="gifting-card">
@@ -1678,6 +1774,12 @@ function CreateProgram() {
           </form>
         </div>
       </main>
+      {showFingerprintWarning && (
+        <FingerprintWarningModal
+          onCancel={() => setShowFingerprintWarning(false)}
+          onConfirm={confirmDisableStrictFingerprinting}
+        />
+      )}
     </div>
   );
 }

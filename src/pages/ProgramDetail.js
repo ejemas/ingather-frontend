@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted } from '../api/programService';
+import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted, addManualAttendee, updateStrictDeviceFingerprinting } from '../api/programService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
@@ -43,6 +43,7 @@ const Icons = {
   female: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="5" /><line x1="10" y1="12" x2="10" y2="19" /><line x1="7" y1="16" x2="13" y2="16" /></svg>),
   star: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
   exportIcon: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3" /><polyline points="11,5 8,2 5,5" /><line x1="8" y1="2" x2="8" y2="10" /></svg>),
+  plus: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="3" x2="8" y2="13" /><line x1="3" y1="8" x2="13" y2="8" /></svg>),
   formDoc: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h8l4 4v10a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" /><polyline points="12,3 12,7 16,7" /><line x1="6" y1="10" x2="14" y2="10" /><line x1="6" y1="13" x2="14" y2="13" /><line x1="6" y1="16" x2="10" y2="16" /></svg>),
   starOutline: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
   giftBox: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="9" width="16" height="9" rx="1" /><rect x="3" y="5" width="14" height="4" rx="1" /><line x1="10" y1="5" x2="10" y2="18" /><path d="M10 5C10 3 8 1 6 3s2 2 4 2" /><path d="M10 5c0-2 2-4 4-2s-2 2-4 2" /></svg>),
@@ -385,6 +386,154 @@ function SponsorEngagementCard({ analytics }) {
   );
 }
 
+function ManualAttendeeModal({
+  program,
+  template,
+  formData,
+  errors,
+  submitting,
+  onChange,
+  onClose,
+  onSubmit
+}) {
+  const dataFields = program?.dataFields || {};
+  const fieldLabels = {
+    fullName: 'Full Name',
+    phoneNumber: 'Phone Number',
+    address: 'Address',
+    department: 'Department',
+    fellowship: 'Group',
+    age: 'Age',
+    sex: 'Gender',
+    firstTimer: 'First Timer'
+  };
+
+  return (
+    <div className="pd-modal-overlay" role="presentation" onMouseDown={onClose}>
+      <section
+        className="pd-manual-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manual-attendee-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="pd-manual-modal-header">
+          <div>
+            <span className="pd-manual-kicker">Manual check-in</span>
+            <h3 id="manual-attendee-title">Add {template.attendee.singular.toLowerCase()} manually</h3>
+            <p>Use this when someone checks in without a smartphone.</p>
+          </div>
+          <button type="button" className="pd-modal-close" onClick={onClose} aria-label="Close manual entry modal">×</button>
+        </div>
+
+        <form className="pd-manual-form" onSubmit={onSubmit}>
+          <div className="pd-manual-grid">
+            {dataFields.fullName && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.fullName}</span>
+                <input name="fullName" value={formData.fullName} onChange={onChange} placeholder="Enter full name" />
+                {errors.fullName && <small>{errors.fullName}</small>}
+              </label>
+            )}
+
+            {dataFields.phoneNumber && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.phoneNumber}</span>
+                <input name="phoneNumber" value={formData.phoneNumber} onChange={onChange} placeholder="Enter phone number" />
+                {errors.phoneNumber && <small>{errors.phoneNumber}</small>}
+              </label>
+            )}
+
+            {dataFields.address && (
+              <label className="pd-manual-field pd-manual-field-wide">
+                <span>{fieldLabels.address}</span>
+                <textarea name="address" value={formData.address} onChange={onChange} placeholder="Enter address" rows="3" />
+                {errors.address && <small>{errors.address}</small>}
+              </label>
+            )}
+
+            {dataFields.department && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.department}</span>
+                <input name="department" value={formData.department} onChange={onChange} placeholder="Enter department" />
+                {errors.department && <small>{errors.department}</small>}
+              </label>
+            )}
+
+            {dataFields.fellowship && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.fellowship}</span>
+                <input name="fellowship" value={formData.fellowship} onChange={onChange} placeholder="Enter group" />
+              </label>
+            )}
+
+            {dataFields.age && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.age}</span>
+                <input type="number" min="0" max="130" name="age" value={formData.age} onChange={onChange} placeholder="Enter age" />
+                {errors.age && <small>{errors.age}</small>}
+              </label>
+            )}
+
+            {dataFields.sex && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.sex}</span>
+                <select name="sex" value={formData.sex} onChange={onChange}>
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+                {errors.sex && <small>{errors.sex}</small>}
+              </label>
+            )}
+
+            {dataFields.firstTimer && (
+              <label className="pd-manual-check">
+                <input type="checkbox" name="firstTimer" checked={formData.firstTimer} onChange={onChange} />
+                <span>Mark as first timer</span>
+              </label>
+            )}
+          </div>
+
+          <div className="pd-manual-actions">
+            <button type="button" className="pd-btn-cancel" onClick={onClose} disabled={submitting}>Cancel</button>
+            <button type="submit" className="pd-btn-submit-manual" disabled={submitting}>
+              {submitting ? 'Adding...' : `Add ${template.attendee.singular}`}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function FingerprintWarningModal({ saving, onCancel, onConfirm }) {
+  return (
+    <div className="pd-modal-overlay" role="presentation" onMouseDown={saving ? undefined : onCancel}>
+      <section
+        className="pd-fingerprint-warning-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pd-fingerprint-warning-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <span className="pd-manual-kicker">Attendance accuracy</span>
+        <h3 id="pd-fingerprint-warning-title">Disable Strict Fingerprinting?</h3>
+        <p>
+          Allowing multiple scans from the same device can help attendees with poor network connections,
+          but it risks skewing your total attendance metrics with duplicate entries.
+        </p>
+        <div className="pd-manual-actions">
+          <button type="button" className="pd-btn-cancel" onClick={onCancel} disabled={saving}>Cancel</button>
+          <button type="button" className="pd-btn-submit-manual" onClick={onConfirm} disabled={saving}>
+            {saving ? 'Saving...' : 'Confirm'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /* ============================================
    MAIN COMPONENT
    ============================================ */
@@ -400,12 +549,28 @@ function ProgramDetail() {
   const [formsSubmitted, setFormsSubmitted] = useState(0);
   const [countOnlyScans, setCountOnlyScans] = useState([]);
   const [sponsorAnalytics, setSponsorAnalytics] = useState({ sponsorCount: 0, totalClicks: 0, todayClicks: 0, topSponsor: null, sponsors: [] });
+  const [sharedDeviceCheckins, setSharedDeviceCheckins] = useState(0);
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [winnersGifted, setWinnersGifted] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
   const [chartPage, setChartPage] = useState(0);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualFormData, setManualFormData] = useState({
+    fullName: '',
+    phoneNumber: '',
+    address: '',
+    department: '',
+    fellowship: '',
+    age: '',
+    sex: '',
+    firstTimer: false
+  });
+  const [manualErrors, setManualErrors] = useState({});
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
+  const [fingerprintSaving, setFingerprintSaving] = useState(false);
   const toast = useToast();
   const { template, setTemplateKey } = useEventTemplate();
   const BARS_PER_PAGE = 8;
@@ -433,18 +598,22 @@ function ProgramDetail() {
 
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
+      if (e.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+        setShowManualModal(false);
+        if (!fingerprintSaving) setShowFingerprintWarning(false);
+      }
     };
     const previousOverflow = document.body.style.overflow;
 
     document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
+    if (isMobileMenuOpen || showManualModal || showFingerprintWarning) document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, showManualModal, showFingerprintWarning, fingerprintSaving]);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -479,6 +648,7 @@ function ProgramDetail() {
       if (data.attendeeMaleCount !== undefined) {
         setCollectDataStats({ maleCount: data.attendeeMaleCount, femaleCount: data.attendeeFemaleCount, firstTimerCount: data.attendeeFirstTimerCount });
         if (data.attendeeTotal !== undefined) setFormsSubmitted(data.attendeeTotal);
+        if (data.sharedDeviceCheckins !== undefined) setSharedDeviceCheckins(data.sharedDeviceCheckins);
         getAttendees(id).then(d => setAttendees(d.attendees)).catch(() => {});
       }
       if (data.winnersGifted !== undefined) {
@@ -516,6 +686,7 @@ function ProgramDetail() {
         setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
         setTotalScans(programData.totalScans);
         setWinnersGifted(programData.winnersGifted || 0);
+        setSharedDeviceCheckins(programData.sharedDeviceCheckins || 0);
         getSponsorAnalytics(id)
           .then(data => setSponsorAnalytics(data))
           .catch(error => console.error('Error fetching sponsor analytics:', error));
@@ -567,6 +738,7 @@ function ProgramDetail() {
       setProgram({ ...programData, status: programData.isActive ? 'active' : 'completed' });
       setTotalScans(programData.totalScans);
       setWinnersGifted(programData.winnersGifted || 0);
+      setSharedDeviceCheckins(programData.sharedDeviceCheckins || 0);
       getSponsorAnalytics(id)
         .then(data => setSponsorAnalytics(data))
         .catch(error => console.error('Error fetching sponsor analytics:', error));
@@ -634,6 +806,142 @@ function ProgramDetail() {
 
   const handlePrintQR = () => window.print();
 
+  const resetManualForm = () => {
+    setManualFormData({
+      fullName: '',
+      phoneNumber: '',
+      address: '',
+      department: '',
+      fellowship: '',
+      age: '',
+      sex: '',
+      firstTimer: false
+    });
+    setManualErrors({});
+  };
+
+  const openManualModal = () => {
+    if (!program?.isActive) {
+      toast.info(`This ${template.event.singular.toLowerCase()} has ended, so manual check-ins are disabled.`);
+      return;
+    }
+    resetManualForm();
+    setShowManualModal(true);
+  };
+
+  const closeManualModal = () => {
+    if (manualSubmitting) return;
+    setShowManualModal(false);
+    setManualErrors({});
+  };
+
+  const handleManualChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setManualFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+    if (manualErrors[name]) {
+      setManualErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateManualForm = () => {
+    const dataFields = program?.dataFields || {};
+    const errors = {};
+
+    if (dataFields.fullName && !manualFormData.fullName.trim()) errors.fullName = 'Full name is required';
+    if (dataFields.phoneNumber && !manualFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
+    if (dataFields.address && !manualFormData.address.trim()) errors.address = 'Address is required';
+    if (dataFields.department && !manualFormData.department.trim()) errors.department = 'Department is required';
+    if (dataFields.sex && !manualFormData.sex) errors.sex = 'Please select gender';
+
+    if (dataFields.age && manualFormData.age !== '') {
+      const age = Number(manualFormData.age);
+      if (!Number.isInteger(age) || age < 0 || age > 130) errors.age = 'Age must be a valid number';
+    }
+
+    return errors;
+  };
+
+  const refreshAttendanceChart = async () => {
+    const chartResponse = await getAttendanceData(id);
+    if (chartResponse.buckets && chartResponse.startTime && chartResponse.endTime) {
+      setAttendanceData(mergeChartData(chartResponse.buckets, chartResponse.startTime, chartResponse.endTime, chartResponse.scanRangeStart, chartResponse.scanRangeEnd));
+    }
+  };
+
+  const handleManualSubmit = async (event) => {
+    event.preventDefault();
+
+    const errors = validateManualForm();
+    if (Object.keys(errors).length > 0) {
+      setManualErrors(errors);
+      return;
+    }
+
+    setManualSubmitting(true);
+    try {
+      const response = await addManualAttendee(id, manualFormData);
+
+      if (response.attendee) {
+        setAttendees(prev => [response.attendee, ...prev.filter(attendee => attendee.id !== response.attendee.id)]);
+      }
+      if (response.totalScans !== undefined) setTotalScans(response.totalScans);
+      if (response.attendeeMaleCount !== undefined) {
+        setCollectDataStats({
+          maleCount: response.attendeeMaleCount,
+          femaleCount: response.attendeeFemaleCount,
+          firstTimerCount: response.attendeeFirstTimerCount
+        });
+      }
+      if (response.attendeeTotal !== undefined) setFormsSubmitted(response.attendeeTotal);
+
+      await refreshAttendanceChart();
+      setShowManualModal(false);
+      resetManualForm();
+      toast.success(`${template.attendee.singular} added manually.`);
+    } catch (error) {
+      const serverErrors = error.response?.data?.errors;
+      if (serverErrors) {
+        setManualErrors(serverErrors);
+      }
+      toast.error(error.response?.data?.error || `Failed to add ${template.attendee.singular.toLowerCase()}.`);
+    } finally {
+      setManualSubmitting(false);
+    }
+  };
+
+  const saveStrictFingerprinting = async (enabled) => {
+    if (!program || fingerprintSaving) return;
+
+    setFingerprintSaving(true);
+    try {
+      const response = await updateStrictDeviceFingerprinting(id, enabled);
+      setProgram(prev => prev ? {
+        ...prev,
+        strictDeviceFingerprinting: response.strictDeviceFingerprinting
+      } : prev);
+      setShowFingerprintWarning(false);
+      toast.success(response.strictDeviceFingerprinting
+        ? 'Strict device fingerprinting enabled.'
+        : 'Multiple check-ins from the same device are now allowed.');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update device fingerprinting.');
+    } finally {
+      setFingerprintSaving(false);
+    }
+  };
+
+  const handleStrictFingerprintingToggle = () => {
+    if (!program?.strictDeviceFingerprinting) {
+      saveStrictFingerprinting(true);
+      return;
+    }
+
+    setShowFingerprintWarning(true);
+  };
+
   const handleExportPDF = async () => {
     try {
       const { jsPDF } = await import('jspdf');
@@ -686,6 +994,10 @@ function ProgramDetail() {
 
   // Get correct stats based on mode
   const stats = program?.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
+  const showSharedDeviceMetric = program?.trackingMode === 'collect-data' && (program.strictDeviceFingerprinting === false || sharedDeviceCheckins > 0);
+  const filteredAttendees = attendees.filter(attendee => (
+    !searchQuery.trim() || (attendee.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())
+  ));
 
   /* ---- LOADING ---- */
   if (loading) {
@@ -976,7 +1288,7 @@ function ProgramDetail() {
               </div>
 
               {/* Row 2: Secondary Metrics — Gender / Gifting (conditional) */}
-              {(program.dataFields?.sex || program.giftingEnabled) && (
+              {(program.dataFields?.sex || program.giftingEnabled || showSharedDeviceMetric) && (
                 <div className="pd-secondary-metrics">
                   {/* Gender Card */}
                   {program.dataFields?.sex && (
@@ -1022,6 +1334,23 @@ function ProgramDetail() {
                       </div>
                     </div>
                   )}
+                  {showSharedDeviceMetric && (
+                    <div className="pd-metric-card pd-shared-device-card">
+                      <span className="pd-metric-pill orange">Device Intelligence</span>
+                      <div className="pd-metric-row">
+                        <div className="pd-metric-item">
+                          <span className="pd-metric-icon shared-device">{Icons.people}</span>
+                          <div>
+                            <div className="pd-metric-item-label">Shared Device Check-ins</div>
+                            <div className="pd-metric-item-value">{sharedDeviceCheckins.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="pd-shared-device-copy">
+                        {sharedDeviceCheckins.toLocaleString()} {sharedDeviceCheckins === 1 ? 'attendee checked' : 'attendees checked'} in from devices already used before.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1040,6 +1369,26 @@ function ProgramDetail() {
 
             {qrCodeCard}
           </div>
+
+          {program.trackingMode === 'collect-data' && (
+            <section className="pd-event-settings-card" aria-label="Live event settings">
+              <div className="pd-event-settings-copy">
+                <span className="pd-event-settings-kicker">Live event settings</span>
+                <h3>Device Fingerprint Control</h3>
+                <p>Control whether one attendee device can submit more than one check-in for this {template.event.singular.toLowerCase()}.</p>
+              </div>
+              <button
+                type="button"
+                className={`pd-fingerprint-toggle ${program.strictDeviceFingerprinting ? 'checked' : ''}`}
+                onClick={handleStrictFingerprintingToggle}
+                disabled={fingerprintSaving}
+                aria-pressed={program.strictDeviceFingerprinting}
+              >
+                <span className="pd-fingerprint-switch" aria-hidden="true"></span>
+                <span>Strict Device Fingerprinting (1 Scan Per Device)</span>
+              </button>
+            </section>
+          )}
 
           {/* Attendee Data Table — Count Only Mode */}
           {program.trackingMode === 'count-only' && countOnlyScans.length > 0 && (
@@ -1068,7 +1417,7 @@ function ProgramDetail() {
           )}
 
           {/* Attendee Data Table — Collect Data Mode */}
-          {program.trackingMode === 'collect-data' && attendees.length > 0 && (
+          {program.trackingMode === 'collect-data' && (
             <div className="pd-attendee-card">
               <div className="pd-attendee-header">
                 <div>
@@ -1081,7 +1430,10 @@ function ProgramDetail() {
                   {Icons.search}
                   <input type="text" placeholder={`Search ${template.attendee.plural.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 </div>
-                <button className="pd-btn-export" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>
+                <div className="pd-attendee-actions">
+                  <button className="pd-btn-manual" type="button" onClick={openManualModal} disabled={!program.isActive}>{Icons.plus} Add Manually</button>
+                  <button className="pd-btn-export" type="button" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>
+                </div>
               </div>
               <div className="pd-table-container">
                 <table className="pd-table">
@@ -1096,7 +1448,16 @@ function ProgramDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {attendees.filter(a => !searchQuery.trim() || (a.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())).map(attendee => (
+                    {filteredAttendees.length === 0 ? (
+                      <tr>
+                        <td colSpan="6">
+                          <div className="pd-empty-table">
+                            <strong>No {template.attendee.plural.toLowerCase()} yet.</strong>
+                            <span>Use Add Manually when someone checks in without a smartphone.</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredAttendees.map(attendee => (
                       <tr key={attendee.id}>
                         {program.dataFields?.fullName && <td data-label="Name"><strong>{attendee.fullName || '-'}</strong></td>}
                         {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
@@ -1136,6 +1497,29 @@ function ProgramDetail() {
           )}
         </div>
       </main>
+
+      {showManualModal && program?.trackingMode === 'collect-data' && (
+        <ManualAttendeeModal
+          program={program}
+          template={template}
+          formData={manualFormData}
+          errors={manualErrors}
+          submitting={manualSubmitting}
+          onChange={handleManualChange}
+          onClose={closeManualModal}
+          onSubmit={handleManualSubmit}
+        />
+      )}
+
+      {showFingerprintWarning && (
+        <FingerprintWarningModal
+          saving={fingerprintSaving}
+          onCancel={() => {
+            if (!fingerprintSaving) setShowFingerprintWarning(false);
+          }}
+          onConfirm={() => saveStrictFingerprinting(false)}
+        />
+      )}
     </div>
   );
 }

@@ -6,6 +6,8 @@
 .cp-page-title {
   margin-bottom: 24px;
   max-width: 780px;
+  width: 100%;
+  min-width: 0;
   margin-left: auto;
   margin-right: auto;
 }
@@ -19,13 +21,24 @@
 }
 
 /* Form Container */
+.create-program-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
 .create-program-form {
   max-width: 780px;
+  width: 100%;
+  min-width: 0;
   margin: 0 auto;
 }
 
 /* Form Card */
 .form-card {
+  max-width: 100%;
+  min-width: 0;
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -743,11 +756,13 @@
    ============================================ */
 .tracking-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
 .tracking-option {
+  min-width: 0;
+  max-width: 100%;
   border: 1.5px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 20px;
@@ -777,10 +792,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-width: 0;
   margin-bottom: 10px;
 }
 
 .option-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: 'Poppins', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
@@ -824,12 +842,14 @@
    ============================================ */
 .data-fields-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 8px;
 }
 
 .checkbox-card {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -941,6 +961,199 @@
   font-weight: 600;
   font-size: 0.88rem;
   flex: 1;
+}
+
+.proxy-checkin-card,
+.fingerprint-control-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.proxy-checkin-card .card-title,
+.proxy-checkin-card .card-description,
+.fingerprint-control-card .card-title,
+.fingerprint-control-card .card-description {
+  margin-bottom: 0;
+}
+
+.proxy-checkin-copy,
+.fingerprint-control-copy {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.proxy-checkin-toggle,
+.fingerprint-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: normal;
+}
+
+.proxy-checkin-toggle span:last-child,
+.fingerprint-toggle span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+.proxy-checkin-toggle:hover,
+.proxy-checkin-toggle.checked,
+.fingerprint-toggle:hover,
+.fingerprint-toggle.checked {
+  border-color: rgba(232, 89, 12, 0.45);
+  background: rgba(232, 89, 12, 0.07);
+}
+
+.fingerprint-toggle {
+  background: var(--bg-card);
+  text-align: left;
+}
+
+.proxy-checkin-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.proxy-checkin-switch,
+.fingerprint-switch {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--border-color);
+  transition: background-color var(--transition-fast);
+}
+
+.proxy-checkin-switch::after,
+.fingerprint-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: transform var(--transition-fast);
+}
+
+.proxy-checkin-toggle.checked .proxy-checkin-switch,
+.fingerprint-toggle.checked .fingerprint-switch {
+  background: var(--color-orange);
+}
+
+.proxy-checkin-toggle.checked .proxy-checkin-switch::after,
+.fingerprint-toggle.checked .fingerprint-switch::after {
+  transform: translateX(18px);
+}
+
+.fingerprint-warning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 10, 14, 0.68);
+  backdrop-filter: blur(12px);
+}
+
+.fingerprint-warning-modal {
+  width: min(480px, 100%);
+  border: 1px solid rgba(249, 109, 16, 0.34);
+  border-radius: 18px;
+  background: #0D0D10;
+  color: #fff;
+  padding: 24px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.fingerprint-warning-kicker {
+  display: inline-flex;
+  margin-bottom: 10px;
+  color: #F96D10;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.fingerprint-warning-modal h3 {
+  margin: 0 0 10px;
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.35rem;
+}
+
+.fingerprint-warning-modal p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.65;
+  font-size: 0.94rem;
+}
+
+.fingerprint-warning-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.fingerprint-warning-cancel,
+.fingerprint-warning-confirm {
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  padding: 0 18px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.fingerprint-warning-cancel {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.fingerprint-warning-cancel:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.fingerprint-warning-confirm {
+  border: 0;
+  background: var(--color-orange);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(249, 109, 16, 0.28);
+}
+
+.fingerprint-warning-confirm:hover {
+  background: var(--color-orange-hover);
+  transform: translateY(-1px);
 }
 
 /* Gifting winners input */
@@ -1074,9 +1287,17 @@
 
   .flyer-card-header,
   .flyer-preview-meta,
+  .proxy-checkin-card,
+  .fingerprint-control-card,
   .sponsor-setup-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .proxy-checkin-toggle,
+  .fingerprint-toggle {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .sponsor-add-btn {

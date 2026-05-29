@@ -6,6 +6,24 @@ import SignupIntentModal from '../components/SignupIntentModal';
 import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, eventTemplates } from '../config/eventTemplates';
 import '../styles/Auth.css';
 
+const PasswordVisibilityIcon = ({ visible }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {visible ? (
+      <>
+        <path d="M3 3l18 18" />
+        <path d="M10.6 10.6a2 2 0 002.8 2.8" />
+        <path d="M9.9 5.1A10.9 10.9 0 0112 5c5 0 8.5 4 10 7a13.4 13.4 0 01-3 4.1" />
+        <path d="M6.6 6.6A13.8 13.8 0 002 12c1.5 3 5 7 10 7 1.5 0 2.9-.4 4.1-1" />
+      </>
+    ) : (
+      <>
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    )}
+  </svg>
+);
+
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,6 +38,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showSignupIntent, setShowSignupIntent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [successMessage] = useState(
     location.state?.verified ? 'Email verified successfully! You can now login.' :
       location.state?.passwordReset ? 'Password reset successfully! Login with your new password.' : ''
@@ -113,9 +132,8 @@ function Login() {
             '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
           }}
         >
-          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
-            <img src="/ingather-logo.png" alt="" />
-            <span>Ingather</span>
+          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button" aria-label="Ingather home">
+            <img src="/ingather-logo.png" alt="Ingather" />
           </button>
 
           <div className="auth-panel-content">
@@ -169,14 +187,25 @@ function Login() {
 
             <div className="auth-modern-field">
               <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-              />
+              <div className="auth-password-control">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-pressed={showPassword}
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>
+              </div>
               {errors.password && <span className="error">{errors.password}</span>}
             </div>
 

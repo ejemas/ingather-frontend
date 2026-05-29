@@ -373,7 +373,7 @@
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -385,9 +385,10 @@
 }
 
 .auth-modern-brand img {
-  width: 36px;
-  height: 36px;
+  width: auto;
+  height: 28px;
   object-fit: contain;
+  display: block;
 }
 
 .auth-panel-content {
@@ -596,6 +597,52 @@
   border-color: rgba(232, 89, 12, 0.68);
   background: #ffffff;
   box-shadow: 0 0 0 4px rgba(232, 89, 12, 0.12);
+}
+
+.auth-password-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.auth-modern-field .auth-password-control input {
+  padding-right: 52px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #747986;
+  cursor: pointer;
+  transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.auth-password-toggle:hover {
+  color: #e8590c;
+  background: rgba(232, 89, 12, 0.08);
+}
+
+.auth-password-toggle:focus-visible {
+  outline: none;
+  color: #e8590c;
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.18);
+}
+
+.auth-password-toggle svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
 
 .auth-modern-extras {

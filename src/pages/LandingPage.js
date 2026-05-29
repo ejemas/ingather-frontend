@@ -102,8 +102,7 @@ function LandingPage() {
       <nav className="lp-nav" aria-label="Primary navigation">
         <div className="lp-container lp-nav-inner">
           <a className="lp-brand" href="/" aria-label="Ingather home">
-            <img src="/ingather-logo.png" alt="" />
-            <span>Ingather</span>
+            <img src="/ingather-logo.png" alt="Ingather" />
           </a>
           <div className="lp-nav-links">
             <button type="button" onClick={() => scrollTo('features')}>Features</button>

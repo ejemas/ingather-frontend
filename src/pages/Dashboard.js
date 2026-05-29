@@ -708,6 +708,16 @@ function Dashboard() {
     setDashboardChartPage(0);
   }, [dateRange, chartData.length]);
 
+  const getProgramStatus = (program) => {
+    if (program.status) return program.status;
+    if (!program.isActive) return 'completed';
+    const today = new Date().toISOString().split('T')[0];
+    const programDate = typeof program.date === 'string'
+      ? program.date.slice(0, 10)
+      : new Date(program.date).toISOString().split('T')[0];
+    return programDate > today ? 'upcoming' : 'active';
+  };
+
   const applyChurchData = (church) => {
     const organizationType = church.organizationType || '';
 
@@ -766,7 +776,8 @@ function Dashboard() {
       startTime: p.startTime,
       endTime: p.endTime,
       totalScans: p.totalScans,
-      status: p.isActive ? 'active' : 'completed',
+      isActive: p.isActive,
+      status: getProgramStatus(p),
       dataCollection: p.trackingMode === 'collect-data'
     }));
     setPrograms(formattedPrograms);
@@ -933,10 +944,15 @@ function Dashboard() {
   };
 
   // Filtered programs (by status tab — applied on top of date-filtered results)
-  const filteredPrograms = programs.filter(p => {
-    if (activeFilter === 'all') return true;
-    return p.status === activeFilter;
-  });
+  const filteredPrograms = programs
+    .filter(p => {
+      if (activeFilter === 'all') return true;
+      return p.status === activeFilter;
+    })
+    .sort((a, b) => {
+      if (activeFilter !== 'upcoming') return 0;
+      return `${a.date}T${a.startTime || '00:00'}`.localeCompare(`${b.date}T${b.startTime || '00:00'}`);
+    });
 
   // Formatted date range text for the date picker button
   const formatFilterDate = (dateStr) => {

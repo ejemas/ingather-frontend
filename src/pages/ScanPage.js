@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
 import { useParams } from 'react-router-dom';
-import { getProgramInfo, submitScan, submitFormData, updateScanData, trackSponsorClick } from '../api/scanService';
+import { getProgramInfo, submitScan, submitFormData, submitProxyAttendee, updateScanData, trackSponsorClick } from '../api/scanService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/ScanPage.css';
@@ -747,6 +747,7 @@ function ScanPage() {
 
   const hasScannedRef = useRef(false);
   const deviceFingerprintRef = useRef('');
+  const scanSessionIdRef = useRef('');
   const scanSessionTokenRef = useRef('');
   const [loading, setLoading] = useState(true);
   const [alreadyScanned, setAlreadyScanned] = useState(false);
@@ -754,6 +755,22 @@ function ScanPage() {
   const [showForm, setShowForm] = useState(false);
   const [showFlyerDetails, setShowFlyerDetails] = useState(false);
   const [sponsorPlacement, setSponsorPlacement] = useState(null);
+  const [showProxyPrompt, setShowProxyPrompt] = useState(false);
+  const [showProxyForm, setShowProxyForm] = useState(false);
+  const [proxyCount, setProxyCount] = useState(0);
+  const [pendingResult, setPendingResult] = useState(null);
+  const [proxyFormData, setProxyFormData] = useState({
+    fullName: '',
+    address: '',
+    firstTimer: false,
+    phoneNumber: '',
+    department: '',
+    fellowship: '',
+    age: '',
+    sex: ''
+  });
+  const [proxyFormErrors, setProxyFormErrors] = useState({});
+  const [submittingProxy, setSubmittingProxy] = useState(false);
 
 
   // Form data
@@ -825,6 +842,7 @@ function ScanPage() {
       // Submit scan to backend
       try {
         const scanResult = await submitScan(programId, fingerprint, null);
+        scanSessionIdRef.current = scanResult.scanSessionId || '';
         scanSessionTokenRef.current = scanResult.scanSessionToken || '';
         setSponsorPlacement(scanResult.sponsorPlacement || null);
         console.log('Scan recorded successfully:', scanResult);
@@ -883,7 +901,7 @@ function ScanPage() {
     try {
       const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
       deviceFingerprintRef.current = fingerprint;
-      await updateScanData(programId, fingerprint, gender, isFirstTimer, scanSessionTokenRef.current);
+      await updateScanData(programId, fingerprint, gender, isFirstTimer, scanSessionTokenRef.current, scanSessionIdRef.current);
 
       console.log('Gender data updated successfully');
 
@@ -908,9 +926,14 @@ function ScanPage() {
     localStorage.removeItem('scannedPrograms');
     setAlreadyScanned(false);
     setShowForm(false);
+    setShowProxyPrompt(false);
+    setShowProxyForm(false);
+    setProxyCount(0);
+    setPendingResult(null);
     setResult(null);
     setSponsorPlacement(null);
     deviceFingerprintRef.current = '';
+    scanSessionIdRef.current = '';
     scanSessionTokenRef.current = '';
     setFormData({
       fullName: '',
@@ -922,6 +945,17 @@ function ScanPage() {
       age: '',
       sex: ''
     });
+    setProxyFormData({
+      fullName: '',
+      address: '',
+      firstTimer: false,
+      phoneNumber: '',
+      department: '',
+      fellowship: '',
+      age: '',
+      sex: ''
+    });
+    setProxyFormErrors({});
     setLoading(true);
 
     // Re-initialize
@@ -971,6 +1005,99 @@ function ScanPage() {
     return errors;
   };
 
+  const getNextResult = (submittedFormData, response) => {
+    if (submittedFormData.firstTimer && response.isWinner) return 'first-timer-winner';
+    if (submittedFormData.firstTimer) return 'first-timer-message';
+    if (response.giftingEnabled) return response.isWinner ? 'winner' : 'no-win';
+    return 'no-gifting';
+  };
+
+  const emptyProxyFormData = () => ({
+    fullName: '',
+    address: '',
+    firstTimer: false,
+    phoneNumber: '',
+    department: '',
+    fellowship: '',
+    age: '',
+    sex: ''
+  });
+
+  const handleProxyChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setProxyFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+
+    if (proxyFormErrors[name]) {
+      setProxyFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateProxyForm = () => {
+    const errors = {};
+    const dataFields = programData?.dataFields || {};
+
+    if (dataFields.fullName && !proxyFormData.fullName.trim()) errors.fullName = 'Full name is required';
+    if (dataFields.phoneNumber && !proxyFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
+    if (dataFields.address && !proxyFormData.address.trim()) errors.address = 'Address is required';
+    if (dataFields.department && !proxyFormData.department.trim()) errors.department = 'Department is required';
+    if (dataFields.sex && !proxyFormData.sex) errors.sex = 'Please select gender';
+
+    return errors;
+  };
+
+  const continueToPendingResult = () => {
+    setShowProxyPrompt(false);
+    setShowProxyForm(false);
+    setResult(pendingResult || 'no-gifting');
+    setPendingResult(null);
+  };
+
+  const startProxyForm = () => {
+    setProxyFormData(emptyProxyFormData());
+    setProxyFormErrors({});
+    setShowProxyPrompt(false);
+    setShowProxyForm(true);
+  };
+
+  const handleProxySubmit = async (e) => {
+    e.preventDefault();
+
+    const errors = validateProxyForm();
+    if (Object.keys(errors).length > 0) {
+      setProxyFormErrors(errors);
+      return;
+    }
+
+    setSubmittingProxy(true);
+
+    try {
+      const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
+
+      const response = await submitProxyAttendee(programId, fingerprint, proxyFormData);
+      const nextCount = response.proxyCount || proxyCount + 1;
+      setProxyCount(nextCount);
+      setProxyFormData(emptyProxyFormData());
+      setProxyFormErrors({});
+      setSubmittingProxy(false);
+      setShowProxyForm(false);
+
+      if (nextCount >= 3) {
+        continueToPendingResult();
+      } else {
+        setShowProxyPrompt(true);
+      }
+    } catch (error) {
+      const serverErrors = error.response?.data?.errors;
+      if (serverErrors) setProxyFormErrors(serverErrors);
+      toast.error(error.response?.data?.error || 'Failed to add attendee. Please try again.');
+      setSubmittingProxy(false);
+    }
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -989,18 +1116,18 @@ function ScanPage() {
       deviceFingerprintRef.current = fingerprint;
 
       // Submit only the form data (scan was already recorded)
-      const response = await submitFormData(programId, fingerprint, formData, scanSessionTokenRef.current);
+      const response = await submitFormData(programId, fingerprint, formData, scanSessionTokenRef.current, scanSessionIdRef.current);
       setSponsorPlacement(response.sponsorPlacement || sponsorPlacement);
       console.log('Form submitted successfully:', response);
 
-      if (formData.firstTimer && response.isWinner) {
-        setResult('first-timer-winner');
-      } else if (formData.firstTimer) {
-        setResult('first-timer-message');
-      } else if (response.giftingEnabled) {
-        setResult(response.isWinner ? 'winner' : 'no-win');
+      const nextResult = getNextResult(formData, response);
+
+      if (programData?.proxyCheckinEnabled) {
+        setPendingResult(nextResult);
+        setProxyCount(0);
+        setShowProxyPrompt(true);
       } else {
-        setResult('no-gifting');
+        setResult(nextResult);
       }
 
       setSubmitting(false);
@@ -1311,6 +1438,167 @@ function ScanPage() {
 
 
 
+  }
+
+  if (showProxyPrompt && programData && !result) {
+    const remaining = Math.max(0, 3 - proxyCount);
+
+    return (
+      <div className={feedbackPageClass}>
+        <div className="scan-container">
+          <div className="modal-card scan-proxy-card">
+            <div className="modal-card-topbar orange"></div>
+            <div className="modal-card-body">
+              <div className="modal-icon-circle">
+                <svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 10-8 0" /><path d="M4 20a6 6 0 0116 0" /><path d="M19 8v6" /><path d="M16 11h6" /></svg>
+              </div>
+              <p className="scan-proxy-eyebrow">Guest check-in</p>
+              <h2>Scan for your fellow attendee?</h2>
+              <p className="modal-subtitle">
+                You can add up to {remaining} more {remaining === 1 ? 'attendee' : 'attendees'} from this device.
+              </p>
+              {proxyCount > 0 && (
+                <span className="scan-proxy-progress">{proxyCount} of 3 guests added</span>
+              )}
+              <div className="scan-proxy-actions">
+                <button type="button" className="scan-proxy-primary" onClick={startProxyForm}>
+                  Yes, add attendee
+                </button>
+                <button type="button" className="scan-proxy-secondary" onClick={continueToPendingResult}>
+                  No, continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {flyerDetailsOverlay}
+      </div>
+    );
+  }
+
+  if (showProxyForm && programData && !result) {
+    return (
+      <ScanFormShell
+        badge={`Guest ${proxyCount + 1} of 3`}
+        programData={programData}
+        helperText="Enter your fellow attendee's details to check them in."
+        mode="collect"
+      >
+        <form className="scan-figma-form" onSubmit={handleProxySubmit}>
+          <div className="scan-figma-fields">
+            {programData.dataFields.fullName && (
+              <ScanInputField
+                label="Full Name *"
+                type="text"
+                id="proxyFullName"
+                name="fullName"
+                value={proxyFormData.fullName}
+                onChange={handleProxyChange}
+                placeholder="John Doe"
+                error={proxyFormErrors.fullName}
+              />
+            )}
+
+            {programData.dataFields.phoneNumber && (
+              <ScanInputField
+                label="Phone Number *"
+                type="tel"
+                id="proxyPhoneNumber"
+                name="phoneNumber"
+                value={proxyFormData.phoneNumber}
+                onChange={handleProxyChange}
+                placeholder="+234 800 000 0000"
+                error={proxyFormErrors.phoneNumber}
+              />
+            )}
+
+            {programData.dataFields.address && (
+              <ScanInputField
+                label="Address *"
+                type="text"
+                id="proxyAddress"
+                name="address"
+                value={proxyFormData.address}
+                onChange={handleProxyChange}
+                placeholder="Address"
+                error={proxyFormErrors.address}
+              />
+            )}
+
+            {programData.dataFields.department && (
+              <ScanInputField
+                label="Department *"
+                type="text"
+                id="proxyDepartment"
+                name="department"
+                value={proxyFormData.department}
+                onChange={handleProxyChange}
+                placeholder="e.g., Product, Marketing, Community"
+                error={proxyFormErrors.department}
+              />
+            )}
+
+            {programData.dataFields.fellowship && (
+              <ScanInputField
+                label="Group"
+                type="text"
+                id="proxyFellowship"
+                name="fellowship"
+                value={proxyFormData.fellowship}
+                onChange={handleProxyChange}
+                placeholder="Group or community"
+              />
+            )}
+
+            {programData.dataFields.age && (
+              <ScanInputField
+                label="Age"
+                type="number"
+                id="proxyAge"
+                name="age"
+                value={proxyFormData.age}
+                onChange={handleProxyChange}
+                placeholder="25"
+                min="1"
+                max="120"
+              />
+            )}
+
+            {programData.dataFields.sex && (
+              <ScanSelectField
+                label="Gender *"
+                id="proxySex"
+                name="sex"
+                value={proxyFormData.sex}
+                onChange={handleProxyChange}
+                error={proxyFormErrors.sex}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </ScanSelectField>
+            )}
+
+            {programData.dataFields.firstTimer && (
+              <label className={`scan-figma-checkbox ${proxyFormData.firstTimer ? 'checked' : ''}`}>
+                <input
+                  type="checkbox"
+                  name="firstTimer"
+                  checked={proxyFormData.firstTimer}
+                  onChange={handleProxyChange}
+                />
+                <span className="scan-checkbox-box" aria-hidden="true"></span>
+                <span>This attendee is a first-timer</span>
+              </label>
+            )}
+          </div>
+
+          <button type="submit" className="scan-figma-submit" disabled={submittingProxy}>
+            {submittingProxy ? 'Adding attendee...' : 'Add attendee'}
+          </button>
+        </form>
+      </ScanFormShell>
+    );
   }
 
   // SHOW FORM

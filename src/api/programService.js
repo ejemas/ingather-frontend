@@ -51,6 +51,18 @@ export const getAttendees = async (id) => {
   return response.data;
 };
 
+export const addManualAttendee = async (id, formData) => {
+  const response = await API.post(`/programs/${id}/attendees/manual`, { formData });
+  return response.data;
+};
+
+export const updateStrictDeviceFingerprinting = async (id, strictDeviceFingerprinting) => {
+  const response = await API.put(`/programs/${id}/strict-device-fingerprinting`, {
+    strictDeviceFingerprinting
+  });
+  return response.data;
+};
+
 export const getAttendanceData = async (id, tzOffset = 0) => {
   const response = await API.get(`/programs/${id}/attendance-data`, {
     params: { tzOffset }
