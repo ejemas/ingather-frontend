@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getDashboardBootstrap, getDashboardStats, deleteProgram } from '../api/programService';
 import { getCurrentChurch, updateOrganizationType } from '../api/authService';
+import InfoTooltip from '../components/InfoTooltip';
 import OnboardingModal from '../components/OnboardingModal';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
@@ -1255,9 +1256,11 @@ function Dashboard() {
                 <span className="stat-label">{template.dashboard.totalTitle}</span>
                 <h2 className="stat-value">{totalPrograms}</h2>
               </div>
-              <div className="stat-card-info" title={`Total number of ${template.event.plural.toLowerCase()} created`}>
-                {Icons.info}
-              </div>
+              <InfoTooltip
+                className="stat-card-info"
+                label={`${template.dashboard.totalTitle} metric information`}
+                content={`Total ${template.event.plural.toLowerCase()} created in this workspace.`}
+              />
             </div>
 
             {/* Total Attendance */}
@@ -1283,9 +1286,11 @@ function Dashboard() {
                 <span className="stat-label">{template.dashboard.upcomingTitle}</span>
                 <h2 className="stat-value">{upcomingPrograms}</h2>
               </div>
-              <div className="stat-card-info" title={`${template.event.plural} scheduled in the future`}>
-                {Icons.info}
-              </div>
+              <InfoTooltip
+                className="stat-card-info"
+                label={`${template.dashboard.upcomingTitle} metric information`}
+                content={`${template.event.plural} scheduled for a future date.`}
+              />
             </div>
           </div>
 

@@ -59,6 +59,7 @@
   align-items: center;
   gap: 14px;
   position: relative;
+  overflow: visible;
   transition: all var(--transition-normal);
 }
 
@@ -135,10 +136,11 @@
   width: 16px;
   height: 16px;
   color: var(--text-tertiary);
-  cursor: pointer;
+  z-index: 6;
 }
 
-.pd-stat-card .stat-info-icon:hover {
+.pd-stat-card .stat-info-icon:hover,
+.pd-stat-card .stat-info-icon:focus-within {
   color: var(--text-secondary);
 }
 

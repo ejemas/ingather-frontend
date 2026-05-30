@@ -77,8 +77,35 @@ const formatEventTime = (startTime, endTime) => {
   return [startTime, endTime].filter(Boolean).join(' - ');
 };
 
+const isValidCollectedEmail = (value) => {
+  const email = String(value || '').trim();
+  return email.length <= 255
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    && email.indexOf('@') === email.lastIndexOf('@');
+};
+
+const getPersonalizedMessageTemplates = (config = {}) => {
+  const fromArray = Array.isArray(config.templates)
+    ? config.templates.map(message => String(message || '').trim()).filter(Boolean)
+    : [];
+
+  if (fromArray.length > 0) return fromArray;
+
+  return String(config.template || '')
+    .split(/\r?\n/)
+    .map(message => message.trim())
+    .filter(Boolean);
+};
+
+const pickPersonalizedTemplate = (config = {}) => {
+  const templates = getPersonalizedMessageTemplates(config);
+  if (templates.length === 0) return '[FirstName], you are welcome and deeply valued.';
+  return templates[Math.floor(Math.random() * templates.length)];
+};
+
 const isPersonalizedFlyer = (programData) => (
-  programData?.flyerType === 'personalized' && Boolean(programData?.personalizedFlyerConfig?.template)
+  programData?.flyerType === 'personalized'
+    && getPersonalizedMessageTemplates(programData?.personalizedFlyerConfig).length > 0
 );
 
 const getFirstName = (fullName) => {
@@ -119,6 +146,30 @@ const wrapWordsToCanvasLines = (ctx, words, maxWidth) => {
   if (line) lines.push(line);
   return lines;
 };
+
+const canvasToPngBlob = (canvas) => new Promise((resolve, reject) => {
+  canvas.toBlob((blob) => {
+    if (blob) {
+      resolve(blob);
+    } else {
+      reject(new Error('Unable to create flyer image.'));
+    }
+  }, 'image/png');
+});
+
+const sanitizeDownloadPart = (value, fallback = 'ingather') => {
+  const cleaned = String(value || fallback)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return cleaned || fallback;
+};
+
+const createPersonalizedFlyerFileName = (firstName, eventTitle) => (
+  `${sanitizeDownloadPart(firstName, 'friend')}-${sanitizeDownloadPart(eventTitle, 'event')}-ingather-flyer.png`
+);
 
 function EventDetailsButton({ programData, onClick }) {
   const personalized = isPersonalizedFlyer(programData);
@@ -207,12 +258,20 @@ function ScanSelectField({ label, error, children, ...selectProps }) {
   );
 }
 
-function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalone = false, toast }) {
+function PersonalizedFlyerViewer({ programData, programId, attendeeName, personalizedMessage, onClose, standalone = false, toast }) {
+  const fallbackTemplateRef = useRef('');
+  const fallbackTemplateKeyRef = useRef('');
+
   if (!isPersonalizedFlyer(programData)) return null;
 
   const config = programData.personalizedFlyerConfig || {};
   const firstName = getFirstName(attendeeName);
-  const message = personalizeTemplate(config.template, firstName);
+  const fallbackTemplateKey = JSON.stringify([config.template || '', config.templates || []]);
+  if (!fallbackTemplateRef.current || fallbackTemplateKeyRef.current !== fallbackTemplateKey) {
+    fallbackTemplateRef.current = pickPersonalizedTemplate({ template: config.template, templates: config.templates });
+    fallbackTemplateKeyRef.current = fallbackTemplateKey;
+  }
+  const message = personalizeTemplate(personalizedMessage || fallbackTemplateRef.current, firstName);
   const brandColor = config.brandColor || '#E8590C';
   const configuredTextColor = config.textColor || '#111217';
   const textColor = ['#fff', '#ffffff', 'white'].includes(String(configuredTextColor).trim().toLowerCase())
@@ -224,9 +283,17 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
   const motivationalWords = messageWithoutName.split(/\s+/).filter(Boolean);
   const firstMessageLine = motivationalWords.slice(0, 5).join(' ') || messageWithoutName;
   const secondMessageLine = motivationalWords.slice(5).join(' ');
+  const organizerName = programData.churchName || 'Ingather';
+  const eventTitle = programData.title || 'Ingather Event';
+  const eventDateText = formatEventDate(programData.date);
+  const eventTimeText = formatEventTime(programData.startTime, programData.endTime);
+  const eventScheduleText = [eventDateText, eventTimeText].filter(Boolean).join(' | ');
+  const eventShareId = programId || programData.id;
+  const shareUrl = eventShareId ? getEventDetailsUrl(eventShareId) : INGATHER_PUBLIC_ORIGIN;
+  const shareLinks = getShareLinks(shareUrl, eventTitle);
+  const flyerFileName = createPersonalizedFlyerFileName(firstName, eventTitle);
 
-  const handleDownload = async () => {
-    try {
+  const renderFlyerCanvas = async () => {
       const flyerSize = 800;
       const pathThickness = 5;
       const pathRadius = 55;
@@ -307,7 +374,7 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
       const textRight = 585;
       const firstLineY = 397;
       const secondaryY = 427;
-      const displayName = `“${firstName}`;
+      const displayName = `\u201c${firstName}`;
       ctx.font = '800 42px Poppins, Arial, sans-serif';
       let nameFontSize = 42;
       while (ctx.measureText(displayName).width > 220 && nameFontSize > 30) {
@@ -336,20 +403,87 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
         ctx.fillText(textLine, textLeft + 2, secondaryY + index * 24);
       });
 
+      const fitCanvasText = (text, maxWidth, fontWeight, initialSize, minSize = 18) => {
+        let fontSize = initialSize;
+        ctx.font = `${fontWeight} ${fontSize}px Inter, Arial, sans-serif`;
+        while (ctx.measureText(text).width > maxWidth && fontSize > minSize) {
+          fontSize -= 1;
+          ctx.font = `${fontWeight} ${fontSize}px Inter, Arial, sans-serif`;
+        }
+        return fontSize;
+      };
+
+      ctx.fillStyle = brandColor;
+      ctx.fillRect(0, 680, flyerSize, 112);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+
+      fitCanvasText(organizerName, 350, '800', 28, 18);
+      ctx.fillText(organizerName, 72, 724);
+
+      fitCanvasText(eventTitle, 390, '800', 28, 18);
+      ctx.fillText(eventTitle, 72, 765);
+
+      if (eventScheduleText) {
+        ctx.textAlign = 'right';
+        fitCanvasText(eventScheduleText, 370, '800', 26, 16);
+        ctx.fillText(eventScheduleText, 728, 746);
+      }
+
+      return canvas;
+  };
+
+  const createFlyerBlob = async () => {
+    const canvas = await renderFlyerCanvas();
+    return canvasToPngBlob(canvas);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const blob = await createFlyerBlob();
+      const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = `${firstName.toLowerCase()}-ingather-flyer.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.download = flyerFileName;
+      link.href = objectUrl;
+      document.body.appendChild(link);
       link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     } catch (error) {
       toast?.error('Unable to download this flyer. Please try again.');
     }
   };
 
   const handleShare = async () => {
-    const shareText = `${message} - ${programData.title || 'Ingather Event'}`;
+    const shareText = `${message} - ${eventTitle}`;
+    const shareData = {
+      title: 'My Ingather Flyer',
+      text: shareText,
+      url: shareUrl
+    };
+
+    let flyerFile = null;
+
+    try {
+      const blob = await createFlyerBlob();
+      flyerFile = new File([blob], flyerFileName, { type: 'image/png' });
+    } catch (error) {
+      flyerFile = null;
+    }
+
+    if (navigator.share && flyerFile && navigator.canShare?.({ files: [flyerFile] })) {
+      try {
+        await navigator.share({ ...shareData, files: [flyerFile] });
+        return;
+      } catch (error) {
+        if (error.name === 'AbortError') return;
+      }
+    }
+
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'My Ingather Flyer', text: shareText });
+        await navigator.share(shareData);
         return;
       } catch (error) {
         if (error.name === 'AbortError') return;
@@ -357,10 +491,10 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
     }
 
     try {
-      await navigator.clipboard.writeText(shareText);
-      toast?.success('Personalized message copied.');
+      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      toast?.success('Flyer message and event link copied.');
     } catch (error) {
-      toast?.info('Download the flyer to share it.');
+      toast?.info('Download the flyer to share it on your socials.');
     }
   };
 
@@ -410,6 +544,16 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
           </div>
           {secondMessageLine && <div className="personalized-line-secondary">{secondMessageLine}</div>}
         </div>
+
+        <div className="personalized-event-band">
+          <div className="personalized-event-band-left">
+            <strong>{organizerName}</strong>
+            <span>{eventTitle}</span>
+          </div>
+          {eventScheduleText && (
+            <div className="personalized-event-band-time">{eventScheduleText}</div>
+          )}
+        </div>
       </div>
 
       <div className="personalized-actions">
@@ -417,8 +561,24 @@ function PersonalizedFlyerViewer({ programData, attendeeName, onClose, standalon
           Download flyer
         </button>
         <button type="button" className="personalized-share-secondary" onClick={handleShare}>
-          Share message
+          Share flyer
         </button>
+      </div>
+      <div className="personalized-social-panel">
+        <p>Share to socials</p>
+        <div className="flyer-share-links personalized-share-links">
+          {shareLinks.map(link => (
+            <a
+              key={link.key}
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flyer-share-link"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -754,6 +914,7 @@ function ScanPage() {
   const [programData, setProgramData] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [showFlyerDetails, setShowFlyerDetails] = useState(false);
+  const [personalizedMessage, setPersonalizedMessage] = useState('');
   const [sponsorPlacement, setSponsorPlacement] = useState(null);
   const [showProxyPrompt, setShowProxyPrompt] = useState(false);
   const [showProxyForm, setShowProxyForm] = useState(false);
@@ -761,6 +922,8 @@ function ScanPage() {
   const [pendingResult, setPendingResult] = useState(null);
   const [proxyFormData, setProxyFormData] = useState({
     fullName: '',
+    emailAddress: '',
+    school: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -776,6 +939,8 @@ function ScanPage() {
   // Form data
   const [formData, setFormData] = useState({
     fullName: '',
+    emailAddress: '',
+    school: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -822,6 +987,7 @@ function ScanPage() {
 
   const initializeScan = async () => {
     try {
+      setPersonalizedMessage('');
       const [fingerprint, programData] = await Promise.all([
         getDeviceFingerprint(),
         getProgramInfo(programId)
@@ -937,6 +1103,8 @@ function ScanPage() {
     scanSessionTokenRef.current = '';
     setFormData({
       fullName: '',
+      emailAddress: '',
+      school: '',
       address: '',
       firstTimer: false,
       phoneNumber: '',
@@ -947,6 +1115,8 @@ function ScanPage() {
     });
     setProxyFormData({
       fullName: '',
+      emailAddress: '',
+      school: '',
       address: '',
       firstTimer: false,
       phoneNumber: '',
@@ -986,6 +1156,18 @@ function ScanPage() {
       errors.fullName = 'Full name is required';
     }
 
+    if (programData.dataFields.emailAddress) {
+      if (!formData.emailAddress.trim()) {
+        errors.emailAddress = 'Email address is required';
+      } else if (!isValidCollectedEmail(formData.emailAddress)) {
+        errors.emailAddress = 'Enter a valid email address';
+      }
+    }
+
+    if (programData.dataFields.school && !formData.school.trim()) {
+      errors.school = 'School is required';
+    }
+
     if (programData.dataFields.phoneNumber && !formData.phoneNumber.trim()) {
       errors.phoneNumber = 'Phone number is required';
     }
@@ -1014,6 +1196,8 @@ function ScanPage() {
 
   const emptyProxyFormData = () => ({
     fullName: '',
+    emailAddress: '',
+    school: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -1040,6 +1224,11 @@ function ScanPage() {
     const dataFields = programData?.dataFields || {};
 
     if (dataFields.fullName && !proxyFormData.fullName.trim()) errors.fullName = 'Full name is required';
+    if (dataFields.emailAddress) {
+      if (!proxyFormData.emailAddress.trim()) errors.emailAddress = 'Email address is required';
+      else if (!isValidCollectedEmail(proxyFormData.emailAddress)) errors.emailAddress = 'Enter a valid email address';
+    }
+    if (dataFields.school && !proxyFormData.school.trim()) errors.school = 'School is required';
     if (dataFields.phoneNumber && !proxyFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
     if (dataFields.address && !proxyFormData.address.trim()) errors.address = 'Address is required';
     if (dataFields.department && !proxyFormData.department.trim()) errors.department = 'Department is required';
@@ -1118,6 +1307,7 @@ function ScanPage() {
       // Submit only the form data (scan was already recorded)
       const response = await submitFormData(programId, fingerprint, formData, scanSessionTokenRef.current, scanSessionIdRef.current);
       setSponsorPlacement(response.sponsorPlacement || sponsorPlacement);
+      setPersonalizedMessage(response.personalizedMessage || '');
       console.log('Form submitted successfully:', response);
 
       const nextResult = getNextResult(formData, response);
@@ -1143,7 +1333,9 @@ function ScanPage() {
     isPersonalizedFlyer(programData) ? (
       <PersonalizedFlyerViewer
         programData={programData}
+        programId={programId}
         attendeeName={formData.fullName}
+        personalizedMessage={personalizedMessage}
         onClose={() => setShowFlyerDetails(false)}
         toast={toast}
       />
@@ -1201,6 +1393,7 @@ function ScanPage() {
           {isPersonalizedFlyer(programData) ? (
             <PersonalizedFlyerViewer
               programData={programData}
+              programId={programId}
               attendeeName="Friend"
               standalone
               toast={toast}
@@ -1499,6 +1692,32 @@ function ScanPage() {
               />
             )}
 
+            {programData.dataFields.emailAddress && (
+              <ScanInputField
+                label="Email Address *"
+                type="email"
+                id="proxyEmailAddress"
+                name="emailAddress"
+                value={proxyFormData.emailAddress}
+                onChange={handleProxyChange}
+                placeholder="name@example.com"
+                error={proxyFormErrors.emailAddress}
+              />
+            )}
+
+            {programData.dataFields.school && (
+              <ScanInputField
+                label="School *"
+                type="text"
+                id="proxySchool"
+                name="school"
+                value={proxyFormData.school}
+                onChange={handleProxyChange}
+                placeholder="School name"
+                error={proxyFormErrors.school}
+              />
+            )}
+
             {programData.dataFields.phoneNumber && (
               <ScanInputField
                 label="Phone Number *"
@@ -1624,6 +1843,32 @@ function ScanPage() {
                 onChange={handleChange}
                 placeholder="John Doe"
                 error={formErrors.fullName}
+              />
+            )}
+
+            {programData.dataFields.emailAddress && (
+              <ScanInputField
+                label="Email Address *"
+                type="email"
+                id="emailAddress"
+                name="emailAddress"
+                value={formData.emailAddress}
+                onChange={handleChange}
+                placeholder="name@example.com"
+                error={formErrors.emailAddress}
+              />
+            )}
+
+            {programData.dataFields.school && (
+              <ScanInputField
+                label="School *"
+                type="text"
+                id="school"
+                name="school"
+                value={formData.school}
+                onChange={handleChange}
+                placeholder="Your school"
+                error={formErrors.school}
               />
             )}
 

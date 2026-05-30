@@ -118,8 +118,17 @@ const generateTimeOptions = () => {
 
 const timeOptions = generateTimeOptions();
 
+const parsePersonalizedMessages = (value) => (
+  String(value || '')
+    .split(/\r?\n/)
+    .map(message => message.trim())
+    .filter(Boolean)
+);
+
 const dataFieldLabels = {
   fullName: 'Full Name',
+  emailAddress: 'Email Address',
+  school: 'School',
   address: 'Address',
   firstTimer: 'First-Timer',
   phoneNumber: 'Phone Number',
@@ -184,6 +193,8 @@ function CreateProgram() {
     trackingMode: 'count-only',
     dataFields: {
       fullName: false,
+      emailAddress: false,
+      school: false,
       address: false,
       firstTimer: false,
       phoneNumber: false,
@@ -702,7 +713,7 @@ function CreateProgram() {
       ...formData,
       trackingMode: mode,
       dataFields: mode === 'count-only' ? {
-        fullName: false, address: false, firstTimer: false, phoneNumber: false,
+        fullName: false, emailAddress: false, school: false, address: false, firstTimer: false, phoneNumber: false,
         department: false, fellowship: false, age: false, sex: false
       } : formData.dataFields,
       proxyCheckinEnabled: mode === 'count-only' ? false : formData.proxyCheckinEnabled,
@@ -771,8 +782,8 @@ function CreateProgram() {
       if (!formData.dataFields.fullName) {
         newErrors.dataFields = 'Full Name is required for personalized flyers';
       }
-      if (!formData.personalizedFlyerConfig.template.trim()) {
-        newErrors.personalizedTemplate = 'Personalized flyer message is required';
+      if (parsePersonalizedMessages(formData.personalizedFlyerConfig.template).length === 0) {
+        newErrors.personalizedTemplate = 'Add at least one personalized flyer message';
       }
     }
     if (formData.enableGifting && (!formData.numberOfWinners || formData.numberOfWinners <= 0)) {
@@ -875,6 +886,13 @@ function CreateProgram() {
         }
       })));
 
+      const personalizedMessages = parsePersonalizedMessages(formData.personalizedFlyerConfig.template);
+      const personalizedFlyerConfig = {
+        ...formData.personalizedFlyerConfig,
+        template: personalizedMessages[0] || '',
+        templates: personalizedMessages
+      };
+
       const response = await createProgram({
         programTitle: formData.programTitle,
         date: formData.date,
@@ -890,7 +908,7 @@ function CreateProgram() {
         numberOfWinners: formData.numberOfWinners,
         eventFlyer,
         flyerType: formData.flyerType,
-        personalizedFlyerConfig: formData.personalizedFlyerConfig,
+        personalizedFlyerConfig,
         personalizedBackground,
         personalizedLogo,
         sponsorDisplayMode: formData.sponsorDisplayMode,
@@ -1243,16 +1261,16 @@ function CreateProgram() {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="personalizedTemplate">Motivational Message</label>
+                    <label htmlFor="personalizedTemplate">Motivational Messages</label>
                     <textarea
                       id="personalizedTemplate"
                       value={formData.personalizedFlyerConfig.template}
                       onChange={(e) => handlePersonalizedConfigChange('template', e.target.value)}
                       className={`form-input form-textarea ${errors.personalizedTemplate ? 'input-error' : ''}`}
                       rows="4"
-                      placeholder="[FirstName], you are blessed, loved, and created for purpose."
+                      placeholder={'[FirstName], you are blessed, loved, and created for purpose.\n[FirstName], your presence makes this gathering brighter.'}
                     />
-                    <p className="field-hint">Use [FirstName] where the attendee's first name should appear.</p>
+                    <p className="field-hint">Add one message per line. Ingather will randomly assign one to each attendee. Use [FirstName] where their first name should appear.</p>
                     {errors.personalizedTemplate && <span className="error-text">{errors.personalizedTemplate}</span>}
                   </div>
 

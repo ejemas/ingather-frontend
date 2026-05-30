@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted, addManualAttendee, updateStrictDeviceFingerprinting } from '../api/programService';
+import InfoTooltip from '../components/InfoTooltip';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/Dashboard.css';
@@ -9,6 +10,13 @@ import '../styles/ProgramDetail.css';
 const QRCodeCanvas = React.lazy(() => (
   import('qrcode.react').then(module => ({ default: module.QRCodeCanvas }))
 ));
+
+const isValidCollectedEmail = (value) => {
+  const email = String(value || '').trim();
+  return email.length <= 255
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    && email.indexOf('@') === email.lastIndexOf('@');
+};
 
 /* ============================================
    SVG ICON COMPONENTS
@@ -399,6 +407,8 @@ function ManualAttendeeModal({
   const dataFields = program?.dataFields || {};
   const fieldLabels = {
     fullName: 'Full Name',
+    emailAddress: 'Email Address',
+    school: 'School',
     phoneNumber: 'Phone Number',
     address: 'Address',
     department: 'Department',
@@ -433,6 +443,22 @@ function ManualAttendeeModal({
                 <span>{fieldLabels.fullName}</span>
                 <input name="fullName" value={formData.fullName} onChange={onChange} placeholder="Enter full name" />
                 {errors.fullName && <small>{errors.fullName}</small>}
+              </label>
+            )}
+
+            {dataFields.emailAddress && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.emailAddress}</span>
+                <input type="email" name="emailAddress" value={formData.emailAddress} onChange={onChange} placeholder="name@example.com" />
+                {errors.emailAddress && <small>{errors.emailAddress}</small>}
+              </label>
+            )}
+
+            {dataFields.school && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.school}</span>
+                <input name="school" value={formData.school} onChange={onChange} placeholder="Enter school" />
+                {errors.school && <small>{errors.school}</small>}
               </label>
             )}
 
@@ -559,6 +585,8 @@ function ProgramDetail() {
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualFormData, setManualFormData] = useState({
     fullName: '',
+    emailAddress: '',
+    school: '',
     phoneNumber: '',
     address: '',
     department: '',
@@ -804,11 +832,179 @@ function ProgramDetail() {
     document.body.removeChild(link);
   };
 
-  const handlePrintQR = () => window.print();
+  const handlePrintQR = () => {
+    const canvas = document.getElementById('qr-code-canvas');
+    if (!canvas) {
+      toast.info('QR code is still loading. Please try again in a moment.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=560,height=760');
+    if (!printWindow) {
+      toast.info('Please allow popups for this site so the QR code can be printed.');
+      return;
+    }
+
+    const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character]));
+
+    const qrImageUrl = canvas.toDataURL('image/png');
+    const programTitle = escapeHtml(program.title);
+    const statusText = program.isActive ? 'QR Code is Active - Accepting Scans' : 'QR Code is Disabled';
+    const statusClass = program.isActive ? 'active' : 'inactive';
+
+    printWindow.document.open();
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>${programTitle} QR Code</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: #ffffff;
+              color: #070b1a;
+              font-family: Inter, Arial, sans-serif;
+              padding: 28px;
+            }
+
+            .qr-print-card {
+              width: min(100%, 420px);
+              border: 1px solid #e5e7eb;
+              border-radius: 18px;
+              padding: 30px 28px;
+              text-align: center;
+              background: #ffffff;
+            }
+
+            h1 {
+              margin: 0 0 8px;
+              font-size: 22px;
+              line-height: 1.2;
+              font-weight: 800;
+            }
+
+            .helper {
+              margin: 0 auto 26px;
+              max-width: 310px;
+              color: #7b8192;
+              font-size: 14px;
+              line-height: 1.55;
+            }
+
+            .qr-image {
+              width: 270px;
+              height: 270px;
+              object-fit: contain;
+              display: block;
+              margin: 0 auto 24px;
+            }
+
+            .program-title {
+              margin: 0 0 6px;
+              font-size: 20px;
+              line-height: 1.25;
+              font-weight: 850;
+            }
+
+            .scan-text {
+              margin: 0 0 24px;
+              color: #8a90a0;
+              font-size: 14px;
+            }
+
+            .status {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              border-radius: 999px;
+              padding: 12px 18px;
+              font-size: 13px;
+              font-weight: 800;
+            }
+
+            .status::before {
+              content: "";
+              width: 8px;
+              height: 8px;
+              border-radius: 999px;
+              background: currentColor;
+            }
+
+            .status.active {
+              background: #dcfce7;
+              color: #079448;
+            }
+
+            .status.inactive {
+              background: #fee2e2;
+              color: #b91c1c;
+            }
+
+            @page {
+              margin: 14mm;
+            }
+
+            @media print {
+              body {
+                min-height: auto;
+                padding: 0;
+              }
+
+              .qr-print-card {
+                border-color: #d9dde7;
+                box-shadow: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <main class="qr-print-card">
+            <h1>QR Code</h1>
+            <p class="helper">Deploy this QR code at your event entrance or check-in desk</p>
+            <img class="qr-image" src="${qrImageUrl}" alt="QR code for ${programTitle}" />
+            <h2 class="program-title">${programTitle}</h2>
+            <p class="scan-text">Scan to check in</p>
+            <div class="status ${statusClass}">${statusText}</div>
+          </main>
+          <script>
+            window.addEventListener('load', function () {
+              setTimeout(function () {
+                window.focus();
+                window.print();
+              }, 150);
+            });
+            window.addEventListener('afterprint', function () {
+              window.close();
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
   const resetManualForm = () => {
     setManualFormData({
       fullName: '',
+      emailAddress: '',
+      school: '',
       phoneNumber: '',
       address: '',
       department: '',
@@ -851,6 +1047,11 @@ function ProgramDetail() {
     const errors = {};
 
     if (dataFields.fullName && !manualFormData.fullName.trim()) errors.fullName = 'Full name is required';
+    if (dataFields.emailAddress) {
+      if (!manualFormData.emailAddress.trim()) errors.emailAddress = 'Email address is required';
+      else if (!isValidCollectedEmail(manualFormData.emailAddress)) errors.emailAddress = 'Enter a valid email address';
+    }
+    if (dataFields.school && !manualFormData.school.trim()) errors.school = 'School is required';
     if (dataFields.phoneNumber && !manualFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
     if (dataFields.address && !manualFormData.address.trim()) errors.address = 'Address is required';
     if (dataFields.department && !manualFormData.department.trim()) errors.department = 'Department is required';
@@ -945,33 +1146,279 @@ function ProgramDetail() {
   const handleExportPDF = async () => {
     try {
       const { jsPDF } = await import('jspdf');
+      const autoTableModule = await import('jspdf-autotable');
       const { getCurrentChurch } = await import('../api/authService');
+      const autoTable = autoTableModule.default || autoTableModule.autoTable;
+
+      if (typeof autoTable !== 'function') {
+        throw new Error('PDF table renderer is unavailable');
+      }
+
       const church = await getCurrentChurch();
+      const latestSponsorAnalytics = await getSponsorAnalytics(id).catch(() => sponsorAnalytics);
       const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      doc.setDrawColor(249, 109, 16); doc.setLineWidth(1); doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
-      doc.setFillColor(249, 109, 16); doc.rect(14, 14, pageWidth - 28, 30, 'F');
-      doc.setFontSize(24); doc.setTextColor(235, 235, 211); doc.setFont(undefined, 'bold');
-      doc.text('ATTENDANCE REPORT', pageWidth / 2, 28, { align: 'center' });
-      doc.setFontSize(9); doc.setFont(undefined, 'normal');
-      doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth / 2, 37, { align: 'center' });
-      let yPos = 55;
-      doc.setFillColor(248, 248, 248); doc.rect(14, yPos - 5, pageWidth - 28, 38, 'F');
-      doc.setTextColor(0, 0, 0); doc.setFontSize(13); doc.setFont(undefined, 'bold');
-      doc.text('WORKSPACE INFORMATION', 18, yPos); yPos += 8;
-      doc.setFontSize(10); const col1 = 18; const col2 = pageWidth / 2 + 5;
-      doc.setFont(undefined, 'bold'); doc.text(`${template.organization.nameLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.churchName, col1 + 32, yPos);
-      doc.setFont(undefined, 'bold'); doc.text('Email:', col2, yPos); doc.setFont(undefined, 'normal'); doc.text(church.email, col2 + 15, yPos); yPos += 6;
-      doc.setFont(undefined, 'bold'); doc.text(`${template.organization.branchLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(church.branchName, col1 + 32, yPos);
-      doc.setFont(undefined, 'bold'); doc.text('Location:', col2, yPos); doc.setFont(undefined, 'normal'); doc.text(church.location, col2 + 15, yPos); yPos += 15;
-      doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.text(`${template.event.singular.toUpperCase()} INFORMATION`, 18, yPos); yPos += 8;
-      doc.setFontSize(10); doc.setFont(undefined, 'bold'); doc.text(`${template.event.titleLabel}:`, col1, yPos); doc.setFont(undefined, 'normal'); doc.text(program.title, col1 + 32, yPos); yPos += 6;
-      doc.setFont(undefined, 'bold'); doc.text('Date:', col1, yPos); doc.setFont(undefined, 'normal');
-      doc.text(new Date(program.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }), col1 + 32, yPos); yPos += 15;
-      const fileName = `${church.churchName.replace(/\s+/g, '-')}-${program.title.replace(/\s+/g, '-')}-Report.pdf`;
+
+      const orange = [232, 89, 12];
+      const orangeSoft = [255, 244, 237];
+      const dark = [7, 11, 26];
+      const muted = [106, 113, 128];
+      const border = [226, 229, 235];
+      const generatedAt = new Date();
+      const reportStats = program.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
+      const dataFields = program.dataFields || {};
+      const hasProxyGuests = attendees.some(attendee => Boolean(attendee.proxyHostFingerprint));
+      const winnersSelected = attendees.filter(attendee => attendee.isWinner).length;
+      const sponsorCount = latestSponsorAnalytics?.sponsorCount || 0;
+      const totalSponsorClicks = latestSponsorAnalytics?.totalClicks || 0;
+      const topSponsor = latestSponsorAnalytics?.topSponsor;
+      const hasSharedDeviceMetric = program.trackingMode === 'collect-data' && (program.strictDeviceFingerprinting === false || sharedDeviceCheckins > 0);
+
+      const safeText = (value, fallback = '-') => {
+        if (value === null || value === undefined || value === '') return fallback;
+        return String(value);
+      };
+
+      const formatReportDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return safeText(dateString);
+        return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+      };
+
+      const formatReportDateTime = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        if (Number.isNaN(date.getTime())) return safeText(dateString);
+        return date.toLocaleString();
+      };
+
+      const sanitizeFileName = (value) => safeText(value, 'Ingather')
+        .replace(/[\\/:*?"<>|]+/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .slice(0, 80);
+
+      const pageWidth = () => doc.internal.pageSize.getWidth();
+      const pageHeight = () => doc.internal.pageSize.getHeight();
+
+      const setFont = (style = 'normal', size = 10, color = dark) => {
+        doc.setFont('helvetica', style);
+        doc.setFontSize(size);
+        doc.setTextColor(...color);
+      };
+
+      const drawMetricCard = (x, y, width, height, label, value, helper, accent = orange) => {
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...border);
+        doc.setLineWidth(0.35);
+        doc.roundedRect(x, y, width, height, 3, 3, 'FD');
+        doc.setFillColor(...accent);
+        doc.roundedRect(x + 4, y + 5, 3, height - 10, 1.5, 1.5, 'F');
+        setFont('bold', 7.5, muted);
+        doc.text(label.toUpperCase(), x + 10, y + 9);
+        setFont('bold', 17, dark);
+        doc.text(safeText(value), x + 10, y + 18);
+        if (helper) {
+          setFont('normal', 7.5, muted);
+          doc.text(safeText(helper), x + 10, y + 25, { maxWidth: width - 14 });
+        }
+      };
+
+      const drawSectionTitle = (title, subtitle, y) => {
+        setFont('bold', 13, dark);
+        doc.text(title, 14, y);
+        if (subtitle) {
+          setFont('normal', 8.5, muted);
+          doc.text(subtitle, 14, y + 5);
+        }
+      };
+
+      const metricCards = [
+        { label: 'Total Attendance', value: totalScans.toLocaleString(), helper: program.isActive ? 'Live scans recorded' : 'Total scans recorded' }
+      ];
+
+      if (program.trackingMode === 'collect-data') {
+        metricCards.push({ label: 'Forms Submitted', value: formsSubmitted.toLocaleString(), helper: `${template.attendee.plural} with form data` });
+      }
+      if (program.trackingMode === 'collect-data' && dataFields.firstTimer) {
+        metricCards.push({ label: 'First Timers', value: reportStats.firstTimerCount.toLocaleString(), helper: 'New attendees identified', accent: [124, 58, 237] });
+      }
+      if (program.trackingMode === 'collect-data' && dataFields.sex) {
+        metricCards.push({ label: 'Male Attendance', value: reportStats.maleCount.toLocaleString(), helper: 'Gender breakdown', accent: [37, 99, 235] });
+        metricCards.push({ label: 'Female Attendance', value: reportStats.femaleCount.toLocaleString(), helper: 'Gender breakdown', accent: [219, 39, 119] });
+      }
+      if (program.giftingEnabled) {
+        metricCards.push({ label: 'Winners Selected', value: `${winnersSelected}/${attendees.length}`, helper: 'Gifting allocation', accent: [245, 158, 11] });
+        metricCards.push({ label: 'Winners Gifted', value: `${winnersGifted}/${winnersSelected || 0}`, helper: 'Gifts marked complete', accent: [22, 163, 74] });
+      }
+      if (sponsorCount > 0) {
+        metricCards.push({ label: 'Sponsor Clicks', value: totalSponsorClicks.toLocaleString(), helper: topSponsor ? `Top: ${topSponsor.sponsorName}` : 'Tracked sponsor ROI', accent: orange });
+      }
+      if (hasSharedDeviceMetric) {
+        metricCards.push({ label: 'Shared Devices', value: sharedDeviceCheckins.toLocaleString(), helper: 'Duplicate-device check-ins', accent: [14, 165, 233] });
+      }
+
+      doc.setFillColor(...dark);
+      doc.rect(0, 0, pageWidth(), 58, 'F');
+      doc.setFillColor(...orange);
+      doc.rect(0, 0, pageWidth(), 5, 'F');
+      setFont('bold', 9, orange);
+      doc.text('INGATHER EVENT INTELLIGENCE', 14, 17);
+      setFont('bold', 24, [255, 255, 255]);
+      doc.text('Post-Event Intelligence Report', 14, 29);
+      setFont('normal', 9, [209, 213, 219]);
+      doc.text(`Generated ${generatedAt.toLocaleString()}`, 14, 38);
+      setFont('bold', 15, [255, 255, 255]);
+      doc.text(safeText(program.title, template.event.singular), pageWidth() - 14, 24, { align: 'right', maxWidth: 72 });
+      setFont('normal', 8.5, [209, 213, 219]);
+      doc.text(`${formatReportDate(program.date)} | ${safeText(program.startTime)} - ${safeText(program.endTime)}`, pageWidth() - 14, 36, { align: 'right' });
+
+      let yPos = 68;
+      doc.setFillColor(249, 250, 251);
+      doc.setDrawColor(...border);
+      doc.roundedRect(14, yPos, pageWidth() - 28, 34, 4, 4, 'FD');
+      setFont('bold', 8, orange);
+      doc.text('WORKSPACE', 20, yPos + 9);
+      setFont('bold', 12, dark);
+      doc.text(safeText(church.churchName, churchData.name || template.organization.nameLabel), 20, yPos + 17, { maxWidth: 72 });
+      setFont('normal', 8, muted);
+      doc.text(`${template.organization.branchLabel}: ${safeText(church.branchName, churchData.branch)}`, 20, yPos + 24, { maxWidth: 76 });
+      doc.text(`Email: ${safeText(church.email, churchData.email)}`, 108, yPos + 12, { maxWidth: 82 });
+      doc.text(`Location: ${safeText(church.location)}`, 108, yPos + 20, { maxWidth: 82 });
+      doc.text(`${template.event.titleLabel}: ${safeText(program.title)}`, 108, yPos + 28, { maxWidth: 82 });
+
+      yPos += 48;
+      drawSectionTitle('Executive Summary', 'Feature-aware metrics from this event.', yPos);
+      yPos += 11;
+
+      const cardGap = 5;
+      const cardWidth = (pageWidth() - 28 - (cardGap * 2)) / 3;
+      const cardHeight = 31;
+      metricCards.forEach((card, index) => {
+        const column = index % 3;
+        const row = Math.floor(index / 3);
+        drawMetricCard(
+          14 + column * (cardWidth + cardGap),
+          yPos + row * (cardHeight + 6),
+          cardWidth,
+          cardHeight,
+          card.label,
+          card.value,
+          card.helper,
+          card.accent || orange
+        );
+      });
+      yPos += Math.ceil(metricCards.length / 3) * (cardHeight + 6) + 6;
+
+      if (sponsorCount > 0) {
+        drawSectionTitle('Sponsor ROI Snapshot', `Your sponsor links were clicked ${totalSponsorClicks.toLocaleString()} times.`, yPos);
+        yPos += 10;
+        doc.setFillColor(...orangeSoft);
+        doc.setDrawColor(255, 210, 185);
+        doc.roundedRect(14, yPos, pageWidth() - 28, 25, 4, 4, 'FD');
+        setFont('bold', 10, dark);
+        doc.text(topSponsor?.sponsorName ? `Top sponsor: ${topSponsor.sponsorName}` : 'Sponsor engagement tracked', 20, yPos + 10, { maxWidth: 92 });
+        setFont('normal', 8.5, muted);
+        doc.text(`${sponsorCount} active sponsor${sponsorCount === 1 ? '' : 's'} | ${safeText(latestSponsorAnalytics?.todayClicks || 0)} clicks today`, 20, yPos + 18);
+        setFont('bold', 18, orange);
+        doc.text(totalSponsorClicks.toLocaleString(), pageWidth() - 20, yPos + 14, { align: 'right' });
+        setFont('normal', 8, muted);
+        doc.text('total clicks', pageWidth() - 20, yPos + 21, { align: 'right' });
+      }
+
+      doc.addPage('a4', 'landscape');
+      const tablePageWidth = pageWidth();
+      let tableY = 18;
+      setFont('bold', 16, dark);
+      doc.text(`${template.attendee.singular} Data`, 14, tableY);
+      setFont('normal', 8.5, muted);
+      doc.text('Raw attendee records with dynamic columns based on enabled collection fields.', 14, tableY + 6);
+      tableY += 14;
+
+      const tableColumns = [];
+      if (dataFields.fullName) tableColumns.push({ header: 'Name', value: attendee => safeText(attendee.fullName) });
+      if (dataFields.emailAddress) tableColumns.push({ header: 'Email', value: attendee => safeText(attendee.emailAddress) });
+      if (dataFields.school) tableColumns.push({ header: 'School', value: attendee => safeText(attendee.school) });
+      if (dataFields.phoneNumber) tableColumns.push({ header: 'Phone', value: attendee => safeText(attendee.phoneNumber) });
+      if (dataFields.address) tableColumns.push({ header: 'Address', value: attendee => safeText(attendee.address) });
+      if (dataFields.department) tableColumns.push({ header: 'Department', value: attendee => safeText(attendee.department) });
+      if (dataFields.fellowship) tableColumns.push({ header: 'Group', value: attendee => safeText(attendee.fellowship) });
+      if (dataFields.age) tableColumns.push({ header: 'Age', value: attendee => attendee.age ? `${attendee.age} Years` : '-' });
+      if (dataFields.sex) tableColumns.push({ header: 'Gender', value: attendee => safeText(attendee.sex) });
+      if (dataFields.firstTimer) tableColumns.push({ header: 'First Timer', value: attendee => attendee.firstTimer ? 'Yes' : 'No' });
+      if (program.giftingEnabled) {
+        tableColumns.push({ header: 'Winner', value: attendee => attendee.isWinner ? 'Selected' : '-' });
+        tableColumns.push({ header: 'Gifted', value: attendee => attendee.isWinner ? (attendee.isGifted ? 'Gifted' : 'Pending') : '-' });
+      }
+      if (hasProxyGuests) {
+        tableColumns.push({ header: 'Entry Type', value: attendee => attendee.proxyHostFingerprint ? 'Proxy Guest' : 'Direct' });
+      }
+      tableColumns.push({ header: 'Scan Time', value: attendee => formatReportDateTime(attendee.scanTime) });
+
+      const tableBody = attendees.length > 0
+        ? attendees.map(attendee => tableColumns.map(column => column.value(attendee)))
+        : [[`No ${template.attendee.plural.toLowerCase()} recorded yet.`].concat(Array(Math.max(tableColumns.length - 1, 0)).fill(''))];
+
+      autoTable(doc, {
+        startY: tableY,
+        head: [tableColumns.map(column => column.header)],
+        body: tableBody,
+        margin: { left: 14, right: 14, bottom: 18 },
+        theme: 'grid',
+        tableWidth: tablePageWidth - 28,
+        styles: {
+          font: 'helvetica',
+          fontSize: tableColumns.length > 9 ? 6.4 : 7.2,
+          cellPadding: 2.2,
+          overflow: 'linebreak',
+          valign: 'middle',
+          lineColor: border,
+          lineWidth: 0.15,
+          textColor: dark
+        },
+        headStyles: {
+          fillColor: dark,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'left'
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255]
+        },
+        didParseCell: (data) => {
+          if (data.section !== 'body') return;
+          const raw = String(data.cell.raw || '');
+          if (['Yes', 'Selected', 'Gifted'].includes(raw)) {
+            data.cell.styles.textColor = [21, 128, 61];
+            data.cell.styles.fontStyle = 'bold';
+          } else if (raw === 'Pending') {
+            data.cell.styles.textColor = orange;
+            data.cell.styles.fontStyle = 'bold';
+          } else if (raw === 'Proxy Guest') {
+            data.cell.styles.textColor = [14, 116, 144];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      });
+
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+        doc.setPage(pageNumber);
+        const footerY = pageHeight() - 9;
+        doc.setDrawColor(...border);
+        doc.line(14, footerY - 6, pageWidth() - 14, footerY - 6);
+        setFont('normal', 7.5, muted);
+        doc.text('Ingather Post-Event Intelligence Report', 14, footerY);
+        doc.text(`Generated ${generatedAt.toLocaleString()}`, pageWidth() / 2, footerY, { align: 'center' });
+        doc.text(`Page ${pageNumber} of ${totalPages}`, pageWidth() - 14, footerY, { align: 'right' });
+      }
+
+      const fileName = `${sanitizeFileName(church.churchName || churchData.name)}-${sanitizeFileName(program.title)}-Intelligence-Report.pdf`;
       doc.save(fileName);
-      toast.success('PDF Report exported successfully!');
+      toast.success('Post-event intelligence report exported successfully!');
     } catch (error) { toast.error('Failed to export PDF: ' + error.message); }
   };
 
@@ -996,8 +1443,20 @@ function ProgramDetail() {
   const stats = program?.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
   const showSharedDeviceMetric = program?.trackingMode === 'collect-data' && (program.strictDeviceFingerprinting === false || sharedDeviceCheckins > 0);
   const filteredAttendees = attendees.filter(attendee => (
-    !searchQuery.trim() || (attendee.fullName || '').toLowerCase().includes(searchQuery.toLowerCase())
+    !searchQuery.trim()
+      || [attendee.fullName, attendee.emailAddress, attendee.school]
+        .some(value => (value || '').toLowerCase().includes(searchQuery.toLowerCase()))
   ));
+  const attendeeTableColumnCount = [
+    program?.dataFields?.fullName,
+    program?.dataFields?.emailAddress,
+    program?.dataFields?.school,
+    program?.dataFields?.fellowship,
+    program?.dataFields?.age,
+    program?.giftingEnabled,
+    program?.giftingEnabled,
+    true
+  ].filter(Boolean).length;
 
   /* ---- LOADING ---- */
   if (loading) {
@@ -1229,7 +1688,11 @@ function ProgramDetail() {
                   <div className="pd-stat-label">Male</div>
                   <div className="pd-stat-value">{stats.maleCount}</div>
                 </div>
-                <span className="stat-info-icon">{Icons.info}</span>
+                <InfoTooltip
+                  className="stat-info-icon"
+                  label="Male attendance metric information"
+                  content="Attendees counted in this gender group."
+                />
               </div>
               <div className="pd-stat-card">
                 <div className="stat-icon-box icon-pink">{Icons.female}</div>
@@ -1237,7 +1700,11 @@ function ProgramDetail() {
                   <div className="pd-stat-label">Female</div>
                   <div className="pd-stat-value">{stats.femaleCount}</div>
                 </div>
-                <span className="stat-info-icon">{Icons.info}</span>
+                <InfoTooltip
+                  className="stat-info-icon"
+                  label="Female attendance metric information"
+                  content="Attendees counted in this gender group."
+                />
               </div>
               <div className="pd-stat-card">
                 <div className="stat-icon-box icon-purple">{Icons.star}</div>
@@ -1245,7 +1712,11 @@ function ProgramDetail() {
                   <div className="pd-stat-label">First Timer</div>
                   <div className="pd-stat-value">{stats.firstTimerCount}</div>
                 </div>
-                <span className="stat-info-icon">{Icons.info}</span>
+                <InfoTooltip
+                  className="stat-info-icon"
+                  label="First timer metric information"
+                  content="Attendees marked as first-timers from submitted forms."
+                />
               </div>
             </div>
           )}
@@ -1272,7 +1743,11 @@ function ProgramDetail() {
                     <div className="pd-stat-label">Form Submitted</div>
                     <div className="pd-stat-value">{formsSubmitted}</div>
                   </div>
-                  <span className="stat-info-icon">{Icons.info}</span>
+                  <InfoTooltip
+                    className="stat-info-icon"
+                    label="Form submitted metric information"
+                    content="Completed attendee forms for this event."
+                  />
                 </div>
                 {/* First Timer (conditional) */}
                 {program.dataFields?.firstTimer && (
@@ -1282,7 +1757,11 @@ function ProgramDetail() {
                       <div className="pd-stat-label">First Timer</div>
                       <div className="pd-stat-value">{stats.firstTimerCount}</div>
                     </div>
-                    <span className="stat-info-icon">{Icons.info}</span>
+                    <InfoTooltip
+                      className="stat-info-icon"
+                      label="First timer metric information"
+                      content="Attendees marked as first-timers from submitted forms."
+                    />
                   </div>
                 )}
               </div>
@@ -1440,6 +1919,8 @@ function ProgramDetail() {
                   <thead>
                     <tr>
                       {program.dataFields?.fullName && <th>Name</th>}
+                      {program.dataFields?.emailAddress && <th>Email</th>}
+                      {program.dataFields?.school && <th>School</th>}
                       {program.dataFields?.fellowship && <th>Group</th>}
                       {program.dataFields?.age && <th>Age</th>}
                       {program.giftingEnabled && <th>Winner</th>}
@@ -1450,7 +1931,7 @@ function ProgramDetail() {
                   <tbody>
                     {filteredAttendees.length === 0 ? (
                       <tr>
-                        <td colSpan="6">
+                        <td colSpan={attendeeTableColumnCount}>
                           <div className="pd-empty-table">
                             <strong>No {template.attendee.plural.toLowerCase()} yet.</strong>
                             <span>Use Add Manually when someone checks in without a smartphone.</span>
@@ -1460,6 +1941,8 @@ function ProgramDetail() {
                     ) : filteredAttendees.map(attendee => (
                       <tr key={attendee.id}>
                         {program.dataFields?.fullName && <td data-label="Name"><strong>{attendee.fullName || '-'}</strong></td>}
+                        {program.dataFields?.emailAddress && <td data-label="Email">{attendee.emailAddress || '-'}</td>}
+                        {program.dataFields?.school && <td data-label="School">{attendee.school || '-'}</td>}
                         {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
                         {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
                         {program.giftingEnabled && (
