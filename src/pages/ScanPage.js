@@ -419,16 +419,23 @@ function PersonalizedFlyerViewer({ programData, programId, attendeeName, persona
       ctx.textBaseline = 'alphabetic';
       ctx.textAlign = 'left';
 
-      fitCanvasText(organizerName, 350, '800', 28, 18);
-      ctx.fillText(organizerName, 72, 724);
+      const footerLeftX = 72;
+      const footerRightX = 704;
+      const footerLeftMax = 390;
+      const footerScheduleMax = 300;
+      const footerTopY = 724;
+      const footerTitleY = 765;
 
-      fitCanvasText(eventTitle, 390, '800', 28, 18);
-      ctx.fillText(eventTitle, 72, 765);
+      fitCanvasText(organizerName, footerLeftMax, '800', 28, 18);
+      ctx.fillText(organizerName, footerLeftX, footerTopY);
+
+      fitCanvasText(eventTitle, 620, '800', 28, 18);
+      ctx.fillText(eventTitle, footerLeftX, footerTitleY);
 
       if (eventScheduleText) {
         ctx.textAlign = 'right';
-        fitCanvasText(eventScheduleText, 370, '800', 26, 16);
-        ctx.fillText(eventScheduleText, 728, 746);
+        fitCanvasText(eventScheduleText, footerScheduleMax, '800', 24, 14);
+        ctx.fillText(eventScheduleText, footerRightX, footerTopY);
       }
 
       return canvas;

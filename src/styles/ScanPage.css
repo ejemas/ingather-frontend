@@ -1308,8 +1308,9 @@
 }
 
 .personalized-brand-name {
-  flex: 0 1 auto;
-  min-width: 0;
+  flex: 0 0 auto;
+  max-width: 64%;
+  min-width: 4ch;
   color: var(--personalized-brand, #E8590C);
   font-family: 'Poppins', sans-serif;
   font-size: var(--font-heading);
@@ -1327,6 +1328,8 @@
 }
 
 .personalized-description {
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--personalized-text, #111217);
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: var(--font-sub);
@@ -1711,6 +1714,18 @@
 
   .personalized-line-primary {
     gap: 5px;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .personalized-brand-name {
+    max-width: 100%;
+    min-width: 4ch;
+    color: var(--personalized-brand, #E8590C);
+  }
+
+  .personalized-description {
+    flex-basis: 100%;
   }
 
   .personalized-actions {
