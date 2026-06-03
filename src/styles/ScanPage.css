@@ -2044,6 +2044,37 @@
   transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.scan-fast-track-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.scan-fast-track-secondary {
+  min-height: 52px;
+  border: 1px solid rgba(232, 89, 12, 0.28);
+  border-radius: 8px;
+  background: #FFF7ED;
+  color: #E8590C;
+  font: 700 0.98rem/1.2 'Inter', sans-serif;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scan-fast-track-secondary:hover,
+.scan-fast-track-secondary:focus-visible {
+  border-color: #E8590C;
+  box-shadow: 0 12px 32px rgba(232, 89, 12, 0.14);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.scan-fast-track-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  transform: none;
+  box-shadow: none;
+}
+
 .scan-figma-submit:hover:not(:disabled),
 .scan-figma-submit:focus-visible:not(:disabled) {
   transform: translateY(-1px);

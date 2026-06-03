@@ -9,7 +9,13 @@ const FIELD_LABELS = {
   phoneNumber: 'Phone Number',
   school: 'School',
   organization: 'Organization',
-  ticketType: 'Ticket Type'
+  ticketType: 'Ticket Type',
+  address: 'Address',
+  firstTimer: 'First-Timer',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age',
+  sex: 'Gender'
 };
 
 const FIELD_PLACEHOLDERS = {
@@ -18,10 +24,26 @@ const FIELD_PLACEHOLDERS = {
   phoneNumber: 'Phone number',
   school: 'School',
   organization: 'Organization, company, or group',
-  ticketType: 'General, VIP, Student...'
+  ticketType: 'General, VIP, Student...',
+  address: 'Your address',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age'
 };
 
-const OPTIONAL_FIELDS = ['fullName', 'phoneNumber', 'school', 'organization', 'ticketType'];
+const OPTIONAL_FIELDS = [
+  'fullName',
+  'phoneNumber',
+  'school',
+  'organization',
+  'ticketType',
+  'address',
+  'firstTimer',
+  'department',
+  'fellowship',
+  'age',
+  'sex'
+];
 
 const isValidEmail = (value) => {
   const email = String(value || '').trim();
@@ -99,6 +121,16 @@ function RsvpPage() {
 
     selectedFields.forEach((field) => {
       if (field === 'emailAddress') return;
+      if (field === 'firstTimer') return;
+      if (field === 'age') {
+        const age = Number(formData.age);
+        if (!String(formData.age || '').trim()) {
+          nextErrors.age = 'Age is required.';
+        } else if (!Number.isInteger(age) || age < 1 || age > 120) {
+          nextErrors.age = 'Enter an age between 1 and 120.';
+        }
+        return;
+      }
       if (!String(formData[field] || '').trim()) {
         nextErrors[field] = `${FIELD_LABELS[field]} is required.`;
       }
@@ -187,21 +219,59 @@ function RsvpPage() {
 
                 {serverError && <p className="rsvp-public-error">{serverError}</p>}
 
-                {selectedFields.map((field) => (
-                  <label className="rsvp-public-field" key={field}>
-                    <span>{FIELD_LABELS[field]}</span>
-                    <input
-                      type={field === 'emailAddress' ? 'email' : 'text'}
-                      value={formData[field] || ''}
-                      onChange={(event) => updateField(field, event.target.value)}
-                      placeholder={FIELD_PLACEHOLDERS[field]}
-                      disabled={!preEvent.isRsvpActive || submitting}
-                      maxLength={field === 'emailAddress' ? 255 : 255}
-                      required
-                    />
-                    {errors[field] && <small>{errors[field]}</small>}
-                  </label>
-                ))}
+                {selectedFields.map((field) => {
+                  if (field === 'firstTimer') {
+                    return (
+                      <label className="rsvp-public-checkbox" key={field}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.firstTimer)}
+                          onChange={(event) => updateField('firstTimer', event.target.checked)}
+                          disabled={!preEvent.isRsvpActive || submitting}
+                        />
+                        <span>I am a first-time attendee</span>
+                      </label>
+                    );
+                  }
+
+                  if (field === 'sex') {
+                    return (
+                      <label className="rsvp-public-field" key={field}>
+                        <span>{FIELD_LABELS[field]}</span>
+                        <select
+                          value={formData.sex || ''}
+                          onChange={(event) => updateField('sex', event.target.value)}
+                          disabled={!preEvent.isRsvpActive || submitting}
+                          required
+                        >
+                          <option value="">Select gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {errors[field] && <small>{errors[field]}</small>}
+                      </label>
+                    );
+                  }
+
+                  return (
+                    <label className="rsvp-public-field" key={field}>
+                      <span>{FIELD_LABELS[field]}</span>
+                      <input
+                        type={field === 'emailAddress' ? 'email' : field === 'age' ? 'number' : 'text'}
+                        value={formData[field] || ''}
+                        onChange={(event) => updateField(field, event.target.value)}
+                        placeholder={FIELD_PLACEHOLDERS[field]}
+                        disabled={!preEvent.isRsvpActive || submitting}
+                        maxLength={field === 'emailAddress' ? 255 : undefined}
+                        min={field === 'age' ? 1 : undefined}
+                        max={field === 'age' ? 120 : undefined}
+                        required
+                      />
+                      {errors[field] && <small>{errors[field]}</small>}
+                    </label>
+                  );
+                })}
 
                 <button type="submit" className="rsvp-public-submit" disabled={!preEvent.isRsvpActive || submitting}>
                   {submitting ? 'Securing access...' : 'Claim Event Access'}

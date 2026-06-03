@@ -22,6 +22,8 @@ function PreEvents() {
   const [preEvents, setPreEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
+  const [eventToDelete, setEventToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -62,6 +64,19 @@ function PreEvents() {
 
   const visibleEvents = groupedEvents[activeTab] || [];
 
+  useEffect(() => {
+    if (!eventToDelete) return undefined;
+
+    const handleKeyDown = (keyboardEvent) => {
+      if (keyboardEvent.key === 'Escape' && !deleting) {
+        setEventToDelete(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [eventToDelete, deleting]);
+
   const copyLink = async (event) => {
     try {
       await navigator.clipboard.writeText(event.publicUrl);
@@ -71,16 +86,18 @@ function PreEvents() {
     }
   };
 
-  const handleDelete = async (event) => {
-    const confirmed = window.confirm(`Delete "${event.title}" and all RSVPs?`);
-    if (!confirmed) return;
-
+  const handleDelete = async () => {
+    if (!eventToDelete) return;
     try {
-      await deletePreEvent(event.id);
-      setPreEvents(prev => prev.filter(item => item.id !== event.id));
+      setDeleting(true);
+      await deletePreEvent(eventToDelete.id);
+      setPreEvents(prev => prev.filter(item => item.id !== eventToDelete.id));
+      setEventToDelete(null);
       toast.success('Pre-event deleted');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Unable to delete pre-event');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -150,7 +167,7 @@ function PreEvents() {
                       <a href={`/pre-events/${event.id}`} className="pre-event-card-primary">View Dashboard</a>
                       <button type="button" onClick={() => copyLink(event)}>Copy Link</button>
                       <a href={event.publicUrl} target="_blank" rel="noreferrer">Open Page</a>
-                      <button type="button" className="danger" onClick={() => handleDelete(event)}>Delete</button>
+                      <button type="button" className="danger" onClick={() => setEventToDelete(event)}>Delete</button>
                     </div>
                   </div>
                 </article>
@@ -159,6 +176,32 @@ function PreEvents() {
           )}
         </section>
       </div>
+
+      {eventToDelete && (
+        <div className="pre-event-delete-overlay" role="presentation" onMouseDown={() => !deleting && setEventToDelete(null)}>
+          <div
+            className="pre-event-delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pre-event-delete-title"
+            onMouseDown={(modalEvent) => modalEvent.stopPropagation()}
+          >
+            <span className="pre-event-delete-kicker">Delete pre-event</span>
+            <h2 id="pre-event-delete-title">Delete "{eventToDelete.title}"?</h2>
+            <p>
+              This will permanently delete the RSVP page and all RSVP records collected for this pre-event.
+            </p>
+            <div className="pre-event-delete-actions">
+              <button type="button" className="pre-event-delete-cancel" onClick={() => setEventToDelete(null)} disabled={deleting}>
+                Cancel
+              </button>
+              <button type="button" className="pre-event-delete-confirm" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

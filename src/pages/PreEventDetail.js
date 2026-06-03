@@ -9,7 +9,8 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { getPreEvent } from '../api/preEventService';
+import { getPreEvent, updatePreEvent } from '../api/preEventService';
+import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
 import '../styles/PreEvents.css';
@@ -20,10 +21,28 @@ const FIELD_LABELS = {
   phoneNumber: 'Phone Number',
   school: 'School',
   organization: 'Organization',
-  ticketType: 'Ticket Type'
+  ticketType: 'Ticket Type',
+  address: 'Address',
+  firstTimer: 'First-Timer',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age',
+  sex: 'Gender'
 };
 
-const OPTIONAL_FIELDS = ['fullName', 'phoneNumber', 'school', 'organization', 'ticketType'];
+const OPTIONAL_FIELDS = [
+  'fullName',
+  'phoneNumber',
+  'school',
+  'organization',
+  'ticketType',
+  'address',
+  'firstTimer',
+  'department',
+  'fellowship',
+  'age',
+  'sex'
+];
 const PAGE_SIZE = 10;
 
 const formatDateTime = (value) => {
@@ -61,6 +80,9 @@ function PreEventDetail() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [programOptions, setProgramOptions] = useState([]);
+  const [linkedProgramId, setLinkedProgramId] = useState('');
+  const [savingLink, setSavingLink] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -69,6 +91,7 @@ function PreEventDetail() {
         setLoading(true);
         const response = await getPreEvent(id);
         setPreEvent(response.preEvent);
+        setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
         setRsvps(response.rsvps || []);
         setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
       } catch (error) {
@@ -80,6 +103,19 @@ function PreEventDetail() {
 
     loadDetail();
   }, [id, toast]);
+
+  useEffect(() => {
+    const loadPrograms = async () => {
+      try {
+        const response = await getPrograms();
+        setProgramOptions((response.programs || []).filter(program => program.trackingMode === 'collect-data'));
+      } catch (error) {
+        setProgramOptions([]);
+      }
+    };
+
+    loadPrograms();
+  }, []);
 
   useEffect(() => {
     setPage(0);
@@ -100,6 +136,7 @@ function PreEventDetail() {
     if (!query) return rsvps;
     return rsvps.filter((rsvp) => (
       [rsvp.emailAddress, rsvp.fullName, rsvp.phoneNumber, rsvp.school, rsvp.organization, rsvp.ticketType]
+        .concat([rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(query))
     ));
@@ -116,6 +153,28 @@ function PreEventDetail() {
       toast.success('RSVP link copied');
     } catch (error) {
       toast.error('Unable to copy RSVP link');
+    }
+  };
+
+  const saveProgramLink = async () => {
+    if (!preEvent) return;
+    try {
+      setSavingLink(true);
+      const response = await updatePreEvent(preEvent.id, {
+        title: preEvent.title,
+        eventDate: preEvent.eventDate,
+        description: preEvent.description,
+        rsvpFields: preEvent.rsvpFields,
+        isRsvpActive: preEvent.isRsvpActive,
+        programId: linkedProgramId || null
+      });
+      setPreEvent(response.preEvent);
+      setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
+      toast.success('Live program link updated');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Unable to update live program link');
+    } finally {
+      setSavingLink(false);
     }
   };
 
@@ -178,6 +237,31 @@ function PreEventDetail() {
             <strong>{preEvent.isRsvpActive ? 'Open' : 'Paused'}</strong>
             <p>{preEvent.isRsvpActive ? 'The RSVP page is accepting registrations.' : 'New RSVPs are currently blocked.'}</p>
           </article>
+        </section>
+
+        <section className="pre-event-form-card pre-event-link-card">
+          <div className="pre-event-card-heading">
+            <div>
+              <h2>Fast-Track Check-In Link</h2>
+              <p>Connect this RSVP page to a live collect-data program so pre-registered attendees can check in with only their email.</p>
+            </div>
+          </div>
+          <div className="pre-event-link-row">
+            <label className="pre-event-field">
+              <span>Live Program</span>
+              <select value={linkedProgramId} onChange={(event) => setLinkedProgramId(event.target.value)}>
+                <option value="">Not linked yet</option>
+                {programOptions.map((program) => (
+                  <option key={program.id} value={program.id}>
+                    {program.title} - {program.date}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
+              {savingLink ? 'Saving...' : 'Save Link'}
+            </button>
+          </div>
         </section>
 
         <section className="pre-event-analytics-grid">
@@ -246,7 +330,11 @@ function PreEventDetail() {
                     <tr key={rsvp.id}>
                       {columns.map((column) => (
                         <td key={`${rsvp.id}-${column}`}>
-                          {column === 'createdAt' ? formatSubmittedAt(rsvp.createdAt) : (rsvp[column] || '-')}
+                          {column === 'createdAt'
+                            ? formatSubmittedAt(rsvp.createdAt)
+                            : column === 'firstTimer'
+                              ? (rsvp.firstTimer ? 'Yes' : 'No')
+                              : (rsvp[column] || '-')}
                         </td>
                       ))}
                     </tr>

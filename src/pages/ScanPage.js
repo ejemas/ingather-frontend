@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // import { getProgramInfo, submitScan } from '../api/scanService';
 import { useParams } from 'react-router-dom';
-import { getProgramInfo, submitScan, submitFormData, submitProxyAttendee, updateScanData, trackSponsorClick } from '../api/scanService';
+import { getProgramInfo, submitScan, submitFormData, submitFastTrackRsvp, submitProxyAttendee, updateScanData, trackSponsorClick } from '../api/scanService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import '../styles/ScanPage.css';
@@ -919,6 +919,10 @@ function ScanPage() {
   const [loading, setLoading] = useState(true);
   const [alreadyScanned, setAlreadyScanned] = useState(false);
   const [programData, setProgramData] = useState(null);
+  const [showFastTrackLookup, setShowFastTrackLookup] = useState(false);
+  const [fastTrackEmail, setFastTrackEmail] = useState('');
+  const [fastTrackError, setFastTrackError] = useState('');
+  const [submittingFastTrack, setSubmittingFastTrack] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showFlyerDetails, setShowFlyerDetails] = useState(false);
   const [personalizedMessage, setPersonalizedMessage] = useState('');
@@ -1026,8 +1030,12 @@ function ScanPage() {
           setShowGenderForm(true);
           setLoading(false);
         } else if (programData.trackingMode === 'collect-data') {
-          // Collect data - show the form
-          setShowForm(true);
+          if (programData.fastTrackRsvpEnabled) {
+            setShowFastTrackLookup(true);
+          } else {
+            // Collect data - show the form
+            setShowForm(true);
+          }
           setLoading(false);
         }
       } catch (scanError) {
@@ -1098,6 +1106,9 @@ function ScanPage() {
     console.log('Resetting...');
     localStorage.removeItem('scannedPrograms');
     setAlreadyScanned(false);
+    setShowFastTrackLookup(false);
+    setFastTrackEmail('');
+    setFastTrackError('');
     setShowForm(false);
     setShowProxyPrompt(false);
     setShowProxyForm(false);
@@ -1199,6 +1210,81 @@ function ScanPage() {
     if (submittedFormData.firstTimer) return 'first-timer-message';
     if (response.giftingEnabled) return response.isWinner ? 'winner' : 'no-win';
     return 'no-gifting';
+  };
+
+  const continueAfterMainCheckIn = (submittedFormData, response) => {
+    const nextResult = getNextResult(submittedFormData, response);
+
+    if (programData?.proxyCheckinEnabled) {
+      setPendingResult(nextResult);
+      setProxyCount(0);
+      setShowProxyPrompt(true);
+    } else {
+      setResult(nextResult);
+    }
+  };
+
+  const revealWalkInForm = () => {
+    setShowFastTrackLookup(false);
+    setShowForm(true);
+    setFastTrackError('');
+    setFormData(prev => ({
+      ...prev,
+      emailAddress: fastTrackEmail.trim().toLowerCase()
+    }));
+  };
+
+  const handleFastTrackSubmit = async (event) => {
+    event.preventDefault();
+    const email = fastTrackEmail.trim().toLowerCase();
+
+    if (!email) {
+      setFastTrackError('Email address is required');
+      return;
+    }
+
+    if (!isValidCollectedEmail(email)) {
+      setFastTrackError('Enter a valid email address');
+      return;
+    }
+
+    setSubmittingFastTrack(true);
+    setFastTrackError('');
+
+    try {
+      const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
+      deviceFingerprintRef.current = fingerprint;
+      const response = await submitFastTrackRsvp(programId, fingerprint, email, scanSessionTokenRef.current, scanSessionIdRef.current);
+      const attendee = response.attendee || {};
+      const attendeeFormData = {
+        fullName: attendee.fullName || '',
+        emailAddress: attendee.emailAddress || email,
+        school: attendee.school || '',
+        address: attendee.address || '',
+        firstTimer: Boolean(attendee.firstTimer),
+        phoneNumber: attendee.phoneNumber || '',
+        department: attendee.department || '',
+        fellowship: attendee.fellowship || '',
+        age: attendee.age || '',
+        sex: attendee.sex || ''
+      };
+
+      setFormData(attendeeFormData);
+      setSponsorPlacement(response.sponsorPlacement || sponsorPlacement);
+      setPersonalizedMessage(response.personalizedMessage || '');
+      setShowFastTrackLookup(false);
+      continueAfterMainCheckIn(attendeeFormData, response);
+    } catch (error) {
+      const payload = error.response?.data || {};
+      if (payload.fastTrackNotFound) {
+        toast.info('No RSVP found for that email. Please complete the quick check-in form.');
+        revealWalkInForm();
+      } else {
+        setFastTrackError(payload.error || 'Unable to complete fast-track check-in');
+      }
+    } finally {
+      setSubmittingFastTrack(false);
+    }
   };
 
   const emptyProxyFormData = () => ({
@@ -1317,15 +1403,7 @@ function ScanPage() {
       setPersonalizedMessage(response.personalizedMessage || '');
       console.log('Form submitted successfully:', response);
 
-      const nextResult = getNextResult(formData, response);
-
-      if (programData?.proxyCheckinEnabled) {
-        setPendingResult(nextResult);
-        setProxyCount(0);
-        setShowProxyPrompt(true);
-      } else {
-        setResult(nextResult);
-      }
+      continueAfterMainCheckIn(formData, response);
 
       setSubmitting(false);
       setShowForm(false);
@@ -1822,6 +1900,44 @@ function ScanPage() {
           <button type="submit" className="scan-figma-submit" disabled={submittingProxy}>
             {submittingProxy ? 'Adding attendee...' : 'Add attendee'}
           </button>
+        </form>
+      </ScanFormShell>
+    );
+  }
+
+  if (showFastTrackLookup && programData && !result) {
+    return (
+      <ScanFormShell
+        badge="Fast-track"
+        programData={programData}
+        helperText="If you already RSVP'd, enter your email to complete check-in instantly."
+        mode="collect"
+      >
+        <form className="scan-figma-form scan-fast-track-form" onSubmit={handleFastTrackSubmit}>
+          <div className="scan-figma-fields">
+            <ScanInputField
+              label="Email Address *"
+              type="email"
+              id="fastTrackEmail"
+              name="fastTrackEmail"
+              value={fastTrackEmail}
+              onChange={(event) => {
+                setFastTrackEmail(event.target.value);
+                if (fastTrackError) setFastTrackError('');
+              }}
+              placeholder="name@example.com"
+              error={fastTrackError}
+            />
+          </div>
+
+          <div className="scan-fast-track-actions">
+            <button type="submit" className="scan-figma-submit" disabled={submittingFastTrack}>
+              {submittingFastTrack ? 'Checking RSVP...' : 'Check in fast'}
+            </button>
+            <button type="button" className="scan-fast-track-secondary" onClick={revealWalkInForm} disabled={submittingFastTrack}>
+              I did not RSVP
+            </button>
+          </div>
         </form>
       </ScanFormShell>
     );

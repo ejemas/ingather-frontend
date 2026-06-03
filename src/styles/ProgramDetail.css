@@ -1350,6 +1350,82 @@
   color: var(--text-heading);
 }
 
+.pd-attendee-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.pd-attendee-filter {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pd-attendee-filter span {
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--bg-table-hover);
+  color: var(--text-primary);
+  font-size: 0.7rem;
+}
+
+.pd-attendee-filter:hover,
+.pd-attendee-filter.active {
+  border-color: rgba(249, 109, 16, 0.42);
+  background: var(--color-orange-lighter);
+  color: var(--color-orange);
+}
+
+.pd-source-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pd-source-rsvp {
+  color: #0F6F43;
+  background: #DDFBEA;
+}
+
+.pd-source-walk_in {
+  color: var(--color-orange);
+  background: var(--color-orange-lighter);
+}
+
+.pd-source-manual {
+  color: #1D4ED8;
+  background: #DBEAFE;
+}
+
+.pd-source-proxy {
+  color: #7C3AED;
+  background: #EDE9FE;
+}
+
 /* Status Pill Badges */
 .pill-winner {
   display: inline-flex;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPreEvent } from '../api/preEventService';
+import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
@@ -12,7 +13,13 @@ const FIELD_LABELS = {
   phoneNumber: 'Phone Number',
   school: 'School',
   organization: 'Organization',
-  ticketType: 'Ticket Type'
+  ticketType: 'Ticket Type',
+  address: 'Address',
+  firstTimer: 'First-Timer',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age',
+  sex: 'Gender'
 };
 
 const FIELD_COPY = {
@@ -21,14 +28,33 @@ const FIELD_COPY = {
   phoneNumber: 'Useful for reminders and door operations.',
   school: 'Good for campus, youth, and student events.',
   organization: 'Capture company, ministry, team, or group affiliation.',
-  ticketType: 'Let attendees identify their access category.'
+  ticketType: 'Let attendees identify their access category.',
+  address: 'Collect location details when needed.',
+  firstTimer: 'Identify first-time attendees before event day.',
+  department: 'Capture department, unit, or ministry team.',
+  fellowship: 'Capture group, fellowship, or community.',
+  age: 'Useful for youth, school, or segmented events.',
+  sex: 'Capture gender breakdown for event planning.'
 };
 
-const OPTIONAL_FIELDS = ['fullName', 'phoneNumber', 'school', 'organization', 'ticketType'];
+const OPTIONAL_FIELDS = [
+  'fullName',
+  'phoneNumber',
+  'school',
+  'organization',
+  'ticketType',
+  'address',
+  'firstTimer',
+  'department',
+  'fellowship',
+  'age',
+  'sex'
+];
 
 function CreatePreEvent() {
   const [formData, setFormData] = useState({
     title: '',
+    programId: '',
     eventDate: '',
     description: '',
     isRsvpActive: true,
@@ -38,9 +64,16 @@ function CreatePreEvent() {
       phoneNumber: false,
       school: false,
       organization: false,
-      ticketType: false
+      ticketType: false,
+      address: false,
+      firstTimer: false,
+      department: false,
+      fellowship: false,
+      age: false,
+      sex: false
     }
   });
+  const [programOptions, setProgramOptions] = useState([]);
   const [bannerData, setBannerData] = useState({
     compressedFile: null,
     previewUrl: '',
@@ -53,6 +86,19 @@ function CreatePreEvent() {
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const loadPrograms = async () => {
+      try {
+        const response = await getPrograms();
+        setProgramOptions((response.programs || []).filter(program => program.trackingMode === 'collect-data'));
+      } catch (error) {
+        setProgramOptions([]);
+      }
+    };
+
+    loadPrograms();
+  }, []);
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -138,6 +184,7 @@ function CreatePreEvent() {
 
       const response = await createPreEvent({
         title: formData.title,
+        programId: formData.programId || null,
         eventDate: formData.eventDate,
         description: formData.description,
         isRsvpActive: formData.isRsvpActive,
@@ -189,6 +236,20 @@ function CreatePreEvent() {
                   onChange={(event) => updateField('eventDate', event.target.value)}
                   required
                 />
+              </label>
+              <label className="pre-event-field">
+                <span>Link to Live Program</span>
+                <select
+                  value={formData.programId}
+                  onChange={(event) => updateField('programId', event.target.value)}
+                >
+                  <option value="">Link later</option>
+                  {programOptions.map((program) => (
+                    <option key={program.id} value={program.id}>
+                      {program.title} - {program.date}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
             <label className="pre-event-field">

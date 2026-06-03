@@ -578,6 +578,7 @@ function ProgramDetail() {
   const [sharedDeviceCheckins, setSharedDeviceCheckins] = useState(0);
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [searchQuery, setSearchQuery] = useState('');
+  const [attendeeFilter, setAttendeeFilter] = useState('all');
   const [winnersGifted, setWinnersGifted] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
@@ -1353,7 +1354,8 @@ function ProgramDetail() {
       if (hasProxyGuests) {
         tableColumns.push({ header: 'Entry Type', value: attendee => attendee.proxyHostFingerprint ? 'Proxy Guest' : 'Direct' });
       }
-      tableColumns.push({ header: 'Scan Time', value: attendee => formatReportDateTime(attendee.scanTime) });
+      tableColumns.push({ header: 'Registration Type', value: attendee => getAttendeeSourceLabel(attendee) });
+      tableColumns.push({ header: 'Checked In At', value: attendee => formatReportDateTime(attendee.checkedInAt || attendee.scanTime) });
 
       const tableBody = attendees.length > 0
         ? attendees.map(attendee => tableColumns.map(column => column.value(attendee)))
@@ -1442,11 +1444,36 @@ function ProgramDetail() {
   // Get correct stats based on mode
   const stats = program?.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
   const showSharedDeviceMetric = program?.trackingMode === 'collect-data' && (program.strictDeviceFingerprinting === false || sharedDeviceCheckins > 0);
-  const filteredAttendees = attendees.filter(attendee => (
-    !searchQuery.trim()
-      || [attendee.fullName, attendee.emailAddress, attendee.school]
-        .some(value => (value || '').toLowerCase().includes(searchQuery.toLowerCase()))
-  ));
+  const getAttendeeRegistrationType = (attendee) => (
+    attendee.registrationType
+      || (attendee.proxyHostFingerprint ? 'proxy' : attendee.deviceFingerprint?.startsWith?.('manual-') ? 'manual' : 'walk_in')
+  );
+  const getAttendeeSourceLabel = (attendee) => {
+    const type = getAttendeeRegistrationType(attendee);
+    if (type === 'rsvp') return 'Pre-Registered';
+    if (type === 'manual') return 'Manual';
+    if (type === 'proxy') return 'Proxy';
+    return 'Walk-In';
+  };
+  const attendeeSourceCounts = attendees.reduce((counts, attendee) => {
+    const type = getAttendeeRegistrationType(attendee);
+    counts[type] = (counts[type] || 0) + 1;
+    return counts;
+  }, {});
+  const attendeeFilterOptions = [
+    { key: 'all', label: 'All', count: attendees.length },
+    { key: 'rsvp', label: 'Pre-Registered', count: attendeeSourceCounts.rsvp || 0 },
+    { key: 'walk_in', label: 'Walk-In', count: attendeeSourceCounts.walk_in || 0 },
+    { key: 'manual', label: 'Manual', count: attendeeSourceCounts.manual || 0 },
+    { key: 'proxy', label: 'Proxy', count: attendeeSourceCounts.proxy || 0 }
+  ];
+  const filteredAttendees = attendees.filter(attendee => {
+    const matchesFilter = attendeeFilter === 'all' || getAttendeeRegistrationType(attendee) === attendeeFilter;
+    const matchesSearch = !searchQuery.trim()
+      || [attendee.fullName, attendee.emailAddress, attendee.school, getAttendeeSourceLabel(attendee)]
+        .some(value => (value || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
   const attendeeTableColumnCount = [
     program?.dataFields?.fullName,
     program?.dataFields?.emailAddress,
@@ -1455,6 +1482,7 @@ function ProgramDetail() {
     program?.dataFields?.age,
     program?.giftingEnabled,
     program?.giftingEnabled,
+    true,
     true
   ].filter(Boolean).length;
 
@@ -1915,6 +1943,18 @@ function ProgramDetail() {
                   <button className="pd-btn-export" type="button" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>
                 </div>
               </div>
+              <div className="pd-attendee-filter-row" role="tablist" aria-label="Filter attendee source">
+                {attendeeFilterOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`pd-attendee-filter ${attendeeFilter === option.key ? 'active' : ''}`}
+                    onClick={() => setAttendeeFilter(option.key)}
+                  >
+                    {option.label} <span>{option.count}</span>
+                  </button>
+                ))}
+              </div>
               <div className="pd-table-container">
                 <table className="pd-table">
                   <thead>
@@ -1926,6 +1966,7 @@ function ProgramDetail() {
                       {program.dataFields?.age && <th>Age</th>}
                       {program.giftingEnabled && <th>Winner</th>}
                       {program.giftingEnabled && <th>Gifted</th>}
+                      <th>Source</th>
                       <th>Scan Time</th>
                     </tr>
                   </thead>
@@ -1941,7 +1982,14 @@ function ProgramDetail() {
                       </tr>
                     ) : filteredAttendees.map(attendee => (
                       <tr key={attendee.id}>
-                        {program.dataFields?.fullName && <td data-label="Name"><strong>{attendee.fullName || '-'}</strong></td>}
+                        {program.dataFields?.fullName && (
+                          <td data-label="Name">
+                            <strong>{attendee.fullName || '-'}</strong>
+                            <span className={`pd-source-badge pd-source-${getAttendeeRegistrationType(attendee)}`}>
+                              {getAttendeeSourceLabel(attendee)}
+                            </span>
+                          </td>
+                        )}
                         {program.dataFields?.emailAddress && <td data-label="Email">{attendee.emailAddress || '-'}</td>}
                         {program.dataFields?.school && <td data-label="School">{attendee.school || '-'}</td>}
                         {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
@@ -1971,7 +2019,12 @@ function ProgramDetail() {
                             ) : <span className="pill-dash">-</span>}
                           </td>
                         )}
-                        <td data-label="Scan Time">{new Date(attendee.scanTime).toLocaleString()}</td>
+                        <td data-label="Source">
+                          <span className={`pd-source-badge pd-source-${getAttendeeRegistrationType(attendee)}`}>
+                            {getAttendeeSourceLabel(attendee)}
+                          </span>
+                        </td>
+                        <td data-label="Scan Time">{new Date(attendee.checkedInAt || attendee.scanTime).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

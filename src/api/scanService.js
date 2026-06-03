@@ -29,6 +29,16 @@ export const submitFormData = async (programId, deviceFingerprint, formData, sca
   return response.data;
 };
 
+export const submitFastTrackRsvp = async (programId, deviceFingerprint, emailAddress, scanSessionToken, scanSessionId) => {
+  const response = await SCAN_API.post(`/program/${programId}/fast-track`, {
+    deviceFingerprint,
+    emailAddress,
+    scanSessionToken,
+    scanSessionId
+  });
+  return response.data;
+};
+
 export const submitProxyAttendee = async (programId, hostDeviceFingerprint, formData) => {
   const response = await SCAN_API.post(`/program/${programId}/proxy`, {
     hostDeviceFingerprint,

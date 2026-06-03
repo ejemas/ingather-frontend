@@ -337,6 +337,7 @@
 }
 
 .pre-event-field input,
+.pre-event-field select,
 .pre-event-field textarea,
 .pre-event-search,
 .rsvp-public-field input {
@@ -356,11 +357,24 @@
 }
 
 .pre-event-field input:focus,
+.pre-event-field select:focus,
 .pre-event-field textarea:focus,
 .pre-event-search:focus,
-.rsvp-public-field input:focus {
+.rsvp-public-field input:focus,
+.rsvp-public-field select:focus {
   border-color: var(--color-orange);
   box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.14);
+}
+
+.pre-event-link-card {
+  margin-bottom: 20px;
+}
+
+.pre-event-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 14px;
 }
 
 .pre-event-card-heading,
@@ -650,6 +664,7 @@
   line-height: 1.02;
   margin: 12px 0;
   letter-spacing: 0;
+  color: #FFFFFF;
 }
 
 .rsvp-public-date {
@@ -683,9 +698,11 @@
 .rsvp-form-heading h2 {
   margin: 8px 0 20px;
   font-size: 1.35rem;
+  color: #FFFFFF;
 }
 
-.rsvp-public-field {
+.rsvp-public-field,
+.rsvp-public-checkbox {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -696,9 +713,25 @@
   color: #FFFFFF;
 }
 
-.rsvp-public-field input {
+.rsvp-public-field input,
+.rsvp-public-field select {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+.rsvp-public-field select {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-md);
+  font: inherit;
+  padding: 12px 14px;
+  outline: none;
+  color-scheme: dark;
+}
+
+.rsvp-public-field select option {
+  background: #111114;
   color: #FFFFFF;
 }
 
@@ -739,11 +772,110 @@
 .rsvp-success-state h2 {
   margin: 0 0 10px;
   font-size: 1.5rem;
+  color: #FFFFFF;
 }
 
 .rsvp-success-state p {
   color: rgba(255, 255, 255, 0.72);
   margin: 0;
+}
+
+.rsvp-public-checkbox {
+  flex-direction: row;
+  align-items: center;
+  color: #FFFFFF;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.rsvp-public-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: #F96D10;
+  flex-shrink: 0;
+}
+
+.rsvp-public-checkbox span {
+  color: #FFFFFF;
+}
+
+.pre-event-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(5, 5, 8, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.pre-event-delete-modal {
+  width: min(440px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(232, 89, 12, 0.32);
+  background: #0B0B0F;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+  padding: 28px;
+}
+
+.pre-event-delete-kicker {
+  color: #F96D10;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pre-event-delete-modal h2 {
+  color: #FFFFFF;
+  font-size: 1.35rem;
+  margin: 10px 0;
+  line-height: 1.2;
+}
+
+.pre-event-delete-modal p {
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.pre-event-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.pre-event-delete-actions button {
+  min-height: 42px;
+  border-radius: var(--radius-md);
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.pre-event-delete-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.pre-event-delete-confirm {
+  background: linear-gradient(135deg, #F96D10 0%, #E8590C 100%);
+  color: #FFFFFF;
+  border: 1px solid rgba(232, 89, 12, 0.72);
+  box-shadow: 0 14px 34px rgba(232, 89, 12, 0.24);
+}
+
+.pre-event-delete-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .rsvp-public-error-card,
@@ -774,6 +906,7 @@
 
   .pre-event-detail-hero,
   .pre-event-form-grid,
+  .pre-event-link-row,
   .pre-event-metric-grid,
   .rsvp-public-grid {
     grid-template-columns: 1fr;
