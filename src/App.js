@@ -13,6 +13,10 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CreateProgram = lazy(() => import('./pages/CreateProgram'));
 const ProgramDetail = lazy(() => import('./pages/ProgramDetail'));
 const ScanPage = lazy(() => import('./pages/ScanPage'));
+const PreEvents = lazy(() => import('./pages/PreEvents'));
+const CreatePreEvent = lazy(() => import('./pages/CreatePreEvent'));
+const PreEventDetail = lazy(() => import('./pages/PreEventDetail'));
+const RsvpPage = lazy(() => import('./pages/RsvpPage'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
@@ -39,9 +43,13 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/pre-events" element={<PreEvents />} />
+                <Route path="/pre-events/create" element={<CreatePreEvent />} />
+                <Route path="/pre-events/:id" element={<PreEventDetail />} />
                 <Route path="/create-program" element={<CreateProgram />} />
                 <Route path="/program/:id" element={<ProgramDetail />} />
                 <Route path="/scan/:programId" element={<ScanPage />} />
+                <Route path="/rsvp/:slug" element={<RsvpPage />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />

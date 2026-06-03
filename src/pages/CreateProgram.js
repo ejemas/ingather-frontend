@@ -965,6 +965,10 @@ function CreateProgram() {
             <span className="nav-icon">{Icons.dashboard}</span>
             <span>Dashboard</span>
           </a>
+          <a href="/pre-events" className="nav-item" onClick={closeMobileMenu}>
+            <span className="nav-icon">{Icons.allPrograms}</span>
+            <span>Pre-Events</span>
+          </a>
           <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
             <span>{template.event.create}</span>

@@ -1035,6 +1035,10 @@ function Dashboard() {
             <span className="nav-icon">{Icons.dashboard}</span>
             <span>Dashboard</span>
           </a>
+          <a href="/pre-events" className="nav-item" id="nav-pre-events" onClick={closeMobileMenu}>
+            <span className="nav-icon">{Icons.allPrograms}</span>
+            <span>Pre-Events</span>
+          </a>
           <a href="/create-program" className="nav-item" id="nav-create-program" onClick={closeMobileMenu}>
             <span className="nav-icon">{Icons.createProgram}</span>
             <span>{template.event.create}</span>
