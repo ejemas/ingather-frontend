@@ -8,6 +8,8 @@ const FIELD_LABELS = {
   fullName: 'Full Name',
   phoneNumber: 'Phone Number',
   school: 'School',
+  link: 'Link',
+  textarea: 'Additional Response',
   organization: 'Organization',
   ticketType: 'Ticket Type',
   address: 'Address',
@@ -23,6 +25,8 @@ const FIELD_PLACEHOLDERS = {
   fullName: 'Your full name',
   phoneNumber: 'Phone number',
   school: 'School',
+  link: 'https://github.com/yourname',
+  textarea: 'Write your response here',
   organization: 'Organization, company, or group',
   ticketType: 'General, VIP, Student...',
   address: 'Your address',
@@ -35,6 +39,8 @@ const OPTIONAL_FIELDS = [
   'fullName',
   'phoneNumber',
   'school',
+  'link',
+  'textarea',
   'organization',
   'ticketType',
   'address',
@@ -51,6 +57,17 @@ const isValidEmail = (value) => {
     && email.length <= 255
     && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     && email.indexOf('@') === email.lastIndexOf('@');
+};
+
+const isValidHttpUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch (error) {
+    return false;
+  }
 };
 
 const formatDateTime = (value) => {
@@ -122,6 +139,20 @@ function RsvpPage() {
     selectedFields.forEach((field) => {
       if (field === 'emailAddress') return;
       if (field === 'firstTimer') return;
+      if (field === 'link') {
+        if (!String(formData.linkUrl || '').trim()) {
+          nextErrors.linkUrl = 'Link is required.';
+        } else if (!isValidHttpUrl(formData.linkUrl)) {
+          nextErrors.linkUrl = 'Enter a valid link starting with http:// or https://.';
+        }
+        return;
+      }
+      if (field === 'textarea') {
+        if (!String(formData.textareaResponse || '').trim()) {
+          nextErrors.textareaResponse = 'Response is required.';
+        }
+        return;
+      }
       if (field === 'age') {
         const age = Number(formData.age);
         if (!String(formData.age || '').trim()) {
@@ -250,6 +281,42 @@ function RsvpPage() {
                           <option value="Other">Other</option>
                         </select>
                         {errors[field] && <small>{errors[field]}</small>}
+                      </label>
+                    );
+                  }
+
+                  if (field === 'link') {
+                    return (
+                      <label className="rsvp-public-field" key={field}>
+                        <span>{FIELD_LABELS[field]}</span>
+                        <input
+                          type="url"
+                          value={formData.linkUrl || ''}
+                          onChange={(event) => updateField('linkUrl', event.target.value)}
+                          placeholder={FIELD_PLACEHOLDERS[field]}
+                          disabled={!preEvent.isRsvpActive || submitting}
+                          required
+                        />
+                        {errors.linkUrl && <small>{errors.linkUrl}</small>}
+                      </label>
+                    );
+                  }
+
+                  if (field === 'textarea') {
+                    const textareaLabel = preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
+                    return (
+                      <label className="rsvp-public-field rsvp-public-field-wide" key={field}>
+                        <span>{textareaLabel}</span>
+                        <textarea
+                          value={formData.textareaResponse || ''}
+                          onChange={(event) => updateField('textareaResponse', event.target.value)}
+                          placeholder={FIELD_PLACEHOLDERS[field]}
+                          disabled={!preEvent.isRsvpActive || submitting}
+                          rows={4}
+                          maxLength={5000}
+                          required
+                        />
+                        {errors.textareaResponse && <small>{errors.textareaResponse}</small>}
                       </label>
                     );
                   }

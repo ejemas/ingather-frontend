@@ -18,6 +18,17 @@ const isValidCollectedEmail = (value) => {
     && email.indexOf('@') === email.lastIndexOf('@');
 };
 
+const isValidHttpUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch (error) {
+    return false;
+  }
+};
+
 /* ============================================
    SVG ICON COMPONENTS
    ============================================ */
@@ -409,7 +420,9 @@ function ManualAttendeeModal({
     fullName: 'Full Name',
     emailAddress: 'Email Address',
     school: 'School',
+    link: 'Link',
     phoneNumber: 'Phone Number',
+    textarea: program?.dataFieldConfig?.textareaLabel || 'Additional Response',
     address: 'Address',
     department: 'Department',
     fellowship: 'Group',
@@ -459,6 +472,22 @@ function ManualAttendeeModal({
                 <span>{fieldLabels.school}</span>
                 <input name="school" value={formData.school} onChange={onChange} placeholder="Enter school" />
                 {errors.school && <small>{errors.school}</small>}
+              </label>
+            )}
+
+            {dataFields.link && (
+              <label className="pd-manual-field">
+                <span>{fieldLabels.link}</span>
+                <input type="url" name="linkUrl" value={formData.linkUrl} onChange={onChange} placeholder="https://github.com/attendee" />
+                {errors.linkUrl && <small>{errors.linkUrl}</small>}
+              </label>
+            )}
+
+            {dataFields.textarea && (
+              <label className="pd-manual-field pd-manual-field-wide">
+                <span>{fieldLabels.textarea}</span>
+                <textarea name="textareaResponse" value={formData.textareaResponse} onChange={onChange} placeholder="Enter response" rows="4" maxLength="5000" />
+                {errors.textareaResponse && <small>{errors.textareaResponse}</small>}
               </label>
             )}
 
@@ -588,6 +617,8 @@ function ProgramDetail() {
     fullName: '',
     emailAddress: '',
     school: '',
+    linkUrl: '',
+    textareaResponse: '',
     phoneNumber: '',
     address: '',
     department: '',
@@ -1006,6 +1037,8 @@ function ProgramDetail() {
       fullName: '',
       emailAddress: '',
       school: '',
+      linkUrl: '',
+      textareaResponse: '',
       phoneNumber: '',
       address: '',
       department: '',
@@ -1053,6 +1086,11 @@ function ProgramDetail() {
       else if (!isValidCollectedEmail(manualFormData.emailAddress)) errors.emailAddress = 'Enter a valid email address';
     }
     if (dataFields.school && !manualFormData.school.trim()) errors.school = 'School is required';
+    if (dataFields.link) {
+      if (!manualFormData.linkUrl.trim()) errors.linkUrl = 'Link is required';
+      else if (!isValidHttpUrl(manualFormData.linkUrl)) errors.linkUrl = 'Enter a valid link starting with http:// or https://';
+    }
+    if (dataFields.textarea && !manualFormData.textareaResponse.trim()) errors.textareaResponse = 'Response is required';
     if (dataFields.phoneNumber && !manualFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
     if (dataFields.address && !manualFormData.address.trim()) errors.address = 'Address is required';
     if (dataFields.department && !manualFormData.department.trim()) errors.department = 'Department is required';
@@ -1340,6 +1378,8 @@ function ProgramDetail() {
       if (dataFields.fullName) tableColumns.push({ header: 'Name', value: attendee => safeText(attendee.fullName) });
       if (dataFields.emailAddress) tableColumns.push({ header: 'Email', value: attendee => safeText(attendee.emailAddress) });
       if (dataFields.school) tableColumns.push({ header: 'School', value: attendee => safeText(attendee.school) });
+      if (dataFields.link) tableColumns.push({ header: 'Link', value: attendee => safeText(attendee.linkUrl) });
+      if (dataFields.textarea) tableColumns.push({ header: program.dataFieldConfig?.textareaLabel || 'Additional Response', value: attendee => safeText(attendee.textareaResponse) });
       if (dataFields.phoneNumber) tableColumns.push({ header: 'Phone', value: attendee => safeText(attendee.phoneNumber) });
       if (dataFields.address) tableColumns.push({ header: 'Address', value: attendee => safeText(attendee.address) });
       if (dataFields.department) tableColumns.push({ header: 'Department', value: attendee => safeText(attendee.department) });
@@ -1470,7 +1510,7 @@ function ProgramDetail() {
   const filteredAttendees = attendees.filter(attendee => {
     const matchesFilter = attendeeFilter === 'all' || getAttendeeRegistrationType(attendee) === attendeeFilter;
     const matchesSearch = !searchQuery.trim()
-      || [attendee.fullName, attendee.emailAddress, attendee.school, getAttendeeSourceLabel(attendee)]
+      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee)]
         .some(value => (value || '').toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
@@ -1478,6 +1518,8 @@ function ProgramDetail() {
     program?.dataFields?.fullName,
     program?.dataFields?.emailAddress,
     program?.dataFields?.school,
+    program?.dataFields?.link,
+    program?.dataFields?.textarea,
     program?.dataFields?.fellowship,
     program?.dataFields?.age,
     program?.giftingEnabled,
@@ -1962,6 +2004,8 @@ function ProgramDetail() {
                       {program.dataFields?.fullName && <th>Name</th>}
                       {program.dataFields?.emailAddress && <th>Email</th>}
                       {program.dataFields?.school && <th>School</th>}
+                      {program.dataFields?.link && <th>Link</th>}
+                      {program.dataFields?.textarea && <th>{program.dataFieldConfig?.textareaLabel || 'Additional Response'}</th>}
                       {program.dataFields?.fellowship && <th>Group</th>}
                       {program.dataFields?.age && <th>Age</th>}
                       {program.giftingEnabled && <th>Winner</th>}
@@ -1992,6 +2036,14 @@ function ProgramDetail() {
                         )}
                         {program.dataFields?.emailAddress && <td data-label="Email">{attendee.emailAddress || '-'}</td>}
                         {program.dataFields?.school && <td data-label="School">{attendee.school || '-'}</td>}
+                        {program.dataFields?.link && (
+                          <td data-label="Link">
+                            {attendee.linkUrl ? (
+                              <a className="pd-table-link" href={attendee.linkUrl} target="_blank" rel="noreferrer">Open link</a>
+                            ) : '-'}
+                          </td>
+                        )}
+                        {program.dataFields?.textarea && <td data-label={program.dataFieldConfig?.textareaLabel || 'Additional Response'}>{attendee.textareaResponse || '-'}</td>}
                         {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
                         {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
                         {program.giftingEnabled && (

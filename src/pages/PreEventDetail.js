@@ -20,6 +20,8 @@ const FIELD_LABELS = {
   fullName: 'Full Name',
   phoneNumber: 'Phone Number',
   school: 'School',
+  link: 'Link',
+  textarea: 'Additional Response',
   organization: 'Organization',
   ticketType: 'Ticket Type',
   address: 'Address',
@@ -34,6 +36,8 @@ const OPTIONAL_FIELDS = [
   'fullName',
   'phoneNumber',
   'school',
+  'link',
+  'textarea',
   'organization',
   'ticketType',
   'address',
@@ -136,7 +140,7 @@ function PreEventDetail() {
     if (!query) return rsvps;
     return rsvps.filter((rsvp) => (
       [rsvp.emailAddress, rsvp.fullName, rsvp.phoneNumber, rsvp.school, rsvp.organization, rsvp.ticketType]
-        .concat([rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
+        .concat([rsvp.linkUrl, rsvp.textareaResponse, rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(query))
     ));
@@ -165,6 +169,7 @@ function PreEventDetail() {
         eventDate: preEvent.eventDate,
         description: preEvent.description,
         rsvpFields: preEvent.rsvpFields,
+        rsvpFieldConfig: preEvent.rsvpFieldConfig,
         isRsvpActive: preEvent.isRsvpActive,
         programId: linkedProgramId || null
       });
@@ -176,6 +181,20 @@ function PreEventDetail() {
     } finally {
       setSavingLink(false);
     }
+  };
+
+  const getColumnLabel = (column) => {
+    if (column === 'createdAt') return 'Submitted';
+    if (column === 'textarea') return preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
+    return FIELD_LABELS[column] || column;
+  };
+
+  const getRsvpValue = (rsvp, column) => {
+    if (column === 'createdAt') return formatSubmittedAt(rsvp.createdAt);
+    if (column === 'firstTimer') return rsvp.firstTimer ? 'Yes' : 'No';
+    if (column === 'link') return rsvp.linkUrl || '-';
+    if (column === 'textarea') return rsvp.textareaResponse || '-';
+    return rsvp[column] || '-';
   };
 
   if (loading) {
@@ -314,7 +333,7 @@ function PreEventDetail() {
               <thead>
                 <tr>
                   {columns.map((column) => (
-                    <th key={column}>{column === 'createdAt' ? 'Submitted' : FIELD_LABELS[column]}</th>
+                    <th key={column}>{getColumnLabel(column)}</th>
                   ))}
                 </tr>
               </thead>
@@ -330,11 +349,11 @@ function PreEventDetail() {
                     <tr key={rsvp.id}>
                       {columns.map((column) => (
                         <td key={`${rsvp.id}-${column}`}>
-                          {column === 'createdAt'
-                            ? formatSubmittedAt(rsvp.createdAt)
-                            : column === 'firstTimer'
-                              ? (rsvp.firstTimer ? 'Yes' : 'No')
-                              : (rsvp[column] || '-')}
+                          {column === 'link' && rsvp.linkUrl ? (
+                            <a className="pre-event-table-link" href={rsvp.linkUrl} target="_blank" rel="noreferrer">Open link</a>
+                          ) : (
+                            getRsvpValue(rsvp, column)
+                          )}
                         </td>
                       ))}
                     </tr>

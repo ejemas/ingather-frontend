@@ -12,6 +12,8 @@ const FIELD_LABELS = {
   fullName: 'Full Name',
   phoneNumber: 'Phone Number',
   school: 'School',
+  link: 'Link',
+  textarea: 'Textarea',
   organization: 'Organization',
   ticketType: 'Ticket Type',
   address: 'Address',
@@ -27,6 +29,8 @@ const FIELD_COPY = {
   fullName: 'Capture each attendee name before the event.',
   phoneNumber: 'Useful for reminders and door operations.',
   school: 'Good for campus, youth, and student events.',
+  link: 'Collect GitHub, portfolio, website, or social links.',
+  textarea: 'Ask a longer custom question for attendees to answer.',
   organization: 'Capture company, ministry, team, or group affiliation.',
   ticketType: 'Let attendees identify their access category.',
   address: 'Collect location details when needed.',
@@ -41,6 +45,8 @@ const OPTIONAL_FIELDS = [
   'fullName',
   'phoneNumber',
   'school',
+  'link',
+  'textarea',
   'organization',
   'ticketType',
   'address',
@@ -63,6 +69,8 @@ function CreatePreEvent() {
       fullName: true,
       phoneNumber: false,
       school: false,
+      link: false,
+      textarea: false,
       organization: false,
       ticketType: false,
       address: false,
@@ -71,6 +79,9 @@ function CreatePreEvent() {
       fellowship: false,
       age: false,
       sex: false
+    },
+    rsvpFieldConfig: {
+      textareaLabel: 'Additional Response'
     }
   });
   const [programOptions, setProgramOptions] = useState([]);
@@ -111,6 +122,16 @@ function CreatePreEvent() {
       rsvpFields: {
         ...prev.rsvpFields,
         [field]: !prev.rsvpFields[field]
+      }
+    }));
+  };
+
+  const updateRsvpFieldConfig = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      rsvpFieldConfig: {
+        ...prev.rsvpFieldConfig,
+        [field]: value
       }
     }));
   };
@@ -189,6 +210,7 @@ function CreatePreEvent() {
         description: formData.description,
         isRsvpActive: formData.isRsvpActive,
         rsvpFields: formData.rsvpFields,
+        rsvpFieldConfig: formData.rsvpFieldConfig,
         banner
       });
 
@@ -325,6 +347,19 @@ function CreatePreEvent() {
                 </button>
               ))}
             </div>
+            {formData.rsvpFields.textarea && (
+              <label className="pre-event-field pre-event-field-config">
+                <span>Textarea question label</span>
+                <input
+                  type="text"
+                  value={formData.rsvpFieldConfig.textareaLabel}
+                  onChange={(event) => updateRsvpFieldConfig('textareaLabel', event.target.value)}
+                  placeholder="What do you expect from this event?"
+                  maxLength={120}
+                />
+                <small>This is the label attendees will see on the RSVP page.</small>
+              </label>
+            )}
           </section>
 
           <div className="pre-event-submit-row">

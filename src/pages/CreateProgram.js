@@ -129,6 +129,8 @@ const dataFieldLabels = {
   fullName: 'Full Name',
   emailAddress: 'Email Address',
   school: 'School',
+  link: 'Link',
+  textarea: 'Textarea',
   address: 'Address',
   firstTimer: 'First-Timer',
   phoneNumber: 'Phone Number',
@@ -195,6 +197,8 @@ function CreateProgram() {
       fullName: false,
       emailAddress: false,
       school: false,
+      link: false,
+      textarea: false,
       address: false,
       firstTimer: false,
       phoneNumber: false,
@@ -202,6 +206,9 @@ function CreateProgram() {
       fellowship: false,
       age: false,
       sex: false
+    },
+    dataFieldConfig: {
+      textareaLabel: 'Additional Response'
     },
     proxyCheckinEnabled: false,
     strictDeviceFingerprinting: true,
@@ -713,7 +720,7 @@ function CreateProgram() {
       ...formData,
       trackingMode: mode,
       dataFields: mode === 'count-only' ? {
-        fullName: false, emailAddress: false, school: false, address: false, firstTimer: false, phoneNumber: false,
+        fullName: false, emailAddress: false, school: false, link: false, textarea: false, address: false, firstTimer: false, phoneNumber: false,
         department: false, fellowship: false, age: false, sex: false
       } : formData.dataFields,
       proxyCheckinEnabled: mode === 'count-only' ? false : formData.proxyCheckinEnabled,
@@ -752,6 +759,16 @@ function CreateProgram() {
       ...formData,
       dataFields: { ...formData.dataFields, [field]: !formData.dataFields[field] }
     });
+  };
+
+  const handleDataFieldConfigChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      dataFieldConfig: {
+        ...prev.dataFieldConfig,
+        [field]: value
+      }
+    }));
   };
 
   const handleGiftingToggle = () => {
@@ -900,6 +917,7 @@ function CreateProgram() {
         endTime: formData.endTime,
         trackingMode: formData.trackingMode,
         dataFields: formData.dataFields,
+        dataFieldConfig: formData.dataFieldConfig,
         proxyCheckinEnabled: formData.trackingMode === 'collect-data' && formData.proxyCheckinEnabled,
         strictDeviceFingerprinting: formData.trackingMode === 'collect-data'
           ? formData.strictDeviceFingerprinting
@@ -1689,6 +1707,20 @@ function CreateProgram() {
                     </div>
                   ))}
                 </div>
+                {formData.dataFields.textarea && (
+                  <label className="data-field-config-row" htmlFor="textareaLabel">
+                    <span>Textarea question label</span>
+                    <input
+                      id="textareaLabel"
+                      type="text"
+                      value={formData.dataFieldConfig.textareaLabel}
+                      onChange={(event) => handleDataFieldConfigChange('textareaLabel', event.target.value)}
+                      placeholder="What do you expect from this event?"
+                      maxLength={120}
+                    />
+                    <small>This is what attendees will see above the long-answer field.</small>
+                  </label>
+                )}
                 {errors.dataFields && <span className="error-text">{errors.dataFields}</span>}
               </div>
             )}

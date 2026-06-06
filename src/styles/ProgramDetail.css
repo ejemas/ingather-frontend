@@ -1139,6 +1139,27 @@
   line-height: 1.65;
 }
 
+.pd-fingerprint-warning-modal .pd-btn-cancel {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.06);
+  color: #FFFFFF;
+}
+
+.pd-fingerprint-warning-modal .pd-btn-cancel:hover,
+.pd-fingerprint-warning-modal .pd-btn-cancel:focus-visible {
+  border-color: rgba(249, 109, 16, 0.72);
+  background: rgba(249, 109, 16, 0.12);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 3px rgba(249, 109, 16, 0.16);
+  outline: none;
+}
+
+.pd-fingerprint-warning-modal .pd-btn-cancel:disabled {
+  color: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .pd-manual-modal-header {
   display: flex;
   justify-content: space-between;
@@ -1243,6 +1264,17 @@
   color: #ef4444;
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.pd-table-link {
+  color: var(--color-orange);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.pd-table-link:hover,
+.pd-table-link:focus-visible {
+  text-decoration: underline;
 }
 
 .pd-manual-check {

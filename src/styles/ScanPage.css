@@ -1841,6 +1841,10 @@
   color: #090809;
 }
 
+.scan-figma-field-wide {
+  width: 100%;
+}
+
 .scan-figma-field label {
   color: #090809;
   font-family: 'Poppins', 'Inter', sans-serif;
@@ -1874,6 +1878,11 @@
 .scan-figma-input.has-error {
   border-color: #DC2626;
   box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+.scan-figma-textarea {
+  min-height: 128px;
+  resize: vertical;
 }
 
 .scan-figma-select-wrap {

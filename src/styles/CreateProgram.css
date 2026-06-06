@@ -929,6 +929,44 @@
   border: none !important; /* rect uses stroke, not border — this is fine */
 }
 
+.data-field-config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px dashed rgba(232, 89, 12, 0.35);
+  border-radius: var(--radius-md);
+  background: var(--color-orange-lighter);
+}
+
+.data-field-config-row span {
+  color: var(--text-primary);
+  font-weight: 800;
+  font-size: 0.84rem;
+}
+
+.data-field-config-row input {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 12px 14px;
+  outline: none;
+}
+
+.data-field-config-row input:focus {
+  border-color: var(--color-orange);
+  box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.14);
+}
+
+.data-field-config-row small {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
 /* ============================================
    TOGGLE OPTION (Gifting)
    ============================================ */

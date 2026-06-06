@@ -340,7 +340,8 @@
 .pre-event-field select,
 .pre-event-field textarea,
 .pre-event-search,
-.rsvp-public-field input {
+.rsvp-public-field input,
+.rsvp-public-field textarea {
   width: 100%;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -356,11 +357,20 @@
   min-height: 130px;
 }
 
+.pre-event-field-config {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px dashed rgba(232, 89, 12, 0.35);
+  border-radius: var(--radius-md);
+  background: var(--color-orange-lighter);
+}
+
 .pre-event-field input:focus,
 .pre-event-field select:focus,
 .pre-event-field textarea:focus,
 .pre-event-search:focus,
 .rsvp-public-field input:focus,
+.rsvp-public-field textarea:focus,
 .rsvp-public-field select:focus {
   border-color: var(--color-orange);
   box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.14);
@@ -593,6 +603,17 @@
   background: var(--bg-table-hover);
 }
 
+.pre-event-table-link {
+  color: var(--color-orange);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.pre-event-table-link:hover,
+.pre-event-table-link:focus-visible {
+  text-decoration: underline;
+}
+
 .pre-event-pagination {
   justify-content: flex-end;
   margin-top: 16px;
@@ -714,10 +735,16 @@
 }
 
 .rsvp-public-field input,
-.rsvp-public-field select {
+.rsvp-public-field select,
+.rsvp-public-field textarea {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.14);
   color: #FFFFFF;
+}
+
+.rsvp-public-field textarea {
+  resize: vertical;
+  min-height: 120px;
 }
 
 .rsvp-public-field select {
@@ -735,7 +762,8 @@
   color: #FFFFFF;
 }
 
-.rsvp-public-field input::placeholder {
+.rsvp-public-field input::placeholder,
+.rsvp-public-field textarea::placeholder {
   color: rgba(255, 255, 255, 0.46);
 }
 

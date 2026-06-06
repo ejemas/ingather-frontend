@@ -84,6 +84,17 @@ const isValidCollectedEmail = (value) => {
     && email.indexOf('@') === email.lastIndexOf('@');
 };
 
+const isValidHttpUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch (error) {
+    return false;
+  }
+};
+
 const getPersonalizedMessageTemplates = (config = {}) => {
   const fromArray = Array.isArray(config.templates)
     ? config.templates.map(message => String(message || '').trim()).filter(Boolean)
@@ -253,6 +264,16 @@ function ScanSelectField({ label, error, children, ...selectProps }) {
           {children}
         </select>
       </span>
+      {error && <span className="scan-figma-error">{error}</span>}
+    </div>
+  );
+}
+
+function ScanTextareaField({ label, error, ...textareaProps }) {
+  return (
+    <div className="scan-figma-field scan-figma-field-wide">
+      <label htmlFor={textareaProps.id}>{label}</label>
+      <textarea className={`scan-figma-input scan-figma-textarea ${error ? 'has-error' : ''}`} {...textareaProps} />
       {error && <span className="scan-figma-error">{error}</span>}
     </div>
   );
@@ -935,6 +956,8 @@ function ScanPage() {
     fullName: '',
     emailAddress: '',
     school: '',
+    linkUrl: '',
+    textareaResponse: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -952,6 +975,8 @@ function ScanPage() {
     fullName: '',
     emailAddress: '',
     school: '',
+    linkUrl: '',
+    textareaResponse: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -1123,6 +1148,8 @@ function ScanPage() {
       fullName: '',
       emailAddress: '',
       school: '',
+      linkUrl: '',
+      textareaResponse: '',
       address: '',
       firstTimer: false,
       phoneNumber: '',
@@ -1135,6 +1162,8 @@ function ScanPage() {
       fullName: '',
       emailAddress: '',
       school: '',
+      linkUrl: '',
+      textareaResponse: '',
       address: '',
       firstTimer: false,
       phoneNumber: '',
@@ -1184,6 +1213,18 @@ function ScanPage() {
 
     if (programData.dataFields.school && !formData.school.trim()) {
       errors.school = 'School is required';
+    }
+
+    if (programData.dataFields.link) {
+      if (!formData.linkUrl.trim()) {
+        errors.linkUrl = 'Link is required';
+      } else if (!isValidHttpUrl(formData.linkUrl)) {
+        errors.linkUrl = 'Enter a valid link starting with http:// or https://';
+      }
+    }
+
+    if (programData.dataFields.textarea && !formData.textareaResponse.trim()) {
+      errors.textareaResponse = 'Response is required';
     }
 
     if (programData.dataFields.phoneNumber && !formData.phoneNumber.trim()) {
@@ -1291,6 +1332,8 @@ function ScanPage() {
     fullName: '',
     emailAddress: '',
     school: '',
+    linkUrl: '',
+    textareaResponse: '',
     address: '',
     firstTimer: false,
     phoneNumber: '',
@@ -1322,6 +1365,11 @@ function ScanPage() {
       else if (!isValidCollectedEmail(proxyFormData.emailAddress)) errors.emailAddress = 'Enter a valid email address';
     }
     if (dataFields.school && !proxyFormData.school.trim()) errors.school = 'School is required';
+    if (dataFields.link) {
+      if (!proxyFormData.linkUrl.trim()) errors.linkUrl = 'Link is required';
+      else if (!isValidHttpUrl(proxyFormData.linkUrl)) errors.linkUrl = 'Enter a valid link starting with http:// or https://';
+    }
+    if (dataFields.textarea && !proxyFormData.textareaResponse.trim()) errors.textareaResponse = 'Response is required';
     if (dataFields.phoneNumber && !proxyFormData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
     if (dataFields.address && !proxyFormData.address.trim()) errors.address = 'Address is required';
     if (dataFields.department && !proxyFormData.department.trim()) errors.department = 'Department is required';
@@ -1803,6 +1851,33 @@ function ScanPage() {
               />
             )}
 
+            {programData.dataFields.link && (
+              <ScanInputField
+                label="Link *"
+                type="url"
+                id="proxyLinkUrl"
+                name="linkUrl"
+                value={proxyFormData.linkUrl}
+                onChange={handleProxyChange}
+                placeholder="https://github.com/yourname"
+                error={proxyFormErrors.linkUrl}
+              />
+            )}
+
+            {programData.dataFields.textarea && (
+              <ScanTextareaField
+                label={`${programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *`}
+                id="proxyTextareaResponse"
+                name="textareaResponse"
+                value={proxyFormData.textareaResponse}
+                onChange={handleProxyChange}
+                placeholder="Write the response here"
+                rows={4}
+                maxLength={5000}
+                error={proxyFormErrors.textareaResponse}
+              />
+            )}
+
             {programData.dataFields.phoneNumber && (
               <ScanInputField
                 label="Phone Number *"
@@ -1995,6 +2070,33 @@ function ScanPage() {
               />
             )}
 
+            {programData.dataFields.link && (
+              <ScanInputField
+                label="Link *"
+                type="url"
+                id="linkUrl"
+                name="linkUrl"
+                value={formData.linkUrl}
+                onChange={handleChange}
+                placeholder="https://github.com/yourname"
+                error={formErrors.linkUrl}
+              />
+            )}
+
+            {programData.dataFields.textarea && (
+              <ScanTextareaField
+                label={`${programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *`}
+                id="textareaResponse"
+                name="textareaResponse"
+                value={formData.textareaResponse}
+                onChange={handleChange}
+                placeholder="Write your response here"
+                rows={4}
+                maxLength={5000}
+                error={formErrors.textareaResponse}
+              />
+            )}
+
             {programData.dataFields.phoneNumber && (
               <ScanInputField
                 label="Phone Number *"
@@ -2129,6 +2231,67 @@ function ScanPage() {
                   placeholder="John Doe"
                 />
                 {formErrors.fullName && <span className="error">{formErrors.fullName}</span>}
+              </div>
+            )}
+
+            {programData.dataFields.emailAddress && (
+              <div className="form-group">
+                <label htmlFor="emailAddress">Email Address *</label>
+                <input
+                  type="email"
+                  id="emailAddress"
+                  name="emailAddress"
+                  value={formData.emailAddress}
+                  onChange={handleChange}
+                  placeholder="name@example.com"
+                />
+                {formErrors.emailAddress && <span className="error">{formErrors.emailAddress}</span>}
+              </div>
+            )}
+
+            {programData.dataFields.school && (
+              <div className="form-group">
+                <label htmlFor="school">School *</label>
+                <input
+                  type="text"
+                  id="school"
+                  name="school"
+                  value={formData.school}
+                  onChange={handleChange}
+                  placeholder="Your school"
+                />
+                {formErrors.school && <span className="error">{formErrors.school}</span>}
+              </div>
+            )}
+
+            {programData.dataFields.link && (
+              <div className="form-group">
+                <label htmlFor="linkUrl">Link *</label>
+                <input
+                  type="url"
+                  id="linkUrl"
+                  name="linkUrl"
+                  value={formData.linkUrl}
+                  onChange={handleChange}
+                  placeholder="https://github.com/yourname"
+                />
+                {formErrors.linkUrl && <span className="error">{formErrors.linkUrl}</span>}
+              </div>
+            )}
+
+            {programData.dataFields.textarea && (
+              <div className="form-group">
+                <label htmlFor="textareaResponse">{programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *</label>
+                <textarea
+                  id="textareaResponse"
+                  name="textareaResponse"
+                  value={formData.textareaResponse}
+                  onChange={handleChange}
+                  placeholder="Write your response here"
+                  rows="4"
+                  maxLength="5000"
+                />
+                {formErrors.textareaResponse && <span className="error">{formErrors.textareaResponse}</span>}
               </div>
             )}
 
