@@ -24,6 +24,8 @@ const PasswordVisibilityIcon = ({ visible }) => (
   </svg>
 );
 
+const INVITE_ONLY_MODE = process.env.REACT_APP_INVITE_ONLY_MODE !== 'false';
+
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -236,9 +238,9 @@ function Login() {
               <button
                 type="button"
                 className="auth-modern-link-button"
-                onClick={() => setShowSignupIntent(true)}
+                onClick={() => INVITE_ONLY_MODE ? navigate('/waitlist') : setShowSignupIntent(true)}
               >
-                Create an account
+                {INVITE_ONLY_MODE ? 'Join the waitlist' : 'Create an account'}
               </button>
             </p>
           </form>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { register } from '../api/authService';
+import { validateInvite } from '../api/waitlistService';
 import { useToast } from '../components/Toast';
 import { SIGNUP_INTENT_STORAGE_KEY } from '../components/SignupIntentModal';
 import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, getEventTemplate } from '../config/eventTemplates';
@@ -24,10 +25,13 @@ const PasswordVisibilityIcon = ({ visible }) => (
   </svg>
 );
 
+const INVITE_ONLY_MODE = process.env.REACT_APP_INVITE_ONLY_MODE !== 'false';
+
 function Register() {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const inviteToken = useMemo(() => new URLSearchParams(location.search).get('invite') || '', [location.search]);
   const signupIntent = useMemo(() => {
     const queryType = new URLSearchParams(location.search).get('type');
     if (queryType === 'church' || queryType === 'general') return queryType;
@@ -55,6 +59,12 @@ function Register() {
   const [logoPreview, setLogoPreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState(inviteToken ? 'loading' : 'missing');
+  const [inviteLead, setInviteLead] = useState(null);
+  const [inviteError, setInviteError] = useState('');
+  const inviteUnlocked = !INVITE_ONLY_MODE || inviteStatus === 'valid';
+  const inviteLocked = !inviteUnlocked;
+  const hasValidInvite = inviteStatus === 'valid';
 
   useEffect(() => {
     try {
@@ -64,6 +74,48 @@ function Register() {
       // Local storage can be unavailable in restricted browser contexts.
     }
   }, [signupIntent, templateKey]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInvite = async () => {
+      if (!inviteToken) {
+        setInviteStatus('missing');
+        setInviteLead(null);
+        setInviteError('');
+        return;
+      }
+
+      setInviteStatus('loading');
+      setInviteError('');
+
+      try {
+        const response = await validateInvite(inviteToken);
+        if (!isMounted) return;
+
+        const lead = response.invite?.lead;
+        setInviteLead(lead);
+        setInviteStatus('valid');
+        setFormData((current) => ({
+          ...current,
+          email: lead?.email || current.email,
+          churchName: current.churchName || lead?.organizationName || '',
+          branchName: current.branchName || 'Main',
+        }));
+      } catch (error) {
+        if (!isMounted) return;
+        setInviteStatus('invalid');
+        setInviteLead(null);
+        setInviteError(error.response?.data?.error || 'This invite link is invalid or has expired.');
+      }
+    };
+
+    loadInvite();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [inviteToken]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -141,7 +193,8 @@ function Register() {
     try {
       await register({
         ...formData,
-        organizationType: signupIntent === 'church' ? 'church' : undefined
+        organizationType: signupIntent === 'church' ? 'church' : undefined,
+        inviteToken: inviteToken || undefined
       });
 
       toast.success('Registration successful! Please check your email for the verification code.');
@@ -183,14 +236,29 @@ function Register() {
           </div>
         </aside>
 
-        <main className="auth-modern-card auth-register-card">
+        <main className={`auth-modern-card auth-register-card ${inviteLocked ? 'auth-invite-only-card' : ''}`}>
           <div className="auth-modern-header">
             <p className="auth-modern-kicker">Create account</p>
             <h2>Set up your {template.organization.workspaceLabel.toLowerCase()}</h2>
-            <span>Tell us about your organization so Ingather can prepare your dashboard.</span>
+            <span>
+              {inviteUnlocked
+                ? 'Your invite is ready. Complete your workspace setup to continue.'
+                : 'Tell us about your organization so Ingather can prepare your dashboard.'}
+            </span>
           </div>
 
-          <form className="auth-modern-form" onSubmit={handleSubmit}>
+          {inviteUnlocked && INVITE_ONLY_MODE && (
+            <div className="auth-invite-banner" role="status">
+              <strong>Invite verified</strong>
+              <span>{inviteLead?.email} can now create an Ingather workspace.</span>
+            </div>
+          )}
+
+          <form
+            className={`auth-modern-form ${inviteLocked ? 'auth-invite-locked-form' : ''}`}
+            onSubmit={inviteLocked ? (event) => event.preventDefault() : handleSubmit}
+            aria-hidden={inviteLocked ? 'true' : undefined}
+          >
             <div className="auth-modern-grid">
               <div className="auth-modern-field">
                 <label htmlFor="churchName">{template.organization.nameLabel}</label>
@@ -226,8 +294,9 @@ function Register() {
                 id="email"
                 name="email"
                 value={formData.email}
-                onChange={handleChange}
+                onChange={hasValidInvite ? undefined : handleChange}
                 placeholder="admin@organization.com"
+                readOnly={hasValidInvite}
               />
               {errors.email && <span className="error">{errors.email}</span>}
             </div>
@@ -326,6 +395,21 @@ function Register() {
               <a href="/login"> Login here</a>
             </p>
           </form>
+
+          {inviteLocked && (
+            <div className="auth-invite-overlay" role="status" aria-live="polite">
+              <p className="auth-modern-kicker">Private rollout</p>
+              <h3>
+                {inviteStatus === 'loading'
+                  ? 'Checking your invite...'
+                  : 'Ingather is currently Invite-Only.'}
+              </h3>
+              <span>
+                {inviteError || 'We are rolling out access in phases to ensure the highest quality experience.'}
+              </span>
+              <Link to="/waitlist" className="auth-invite-cta">Join the waitlist</Link>
+            </div>
+          )}
         </main>
       </div>
     </div>

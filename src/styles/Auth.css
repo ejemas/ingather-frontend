@@ -529,6 +529,7 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.98)),
     #ffffff;
+  position: relative;
 }
 
 .auth-register-card {
@@ -798,6 +799,97 @@
 
 .auth-modern-form .auth-message {
   text-align: left;
+}
+
+.auth-invite-only-card {
+  overflow: hidden;
+}
+
+.auth-invite-locked-form {
+  filter: blur(2px);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
+
+.auth-invite-overlay {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  border: 1px solid rgba(249, 109, 16, 0.28);
+  background: linear-gradient(145deg, rgba(12, 12, 14, 0.97), rgba(18, 16, 14, 0.96));
+  color: #fff;
+  border-radius: 24px;
+  padding: 26px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+}
+
+.auth-invite-overlay h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.auth-invite-overlay span {
+  display: block;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.55;
+}
+
+.auth-invite-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: -10px 0 18px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.auth-invite-banner strong {
+  color: #047857;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-invite-banner span {
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.auth-invite-cta {
+  min-height: 48px;
+  margin-top: 22px;
+  padding: 0 18px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f96d10, #e8590c);
+  color: #fff;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 0 16px 36px rgba(232, 89, 12, 0.3);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.auth-invite-cta:hover,
+.auth-invite-cta:focus-visible {
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 20px 46px rgba(232, 89, 12, 0.38);
 }
 
 /* ======================== */

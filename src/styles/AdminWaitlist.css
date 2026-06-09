@@ -1,0 +1,326 @@
+.admin-waitlist-gate,
+.admin-waitlist-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 88% 8%, rgba(249, 109, 16, 0.22), transparent 30%),
+    linear-gradient(135deg, #050506, #11100e 54%, #070707);
+  color: #fff;
+}
+
+.admin-waitlist-gate {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.admin-waitlist-gate-card {
+  width: min(100%, 460px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 12, 14, 0.9);
+  border-radius: 28px;
+  padding: 32px;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+.admin-waitlist-gate-card img {
+  height: 34px;
+  width: auto;
+  margin-bottom: 28px;
+}
+
+.admin-waitlist-gate-card p,
+.admin-waitlist-header p {
+  margin: 0 0 10px;
+  color: #f96d10;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-waitlist-gate-card h1,
+.admin-waitlist-header h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.admin-waitlist-gate-card span,
+.admin-waitlist-header span {
+  display: block;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.68);
+  line-height: 1.55;
+}
+
+.admin-waitlist-gate-card input {
+  width: 100%;
+  margin-top: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 15px;
+  font: inherit;
+  outline: none;
+}
+
+.admin-waitlist-gate-card input:focus {
+  border-color: #f96d10;
+  box-shadow: 0 0 0 4px rgba(249, 109, 16, 0.16);
+}
+
+.admin-waitlist-gate-card button,
+.admin-waitlist-header-actions button,
+.admin-waitlist-invite-link button,
+.admin-waitlist-actions button {
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f96d10, #e8590c);
+  color: #fff;
+  min-height: 42px;
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.admin-waitlist-gate-card button {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.admin-waitlist-page {
+  padding: 28px;
+}
+
+.admin-waitlist-header {
+  max-width: 1220px;
+  margin: 0 auto 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.admin-waitlist-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-waitlist-header-actions .admin-waitlist-ghost,
+.admin-waitlist-actions .neutral {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.admin-waitlist-actions .danger {
+  background: rgba(255, 78, 78, 0.14);
+  border: 1px solid rgba(255, 78, 78, 0.32);
+  color: #ffd1d1;
+}
+
+.admin-waitlist-panel,
+.admin-waitlist-invite-link,
+.admin-waitlist-error {
+  max-width: 1220px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-waitlist-panel {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 12, 14, 0.9);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.admin-waitlist-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  overflow-x: auto;
+}
+
+.admin-waitlist-tabs button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  border-radius: 999px;
+  padding: 9px 13px;
+  font: inherit;
+  font-weight: 900;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.admin-waitlist-tabs button.active {
+  color: #fff;
+  background: rgba(249, 109, 16, 0.16);
+  border-color: rgba(249, 109, 16, 0.34);
+}
+
+.admin-waitlist-tabs span {
+  margin-left: 8px;
+  color: #f96d10;
+}
+
+.admin-waitlist-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-waitlist-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 960px;
+}
+
+.admin-waitlist-table th,
+.admin-waitlist-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-waitlist-table th {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-waitlist-table td {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+}
+
+.admin-waitlist-table td strong,
+.admin-waitlist-table td span {
+  display: block;
+}
+
+.admin-waitlist-table td strong {
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.admin-waitlist-table td span {
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.admin-waitlist-status {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff !important;
+  text-transform: capitalize;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-waitlist-status.pending {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-waitlist-status.invited {
+  background: rgba(249, 109, 16, 0.22);
+  color: #ffb18a !important;
+}
+
+.admin-waitlist-status.accepted {
+  background: rgba(20, 184, 120, 0.18);
+  color: #93f5c4 !important;
+}
+
+.admin-waitlist-status.rejected {
+  background: rgba(255, 78, 78, 0.16);
+  color: #ffd1d1 !important;
+}
+
+.admin-waitlist-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admin-waitlist-actions button {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.admin-waitlist-actions button:disabled,
+.admin-waitlist-header-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.admin-waitlist-empty {
+  text-align: center !important;
+  color: rgba(255, 255, 255, 0.54) !important;
+  padding: 40px !important;
+}
+
+.admin-waitlist-invite-link {
+  margin-bottom: 16px;
+  border: 1px solid rgba(249, 109, 16, 0.28);
+  background: rgba(249, 109, 16, 0.1);
+  border-radius: 18px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-waitlist-invite-link span {
+  color: #ffb18a;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-waitlist-invite-link code {
+  min-width: 0;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-waitlist-error {
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 78, 78, 0.28);
+  background: rgba(255, 78, 78, 0.1);
+  color: #ffd1d1;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .admin-waitlist-page {
+    padding: 18px;
+  }
+
+  .admin-waitlist-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-waitlist-invite-link {
+    grid-template-columns: 1fr;
+  }
+}

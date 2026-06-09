@@ -78,6 +78,8 @@ const segments = [
   'Church'
 ];
 
+const INVITE_ONLY_MODE = process.env.REACT_APP_INVITE_ONLY_MODE !== 'false';
+
 function LandingPage() {
   const [showSignupIntent, setShowSignupIntent] = useState(false);
 
@@ -86,6 +88,11 @@ function LandingPage() {
   };
 
   const openSignupIntent = () => {
+    if (INVITE_ONLY_MODE) {
+      goTo('/waitlist');
+      return;
+    }
+
     setShowSignupIntent(true);
   };
 
@@ -114,7 +121,7 @@ function LandingPage() {
               Login
             </button>
             <button type="button" className="lp-btn lp-btn-primary" onClick={openSignupIntent}>
-              Start free
+              {INVITE_ONLY_MODE ? 'Join waitlist' : 'Start free'}
             </button>
           </div>
         </div>
@@ -137,7 +144,7 @@ function LandingPage() {
             </p>
             <div className="lp-hero-actions">
               <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
-                Create your first event
+                {INVITE_ONLY_MODE ? 'Join the waitlist' : 'Create your first event'}
                 <span className="lp-btn-icon">{Icon.arrow}</span>
               </button>
               <button type="button" className="lp-btn lp-btn-glass lp-btn-large" onClick={() => scrollTo('how-it-works')}>
@@ -219,7 +226,7 @@ function LandingPage() {
               <strong>$0</strong>
               <p>No credit card required.</p>
               <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
-                Get started free
+                {INVITE_ONLY_MODE ? 'Request access' : 'Get started free'}
               </button>
             </div>
           </div>
@@ -230,7 +237,7 @@ function LandingPage() {
             <h2>Replace the attendance sheet with intelligent check-ins.</h2>
             <p>Set up your organization workspace and launch your first event in minutes.</p>
             <button type="button" className="lp-btn lp-btn-primary lp-btn-large" onClick={openSignupIntent}>
-              Start with Ingather
+              {INVITE_ONLY_MODE ? 'Join the waitlist' : 'Start with Ingather'}
               <span className="lp-btn-icon">{Icon.arrow}</span>
             </button>
           </div>
