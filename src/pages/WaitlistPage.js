@@ -17,6 +17,7 @@ const initialForm = {
   email: '',
   organizationName: '',
   eventSize: '',
+  upcomingEventAt: '',
   website: ''
 };
 
@@ -50,6 +51,11 @@ function WaitlistPage() {
       nextErrors.email = 'Enter a valid email address';
     }
     if (!formData.eventSize) nextErrors.eventSize = 'Choose your typical event size';
+    if (!formData.upcomingEventAt) {
+      nextErrors.upcomingEventAt = 'Choose your upcoming event date and time';
+    } else if (Number.isNaN(new Date(formData.upcomingEventAt).getTime())) {
+      nextErrors.upcomingEventAt = 'Enter a valid event date and time';
+    }
 
     return nextErrors;
   };
@@ -73,7 +79,8 @@ function WaitlistPage() {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),
-        organizationName: formData.organizationName.trim()
+        organizationName: formData.organizationName.trim(),
+        upcomingEventAt: new Date(formData.upcomingEventAt).toISOString()
       });
       setSubmittedEmail(formData.email.trim().toLowerCase());
       setFormData(initialForm);
@@ -202,6 +209,17 @@ function WaitlistPage() {
                     ))}
                   </select>
                   {errors.eventSize && <small>{errors.eventSize}</small>}
+                </label>
+
+                <label>
+                  <span>Upcoming event date and time</span>
+                  <input
+                    type="datetime-local"
+                    name="upcomingEventAt"
+                    value={formData.upcomingEventAt}
+                    onChange={handleChange}
+                  />
+                  {errors.upcomingEventAt && <small>{errors.upcomingEventAt}</small>}
                 </label>
 
                 <label className="waitlist-honeypot" aria-hidden="true">

@@ -200,6 +200,7 @@ function AdminWaitlistPage() {
                 <th>Lead</th>
                 <th>Organization</th>
                 <th>Event size</th>
+                <th>Upcoming event</th>
                 <th>Status</th>
                 <th>Joined</th>
                 <th>Invite expires</th>
@@ -215,6 +216,7 @@ function AdminWaitlistPage() {
                   </td>
                   <td>{lead.organizationName || '-'}</td>
                   <td>{lead.eventSize}</td>
+                  <td>{formatDate(lead.upcomingEventAt)}</td>
                   <td><span className={`admin-waitlist-status ${lead.status}`}>{lead.status}</span></td>
                   <td>{formatDate(lead.createdAt)}</td>
                   <td>{formatDate(lead.inviteExpiresAt)}</td>
@@ -255,7 +257,7 @@ function AdminWaitlistPage() {
               ))}
               {!filteredLeads.length && (
                 <tr>
-                  <td colSpan="7" className="admin-waitlist-empty">
+                  <td colSpan="8" className="admin-waitlist-empty">
                     {loading ? 'Loading waitlist leads...' : 'No leads found for this filter.'}
                   </td>
                 </tr>
