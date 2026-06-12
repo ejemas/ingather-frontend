@@ -114,7 +114,6 @@ function ResetPassword() {
         >
           <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
             <img src="/ingather-logo.png" alt="" />
-            <span>Ingather</span>
           </button>
 
           <div className="auth-panel-content">
