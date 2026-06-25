@@ -1,0 +1,67 @@
+.rsvp-checkin-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(249, 109, 16, 0.2), transparent 32%),
+    #050506;
+  color: #fff;
+}
+
+.rsvp-checkin-card {
+  width: min(460px, 100%);
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+  padding: 30px;
+  border: 1px solid rgba(249, 109, 16, 0.26);
+  border-radius: 24px;
+  background: rgba(13, 13, 16, 0.92);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+}
+
+.rsvp-checkin-logo {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.rsvp-checkin-kicker {
+  color: #F96D10;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.rsvp-checkin-card h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.rsvp-checkin-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.55;
+}
+
+.rsvp-checkin-qr {
+  display: grid;
+  place-items: center;
+  width: 260px;
+  height: 260px;
+  margin: 10px 0;
+  border-radius: 22px;
+  background: #fff;
+  color: #111;
+}
+
+.rsvp-checkin-note {
+  font-size: 0.84rem;
+}

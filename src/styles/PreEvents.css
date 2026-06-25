@@ -614,6 +614,51 @@
   text-decoration: underline;
 }
 
+.pre-event-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pre-event-status-pill.sent {
+  color: #0F766E;
+  background: rgba(20, 184, 166, 0.12);
+}
+
+.pre-event-status-pill.checked {
+  color: #15803D;
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.pre-event-status-pill.pending {
+  color: #B45309;
+  background: rgba(249, 109, 16, 0.12);
+}
+
+.pre-event-table-action {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(232, 89, 12, 0.24);
+  border-radius: var(--radius-md);
+  background: rgba(232, 89, 12, 0.08);
+  color: var(--color-orange);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pre-event-table-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .pre-event-pagination {
   justify-content: flex-end;
   margin-top: 16px;

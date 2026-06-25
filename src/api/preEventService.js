@@ -30,6 +30,11 @@ export const updatePreEvent = async (id, data) => {
   return response.data;
 };
 
+export const resendRsvpQrEmail = async (preEventId, rsvpId) => {
+  const response = await API.post(`/pre-events/${preEventId}/rsvps/${rsvpId}/resend-qr`);
+  return response.data;
+};
+
 export const deletePreEvent = async (id) => {
   const response = await API.delete(`/pre-events/${id}`);
   return response.data;

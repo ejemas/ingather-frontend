@@ -56,6 +56,11 @@ export const addManualAttendee = async (id, formData) => {
   return response.data;
 };
 
+export const checkInRsvpQr = async (id, token) => {
+  const response = await API.post(`/programs/${id}/rsvp-qr-checkin`, { token });
+  return response.data;
+};
+
 export const updateStrictDeviceFingerprinting = async (id, strictDeviceFingerprinting) => {
   const response = await API.put(`/programs/${id}/strict-device-fingerprinting`, {
     strictDeviceFingerprinting

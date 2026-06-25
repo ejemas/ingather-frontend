@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { getPreEvent, updatePreEvent } from '../api/preEventService';
+import { getPreEvent, resendRsvpQrEmail, updatePreEvent } from '../api/preEventService';
 import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
@@ -87,6 +87,7 @@ function PreEventDetail() {
   const [programOptions, setProgramOptions] = useState([]);
   const [linkedProgramId, setLinkedProgramId] = useState('');
   const [savingLink, setSavingLink] = useState(false);
+  const [resendingRsvpId, setResendingRsvpId] = useState(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -195,6 +196,27 @@ function PreEventDetail() {
     if (column === 'link') return rsvp.linkUrl || '-';
     if (column === 'textarea') return rsvp.textareaResponse || '-';
     return rsvp[column] || '-';
+  };
+
+  const getQrStatusLabel = (rsvp) => {
+    if (rsvp.status === 'checked_in') return 'Checked in';
+    if (rsvp.checkinQrLastSentAt || rsvp.checkinQrSentAt) return 'QR sent';
+    return 'Not sent';
+  };
+
+  const resendQr = async (rsvp) => {
+    try {
+      setResendingRsvpId(rsvp.id);
+      const response = await resendRsvpQrEmail(preEvent.id, rsvp.id);
+      if (response.rsvp) {
+        setRsvps(prev => prev.map(item => item.id === response.rsvp.id ? response.rsvp : item));
+      }
+      toast.success('RSVP QR email resent');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Unable to resend RSVP QR email');
+    } finally {
+      setResendingRsvpId(null);
+    }
   };
 
   if (loading) {
@@ -335,12 +357,15 @@ function PreEventDetail() {
                   {columns.map((column) => (
                     <th key={column}>{getColumnLabel(column)}</th>
                   ))}
+                  <th>QR Email</th>
+                  <th>Checked In</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRsvps.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="pre-event-table-empty">
+                    <td colSpan={columns.length + 3} className="pre-event-table-empty">
                       No RSVP records match this view.
                     </td>
                   </tr>
@@ -356,6 +381,22 @@ function PreEventDetail() {
                           )}
                         </td>
                       ))}
+                      <td>
+                        <span className={`pre-event-status-pill ${rsvp.status === 'checked_in' ? 'checked' : rsvp.checkinQrLastSentAt ? 'sent' : 'pending'}`}>
+                          {getQrStatusLabel(rsvp)}
+                        </span>
+                      </td>
+                      <td>{rsvp.checkedInAt ? formatSubmittedAt(rsvp.checkedInAt) : '-'}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="pre-event-table-action"
+                          onClick={() => resendQr(rsvp)}
+                          disabled={rsvp.status === 'checked_in' || resendingRsvpId === rsvp.id}
+                        >
+                          {resendingRsvpId === rsvp.id ? 'Sending...' : 'Resend QR'}
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}

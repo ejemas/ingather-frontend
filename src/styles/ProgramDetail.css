@@ -1070,6 +1070,12 @@
   height: 14px;
 }
 
+.pd-btn-rsvp-scan {
+  border-color: rgba(249, 109, 16, 0.32);
+  background: rgba(249, 109, 16, 0.08);
+  color: var(--color-orange);
+}
+
 .pd-empty-table {
   min-height: 120px;
   display: flex;
@@ -1123,6 +1129,116 @@
   color: #fff;
   padding: 24px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
+
+.pd-rsvp-scanner-modal {
+  width: min(620px, 100%);
+  max-height: min(88vh, 780px);
+  overflow: auto;
+  background: #0D0D10;
+  color: #fff;
+  border: 1px solid rgba(249, 109, 16, 0.34);
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  padding: 24px;
+}
+
+.pd-rsvp-scanner-modal .pd-manual-modal-header h3 {
+  color: #fff;
+}
+
+.pd-rsvp-scanner-modal .pd-manual-modal-header p,
+.pd-rsvp-camera-copy {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.pd-rsvp-scanner-modal .pd-modal-close {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pd-rsvp-camera {
+  position: relative;
+  min-height: 280px;
+  margin: 18px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at center, rgba(249, 109, 16, 0.15), transparent 58%),
+    #050506;
+  overflow: hidden;
+}
+
+.pd-rsvp-camera video {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  display: block;
+  object-fit: cover;
+}
+
+.pd-rsvp-camera.unsupported video,
+.pd-rsvp-camera.blocked video,
+.pd-rsvp-camera.idle video {
+  opacity: 0.18;
+}
+
+.pd-rsvp-camera-frame {
+  position: absolute;
+  inset: 50%;
+  width: min(220px, 58vw);
+  height: min(220px, 58vw);
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(249, 109, 16, 0.92);
+  border-radius: 22px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.32);
+  pointer-events: none;
+}
+
+.pd-rsvp-camera-copy {
+  margin: 0 0 16px;
+  font-size: 0.88rem;
+}
+
+.pd-rsvp-scan-result {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  font-size: 0.9rem;
+}
+
+.pd-rsvp-scan-result.success {
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  color: #D7FBE3;
+}
+
+.pd-rsvp-scan-result.error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #FEE2E2;
+}
+
+.pd-rsvp-scan-result span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.pd-rsvp-manual-form .pd-manual-field span {
+  color: #fff;
+}
+
+.pd-rsvp-manual-form .pd-manual-field input {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.pd-rsvp-manual-form .pd-btn-cancel {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
 }
 
 .pd-fingerprint-warning-modal h3 {
