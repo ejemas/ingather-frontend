@@ -13,6 +13,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.13.5",
     "fingerprintjs": "^0.5.3",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "qrcode.react": "^4.2.0",

@@ -61,6 +61,11 @@ export const checkInRsvpQr = async (id, token) => {
   return response.data;
 };
 
+export const getRsvpScannerLink = async (id) => {
+  const response = await API.get(`/programs/${id}/rsvp-scanner-link`);
+  return response.data;
+};
+
 export const updateStrictDeviceFingerprinting = async (id, strictDeviceFingerprinting) => {
   const response = await API.put(`/programs/${id}/strict-device-fingerprinting`, {
     strictDeviceFingerprinting

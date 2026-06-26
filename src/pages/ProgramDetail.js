@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useParams } from 'react-router-dom';
-import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted, addManualAttendee, checkInRsvpQr, updateStrictDeviceFingerprinting } from '../api/programService';
+import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted, addManualAttendee, checkInRsvpQr, getRsvpScannerLink, updateStrictDeviceFingerprinting } from '../api/programService';
 import InfoTooltip from '../components/InfoTooltip';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
@@ -62,6 +63,7 @@ const Icons = {
   female: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="5" /><line x1="10" y1="12" x2="10" y2="19" /><line x1="7" y1="16" x2="13" y2="16" /></svg>),
   star: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
   exportIcon: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3" /><polyline points="11,5 8,2 5,5" /><line x1="8" y1="2" x2="8" y2="10" /></svg>),
+  copy: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="5" width="7" height="8" rx="1.2" /><path d="M3 10.5V3.8C3 3.36 3.36 3 3.8 3h6.7" /></svg>),
   plus: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="3" x2="8" y2="13" /><line x1="3" y1="8" x2="13" y2="8" /></svg>),
   formDoc: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h8l4 4v10a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" /><polyline points="12,3 12,7 16,7" /><line x1="6" y1="10" x2="14" y2="10" /><line x1="6" y1="13" x2="14" y2="13" /><line x1="6" y1="16" x2="10" y2="16" /></svg>),
   starOutline: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
@@ -590,92 +592,112 @@ function FingerprintWarningModal({ saving, onCancel, onConfirm }) {
 }
 
 function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onReset }) {
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const detectorRef = useRef(null);
-  const frameRef = useRef(null);
+  const readerIdRef = useRef(`pd-rsvp-qr-reader-${Math.random().toString(36).slice(2)}`);
+  const scannerRef = useRef(null);
+  const submittedRef = useRef(false);
   const [manualToken, setManualToken] = useState('');
   const [cameraState, setCameraState] = useState('idle');
-  const [cameraMessage, setCameraMessage] = useState('Point the camera at an RSVP QR code.');
+  const [cameraMessage, setCameraMessage] = useState('Requesting camera access...');
 
   useEffect(() => {
     let cancelled = false;
 
-    const stopCamera = () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
+    submittedRef.current = false;
+
+    const stopScanner = async () => {
+      const scanner = scannerRef.current;
+      if (!scanner) return;
+
+      try {
+        await scanner.stop();
+      } catch (stopError) {
+        // The scanner may already be stopped if camera permission failed or a scan just completed.
       }
+
+      try {
+        await scanner.clear();
+      } catch (clearError) {
+        // Ignore cleanup errors from partially initialized scanner instances.
+      }
+
+      if (scannerRef.current === scanner) scannerRef.current = null;
     };
 
-    const startCamera = async () => {
+    const startScanner = async () => {
       if (!navigator.mediaDevices?.getUserMedia) {
         setCameraState('unsupported');
-        setCameraMessage('Camera access is not available on this browser. Paste the QR link or token below.');
-        return;
-      }
-
-      if (!('BarcodeDetector' in window)) {
-        setCameraState('unsupported');
-        setCameraMessage('Automatic QR detection is not supported on this browser. Paste the QR link or token below.');
+        setCameraMessage('Camera unavailable? Enter the attendee RSVP token below.');
         return;
       }
 
       try {
         setCameraState('starting');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' } },
-          audio: false
-        });
-        if (cancelled) {
-          stream.getTracks().forEach(track => track.stop());
-          return;
-        }
+        setCameraMessage('Allow camera access to scan RSVP QR codes.');
 
-        streamRef.current = stream;
-        detectorRef.current = new window.BarcodeDetector({ formats: ['qr_code'] });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+        const scanner = new Html5Qrcode(readerIdRef.current, { verbose: false });
+        scannerRef.current = scanner;
+
+        const config = {
+          fps: 10,
+          qrbox: (viewfinderWidth, viewfinderHeight) => {
+            const size = Math.max(180, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72));
+            return { width: size, height: size };
+          },
+          aspectRatio: 1
+        };
+
+        const handleSuccess = async (decodedText) => {
+          if (cancelled || submittedRef.current || !decodedText) return;
+          submittedRef.current = true;
+          setCameraState('detected');
+          setCameraMessage('QR detected. Checking in attendee...');
+          await stopScanner();
+          if (!cancelled) onSubmit(decodedText);
+        };
+
+        const handleScanError = () => {};
+
+        const startWithFallback = async () => {
+          try {
+            await scanner.start({ facingMode: { exact: 'environment' } }, config, handleSuccess, handleScanError);
+            return;
+          } catch (exactError) {
+            try {
+              await scanner.start({ facingMode: 'environment' }, config, handleSuccess, handleScanError);
+              return;
+            } catch (environmentError) {
+              const cameras = await Html5Qrcode.getCameras();
+              const preferredCamera = cameras.find(camera => /back|rear|environment/i.test(camera.label || ''))
+                || cameras[cameras.length - 1]
+                || cameras[0];
+              if (!preferredCamera?.id) throw environmentError;
+              await scanner.start(preferredCamera.id, config, handleSuccess, handleScanError);
+            }
+          }
+        };
+
+        await startWithFallback();
+        if (cancelled) {
+          await stopScanner();
+          return;
         }
         setCameraState('active');
         setCameraMessage('Scanning RSVP QR code...');
-
-        const scanFrame = async () => {
-          if (cancelled || scanning || result) return;
-          try {
-            if (videoRef.current && detectorRef.current) {
-              const codes = await detectorRef.current.detect(videoRef.current);
-              const value = codes?.[0]?.rawValue;
-              if (value) {
-                stopCamera();
-                onSubmit(value);
-                return;
-              }
-            }
-          } catch (scanError) {
-            setCameraState('unsupported');
-            setCameraMessage('Automatic QR detection is unavailable. Paste the QR link or token below.');
-            return;
-          }
-          frameRef.current = requestAnimationFrame(scanFrame);
-        };
-
-        frameRef.current = requestAnimationFrame(scanFrame);
       } catch (cameraError) {
+        await stopScanner();
         setCameraState('blocked');
-        setCameraMessage('Camera permission was blocked or unavailable. Paste the QR link or token below.');
+        setCameraMessage('Camera unavailable? Enter the attendee RSVP token below.');
       }
     };
 
-    startCamera();
+    if (!result) startScanner();
+    else setCameraMessage('Ready to scan the next RSVP QR code.');
 
     return () => {
       cancelled = true;
-      stopCamera();
+      stopScanner();
     };
-  }, [onSubmit, result, scanning]);
+  }, [onSubmit, result]);
 
   const submitManual = (event) => {
     event.preventDefault();
@@ -702,7 +724,7 @@ function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onRese
         </div>
 
         <div className={`pd-rsvp-camera ${cameraState}`}>
-          <video ref={videoRef} muted playsInline aria-label="RSVP QR scanner camera preview" />
+          <div id={readerIdRef.current} className="pd-rsvp-reader" aria-label="RSVP QR scanner camera preview" />
           <div className="pd-rsvp-camera-frame" aria-hidden="true"></div>
         </div>
         <p className="pd-rsvp-camera-copy">{cameraMessage}</p>
@@ -723,11 +745,11 @@ function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onRese
 
         <form className="pd-rsvp-manual-form" onSubmit={submitManual}>
           <label className="pd-manual-field">
-            <span>QR link or token</span>
+            <span>RSVP token</span>
             <input
               value={manualToken}
               onChange={(event) => setManualToken(event.target.value)}
-              placeholder="Paste https://ingather.app/rsvp-checkin/..."
+              placeholder="A7K9Q2M4"
               disabled={scanning}
             />
           </label>
@@ -793,6 +815,8 @@ function ProgramDetail() {
   const [rsvpQrSubmitting, setRsvpQrSubmitting] = useState(false);
   const [rsvpQrResult, setRsvpQrResult] = useState(null);
   const [rsvpQrError, setRsvpQrError] = useState('');
+  const rsvpQrSubmittingRef = useRef(false);
+  const [rsvpScannerLinkLoading, setRsvpScannerLinkLoading] = useState(false);
   const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
   const [fingerprintSaving, setFingerprintSaving] = useState(false);
   const toast = useToast();
@@ -1230,21 +1254,53 @@ function ProgramDetail() {
     setManualErrors({});
   };
 
-  const openRsvpScanner = () => {
-    if (!program?.isActive) {
-      toast.info(`This ${template.event.singular.toLowerCase()} has ended, so RSVP QR check-ins are disabled.`);
-      return;
-    }
-    setRsvpQrResult(null);
-    setRsvpQrError('');
-    setShowRsvpScanner(true);
-  };
-
   const closeRsvpScanner = () => {
     if (rsvpQrSubmitting) return;
     setShowRsvpScanner(false);
     setRsvpQrResult(null);
     setRsvpQrError('');
+  };
+
+  const getShareableRsvpScannerUrl = async () => {
+    const response = await getRsvpScannerLink(id);
+    if (!response.scannerUrl) throw new Error('Scanner link was not returned.');
+    return response.scannerUrl;
+  };
+
+  const copyRsvpScannerLink = async () => {
+    if (rsvpScannerLinkLoading) return;
+    setRsvpScannerLinkLoading(true);
+    try {
+      const scannerUrl = await getShareableRsvpScannerUrl();
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(scannerUrl);
+      } else {
+        const input = document.createElement('input');
+        input.value = scannerUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      toast.success('RSVP scanner link copied. Share it with your ushers.');
+    } catch (error) {
+      toast.error(error.response?.data?.error || error.message || 'Unable to create RSVP scanner link.');
+    } finally {
+      setRsvpScannerLinkLoading(false);
+    }
+  };
+
+  const openRsvpScannerLink = async () => {
+    if (rsvpScannerLinkLoading) return;
+    setRsvpScannerLinkLoading(true);
+    try {
+      const scannerUrl = await getShareableRsvpScannerUrl();
+      window.open(scannerUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      toast.error(error.response?.data?.error || error.message || 'Unable to open RSVP scanner link.');
+    } finally {
+      setRsvpScannerLinkLoading(false);
+    }
   };
 
   const handleManualChange = (event) => {
@@ -1335,8 +1391,9 @@ function ProgramDetail() {
   };
 
   const handleRsvpQrCheckIn = useCallback(async (token) => {
-    if (!token || rsvpQrSubmitting) return;
+    if (!token || rsvpQrSubmittingRef.current) return;
 
+    rsvpQrSubmittingRef.current = true;
     setRsvpQrSubmitting(true);
     setRsvpQrError('');
     setRsvpQrResult(null);
@@ -1366,9 +1423,10 @@ function ProgramDetail() {
       setRsvpQrError(message);
       toast.error(message);
     } finally {
+      rsvpQrSubmittingRef.current = false;
       setRsvpQrSubmitting(false);
     }
-  }, [id, refreshAttendanceChart, rsvpQrSubmitting, toast]);
+  }, [id, refreshAttendanceChart, toast]);
 
   const saveStrictFingerprinting = async (enabled) => {
     if (!program || fingerprintSaving) return;
@@ -2200,9 +2258,14 @@ function ProgramDetail() {
                 </div>
                 <div className="pd-attendee-actions">
                   {program.linkedPreEventCount > 0 && (
-                    <button className="pd-btn-manual pd-btn-rsvp-scan" type="button" onClick={openRsvpScanner} disabled={!program.isActive}>
-                      {Icons.search} Scan RSVP QR
-                    </button>
+                    <>
+                      <button className="pd-btn-manual pd-btn-rsvp-scan" type="button" onClick={copyRsvpScannerLink} disabled={!program.isActive || rsvpScannerLinkLoading}>
+                        {Icons.copy} {rsvpScannerLinkLoading ? 'Preparing...' : 'Copy RSVP Scanner Link'}
+                      </button>
+                      <button className="pd-btn-manual pd-btn-rsvp-scan" type="button" onClick={openRsvpScannerLink} disabled={!program.isActive || rsvpScannerLinkLoading}>
+                        {Icons.search} Open Scanner
+                      </button>
+                    </>
                   )}
                   <button className="pd-btn-manual" type="button" onClick={openManualModal} disabled={!program.isActive}>{Icons.plus} Add Manually</button>
                   <button className="pd-btn-export" type="button" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>

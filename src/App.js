@@ -18,6 +18,7 @@ const CreatePreEvent = lazy(() => import('./pages/CreatePreEvent'));
 const PreEventDetail = lazy(() => import('./pages/PreEventDetail'));
 const RsvpPage = lazy(() => import('./pages/RsvpPage'));
 const RsvpCheckinPage = lazy(() => import('./pages/RsvpCheckinPage'));
+const RsvpScannerPage = lazy(() => import('./pages/RsvpScannerPage'));
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'));
 const AdminWaitlistPage = lazy(() => import('./pages/AdminWaitlistPage'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/scan/:programId" element={<ScanPage />} />
                 <Route path="/rsvp/:slug" element={<RsvpPage />} />
                 <Route path="/rsvp-checkin/:token" element={<RsvpCheckinPage />} />
+                <Route path="/rsvp-scanner/:scannerToken" element={<RsvpScannerPage />} />
                 <Route path="/waitlist" element={<WaitlistPage />} />
                 <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
