@@ -387,6 +387,23 @@
   gap: 14px;
 }
 
+.pre-event-link-row.pre-event-link-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.pre-event-discover-card {
+  background:
+    linear-gradient(135deg, rgba(232, 89, 12, 0.08), rgba(255, 255, 255, 0.02)),
+    #ffffff;
+}
+
+.pre-event-discover-note {
+  margin: 12px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .pre-event-card-heading,
 .pre-event-section-heading {
   display: flex;
@@ -1012,5 +1029,272 @@
 
   .rsvp-public-page {
     padding: 14px;
+  }
+}
+/* Adaptive public RSVP event detail page */
+.rsvp-event-detail-page {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(232, 89, 12, 0.22), transparent 34rem),
+    linear-gradient(135deg, var(--rsvp-theme-bg), #0b0b0f);
+  color: var(--rsvp-theme-text);
+  overflow-x: hidden;
+}
+
+.rsvp-adaptive-backdrop {
+  position: fixed;
+  inset: -40px;
+  background-image: var(--rsvp-event-image);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.28;
+  filter: blur(38px) saturate(1.25);
+  transform: scale(1.08);
+  pointer-events: none;
+}
+
+.rsvp-event-detail-page::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.42));
+  pointer-events: none;
+}
+
+.rsvp-event-nav,
+.rsvp-event-shell {
+  position: relative;
+  z-index: 1;
+}
+
+.rsvp-event-nav {
+  width: min(1080px, calc(100% - 32px));
+  min-height: 68px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.rsvp-event-nav img {
+  width: auto;
+  height: 30px;
+  display: block;
+}
+
+.rsvp-event-nav div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.rsvp-event-nav a {
+  color: var(--rsvp-theme-text);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.rsvp-event-nav div a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.rsvp-event-shell {
+  width: min(1080px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 28px 0 80px;
+  display: grid;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+
+.rsvp-event-side {
+  display: grid;
+  gap: 22px;
+}
+
+.rsvp-event-flyer {
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+}
+
+.rsvp-event-flyer img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+}
+
+.rsvp-event-host,
+.rsvp-event-going,
+.rsvp-event-about {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 18px;
+}
+
+.rsvp-event-host span,
+.rsvp-event-about h2 {
+  display: block;
+  margin: 0 0 10px;
+  color: var(--rsvp-theme-muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.rsvp-event-host strong,
+.rsvp-event-going strong {
+  display: block;
+  color: var(--rsvp-theme-text);
+  font-size: 1rem;
+}
+
+.rsvp-event-going p,
+.rsvp-event-about p {
+  color: var(--rsvp-theme-muted);
+  line-height: 1.65;
+}
+
+.rsvp-event-main {
+  min-width: 0;
+}
+
+.rsvp-event-main > h1 {
+  max-width: 760px;
+  margin: 10px 0 28px;
+  color: var(--rsvp-theme-text);
+  font-size: clamp(2.5rem, 6vw, 4.8rem);
+  line-height: 1;
+}
+
+.rsvp-event-meta-list {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.rsvp-event-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.rsvp-event-date-badge,
+.rsvp-event-meta-icon {
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--rsvp-theme-accent);
+}
+
+.rsvp-event-date-badge small {
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.rsvp-event-date-badge strong {
+  font-size: 1.05rem;
+}
+
+.rsvp-event-meta p {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+}
+
+.rsvp-event-meta p strong {
+  color: var(--rsvp-theme-text);
+}
+
+.rsvp-event-meta p span {
+  color: var(--rsvp-theme-muted);
+}
+
+.rsvp-event-registration {
+  overflow: hidden;
+  background: var(--rsvp-theme-surface);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(20px);
+}
+
+.rsvp-registration-bar {
+  margin: -24px -24px 20px;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--rsvp-theme-accent);
+  color: var(--rsvp-theme-text);
+  font-weight: 850;
+}
+
+.rsvp-event-detail-page .rsvp-form-heading h2,
+.rsvp-event-detail-page .rsvp-success-state h2,
+.rsvp-event-detail-page .rsvp-public-field span,
+.rsvp-event-detail-page .rsvp-public-checkbox span {
+  color: var(--rsvp-theme-text);
+}
+
+.rsvp-event-detail-page .rsvp-form-heading span,
+.rsvp-event-detail-page .rsvp-success-state p {
+  color: var(--rsvp-theme-muted);
+}
+
+.rsvp-event-detail-page .rsvp-public-field input,
+.rsvp-event-detail-page .rsvp-public-field select,
+.rsvp-event-detail-page .rsvp-public-field textarea {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #10131a;
+}
+
+.rsvp-event-detail-page .rsvp-public-submit,
+.rsvp-event-detail-page .rsvp-success-mark {
+  background: var(--rsvp-theme-accent);
+}
+
+@media (max-width: 860px) {
+  .pre-event-link-row.pre-event-link-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rsvp-event-shell {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .rsvp-event-side {
+    order: 1;
+  }
+
+  .rsvp-event-main {
+    order: 2;
+  }
+
+  .rsvp-event-flyer {
+    max-width: 420px;
+  }
+}
+
+@media (max-width: 620px) {
+  .rsvp-event-nav {
+    align-items: flex-start;
+  }
+
+  .rsvp-event-nav div {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .rsvp-event-main > h1 {
+    font-size: clamp(2.1rem, 12vw, 3.2rem);
   }
 }

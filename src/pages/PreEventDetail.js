@@ -86,6 +86,7 @@ function PreEventDetail() {
   const [page, setPage] = useState(0);
   const [programOptions, setProgramOptions] = useState([]);
   const [linkedProgramId, setLinkedProgramId] = useState('');
+  const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false });
   const [savingLink, setSavingLink] = useState(false);
   const [resendingRsvpId, setResendingRsvpId] = useState(null);
   const toast = useToast();
@@ -97,6 +98,11 @@ function PreEventDetail() {
         const response = await getPreEvent(id);
         setPreEvent(response.preEvent);
         setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
+        setEventMeta({
+          venueName: response.preEvent?.venueName || '',
+          city: response.preEvent?.city || '',
+          discoverEnabled: response.preEvent?.discoverEnabled === true
+        });
         setRsvps(response.rsvps || []);
         setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
       } catch (error) {
@@ -163,12 +169,20 @@ function PreEventDetail() {
 
   const saveProgramLink = async () => {
     if (!preEvent) return;
+    if (eventMeta.discoverEnabled && !eventMeta.city.trim()) {
+      toast.error('City is required when showing this event on Discover');
+      return;
+    }
+
     try {
       setSavingLink(true);
       const response = await updatePreEvent(preEvent.id, {
         title: preEvent.title,
         eventDate: preEvent.eventDate,
         description: preEvent.description,
+        venueName: eventMeta.venueName,
+        city: eventMeta.city,
+        discoverEnabled: eventMeta.discoverEnabled,
         rsvpFields: preEvent.rsvpFields,
         rsvpFieldConfig: preEvent.rsvpFieldConfig,
         isRsvpActive: preEvent.isRsvpActive,
@@ -176,7 +190,12 @@ function PreEventDetail() {
       });
       setPreEvent(response.preEvent);
       setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
-      toast.success('Live program link updated');
+      setEventMeta({
+        venueName: response.preEvent?.venueName || '',
+        city: response.preEvent?.city || '',
+        discoverEnabled: response.preEvent?.discoverEnabled === true
+      });
+      toast.success('Pre-event settings updated');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Unable to update live program link');
     } finally {
@@ -283,11 +302,39 @@ function PreEventDetail() {
         <section className="pre-event-form-card pre-event-link-card">
           <div className="pre-event-card-heading">
             <div>
-              <h2>Fast-Track Check-In Link</h2>
-              <p>Connect this RSVP page to a live collect-data program so pre-registered attendees can check in with only their email.</p>
+              <h2>Event Visibility & Live Link</h2>
+              <p>Control public discovery and connect this RSVP page to a live collect-data program.</p>
             </div>
+            <label className="pre-event-active-toggle">
+              <input
+                type="checkbox"
+                checked={eventMeta.discoverEnabled}
+                onChange={(event) => setEventMeta(prev => ({ ...prev, discoverEnabled: event.target.checked }))}
+              />
+              <span>Show on Discover Events</span>
+            </label>
           </div>
-          <div className="pre-event-link-row">
+          <div className="pre-event-link-row pre-event-link-grid">
+            <label className="pre-event-field">
+              <span>Venue Name</span>
+              <input
+                type="text"
+                value={eventMeta.venueName}
+                onChange={(event) => setEventMeta(prev => ({ ...prev, venueName: event.target.value }))}
+                placeholder="Civic Centre, Main Auditorium"
+                maxLength={255}
+              />
+            </label>
+            <label className="pre-event-field">
+              <span>City</span>
+              <input
+                type="text"
+                value={eventMeta.city}
+                onChange={(event) => setEventMeta(prev => ({ ...prev, city: event.target.value }))}
+                placeholder="Lagos"
+                maxLength={120}
+              />
+            </label>
             <label className="pre-event-field">
               <span>Live Program</span>
               <select value={linkedProgramId} onChange={(event) => setLinkedProgramId(event.target.value)}>
@@ -300,9 +347,12 @@ function PreEventDetail() {
               </select>
             </label>
             <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
-              {savingLink ? 'Saving...' : 'Save Link'}
+              {savingLink ? 'Saving...' : 'Save Settings'}
             </button>
           </div>
+          <p className="pre-event-discover-note">
+            Discover is opt-in. Private RSVP links remain accessible even when public discovery is off.
+          </p>
         </section>
 
         <section className="pre-event-analytics-grid">

@@ -7,6 +7,7 @@ import './styles/globals.css';
 const Settings = lazy(() => import('./pages/Settings'));
 const AllPrograms = lazy(() => import('./pages/AllPrograms'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
 const Register = lazy(() => import('./pages/Register'));
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -44,6 +45,7 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/programs" element={<AllPrograms />} />
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/discover" element={<DiscoverPage />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/dashboard" element={<Dashboard />} />

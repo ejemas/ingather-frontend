@@ -49,3 +49,8 @@ export const submitPreEventRsvp = async (slug, formData) => {
   const response = await PublicAPI.post(`/pre-events/public/${slug}/rsvps`, { formData });
   return response.data;
 };
+
+export const getDiscoverPreEvents = async (params = {}) => {
+  const response = await PublicAPI.get('/pre-events/discover', { params });
+  return response.data;
+};

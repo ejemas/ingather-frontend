@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import SignupIntentModal from '../components/SignupIntentModal';
+import { getDiscoverPreEvents } from '../api/preEventService';
 import '../styles/LandingPage.css';
 
 const Icon = {
@@ -31,6 +32,11 @@ const Icon = {
   arrow: (
     <svg viewBox="0 0 20 20" aria-hidden="true">
       <path d="M11.2 4.4 16.8 10l-5.6 5.6-1.4-1.4 3.2-3.2H3V9h10l-3.2-3.2 1.4-1.4Z" />
+    </svg>
+  ),
+  calendar: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 2h2v3h6V2h2v3h3v16H4V5h3V2Zm11 8H6v9h12v-9Zm-9 2h3v3H9v-3Zm5.7.2 1.4 1.4-3.7 3.7-2.1-2.1 1.4-1.4.7.7 2.3-2.3Z" />
     </svg>
   )
 };
@@ -80,8 +86,41 @@ const segments = [
 
 const INVITE_ONLY_MODE = process.env.REACT_APP_INVITE_ONLY_MODE !== 'false';
 
+const formatEventDate = (value) => {
+  if (!value) return 'Date coming soon';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date coming soon';
+  return date.toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+};
+
+const eventLocation = (event) => (
+  [event.venueName, event.city].filter(Boolean).join(', ') || event.churchName || 'Ingather event'
+);
+
 function LandingPage() {
   const [showSignupIntent, setShowSignupIntent] = useState(false);
+  const [discoverEvents, setDiscoverEvents] = useState([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getDiscoverPreEvents({ limit: 4 })
+      .then((response) => {
+        if (mounted) setDiscoverEvents(response.preEvents || []);
+      })
+      .catch(() => {
+        if (mounted) setDiscoverEvents([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const goTo = (path) => {
     window.location.href = path;
@@ -113,6 +152,7 @@ function LandingPage() {
           </a>
           <div className="lp-nav-links">
             <button type="button" onClick={() => scrollTo('features')}>Features</button>
+            <button type="button" onClick={() => scrollTo('discover-events')}>Discover Events</button>
             <button type="button" onClick={() => scrollTo('how-it-works')}>How it works</button>
             <button type="button" onClick={() => scrollTo('pricing')}>Pricing</button>
           </div>
@@ -188,6 +228,53 @@ function LandingPage() {
                 </article>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section id="discover-events" className="lp-section lp-discover">
+          <div className="lp-container">
+            <div className="lp-discover-heading">
+              <div>
+                <p className="lp-eyebrow">Discover events</p>
+                <h2>Find RSVP-ready gatherings powered by Ingather.</h2>
+              </div>
+              <button type="button" className="lp-btn lp-btn-ghost" onClick={() => goTo('/discover')}>
+                View all <span className="lp-btn-icon">{Icon.arrow}</span>
+              </button>
+            </div>
+
+            {discoverEvents.length > 0 ? (
+              <div className="lp-discover-grid">
+                {discoverEvents.map((event) => (
+                  <a className="lp-discover-card" href={`/rsvp/${event.slug}`} key={event.id}>
+                    <span className="lp-discover-thumb">
+                      {event.bannerUrl ? (
+                        <img src={event.bannerUrl} alt={event.title} />
+                      ) : (
+                        <span>RSVP</span>
+                      )}
+                    </span>
+                    <span className="lp-discover-copy">
+                      <small>{formatEventDate(event.eventDate)}</small>
+                      <strong>{event.title}</strong>
+                      <em>{eventLocation(event)}</em>
+                    </span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="lp-discover-empty">
+                <span className="lp-discover-empty-icon">{Icon.calendar}</span>
+                <h3>Public events are warming up</h3>
+                <p>
+                  Discover-ready RSVP pages will appear here as organizers publish them.
+                  Check back soon, or be the first to add yours.
+                </p>
+                <button type="button" className="lp-btn lp-btn-primary" onClick={openSignupIntent}>
+                  {INVITE_ONLY_MODE ? 'Join waitlist' : 'Create an event'}
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

@@ -62,7 +62,10 @@ function CreatePreEvent() {
     title: '',
     programId: '',
     eventDate: '',
+    venueName: '',
+    city: '',
     description: '',
+    discoverEnabled: false,
     isRsvpActive: true,
     rsvpFields: {
       emailAddress: true,
@@ -187,6 +190,10 @@ function CreatePreEvent() {
       toast.error('Please choose a valid event date and time');
       return false;
     }
+    if (formData.discoverEnabled && !formData.city.trim()) {
+      toast.error('City is required when showing an event on Discover');
+      return false;
+    }
     return true;
   };
 
@@ -207,7 +214,10 @@ function CreatePreEvent() {
         title: formData.title,
         programId: formData.programId || null,
         eventDate: formData.eventDate,
+        venueName: formData.venueName,
+        city: formData.city,
         description: formData.description,
+        discoverEnabled: formData.discoverEnabled,
         isRsvpActive: formData.isRsvpActive,
         rsvpFields: formData.rsvpFields,
         rsvpFieldConfig: formData.rsvpFieldConfig,
@@ -273,6 +283,26 @@ function CreatePreEvent() {
                   ))}
                 </select>
               </label>
+              <label className="pre-event-field">
+                <span>Venue Name</span>
+                <input
+                  type="text"
+                  value={formData.venueName}
+                  onChange={(event) => updateField('venueName', event.target.value)}
+                  placeholder="Civic Centre, Main Auditorium"
+                  maxLength={255}
+                />
+              </label>
+              <label className="pre-event-field">
+                <span>City</span>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(event) => updateField('city', event.target.value)}
+                  placeholder="Lagos"
+                  maxLength={120}
+                />
+              </label>
             </div>
             <label className="pre-event-field">
               <span>Description</span>
@@ -284,6 +314,26 @@ function CreatePreEvent() {
                 maxLength={5000}
               />
             </label>
+          </section>
+
+          <section className="pre-event-form-card pre-event-discover-card">
+            <div className="pre-event-card-heading">
+              <div>
+                <h2>Discover Visibility</h2>
+                <p>Choose whether this RSVP page should be listed publicly on Ingather Discover.</p>
+              </div>
+              <label className="pre-event-active-toggle">
+                <input
+                  type="checkbox"
+                  checked={formData.discoverEnabled}
+                  onChange={(event) => updateField('discoverEnabled', event.target.checked)}
+                />
+                <span>Show on Discover Events</span>
+              </label>
+            </div>
+            <p className="pre-event-discover-note">
+              Private RSVP links still work when this is off. Turn it on only for events you want visitors to find from the landing page.
+            </p>
           </section>
 
           <section className="pre-event-form-card">
