@@ -49,6 +49,13 @@ const OPTIONAL_FIELDS = [
 ];
 const PAGE_SIZE = 10;
 
+const isFutureDiscoverDate = (value) => {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getTime() >= Date.now() - (12 * 60 * 60 * 1000);
+};
+
 const formatDateTime = (value) => {
   if (!value) return 'Date not set';
   const date = new Date(value);
@@ -195,7 +202,12 @@ function PreEventDetail() {
         city: response.preEvent?.city || '',
         discoverEnabled: response.preEvent?.discoverEnabled === true
       });
-      toast.success('Pre-event settings updated');
+      const canAppearOnDiscover = response.preEvent?.discoverEnabled === true
+        && response.preEvent?.isRsvpActive
+        && isFutureDiscoverDate(response.preEvent?.eventDate);
+      toast.success(canAppearOnDiscover
+        ? 'Discover settings saved. Refresh the landing page or /discover to see it listed.'
+        : 'Settings saved. This event is hidden from Discover until RSVP is active and the event is upcoming.');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Unable to update live program link');
     } finally {
@@ -305,15 +317,21 @@ function PreEventDetail() {
               <h2>Event Visibility & Live Link</h2>
               <p>Control public discovery and connect this RSVP page to a live collect-data program.</p>
             </div>
-            <label className="pre-event-active-toggle">
-              <input
-                type="checkbox"
-                checked={eventMeta.discoverEnabled}
-                onChange={(event) => setEventMeta(prev => ({ ...prev, discoverEnabled: event.target.checked }))}
-              />
-              <span>Show on Discover Events</span>
-            </label>
           </div>
+          <label className={`pre-event-discover-switch ${eventMeta.discoverEnabled ? 'enabled' : ''}`}>
+            <input
+              type="checkbox"
+              checked={eventMeta.discoverEnabled}
+              onChange={(event) => setEventMeta(prev => ({ ...prev, discoverEnabled: event.target.checked }))}
+            />
+            <span className="pre-event-switch-track" aria-hidden="true">
+              <span className="pre-event-switch-thumb" />
+            </span>
+            <span className="pre-event-switch-copy">
+              <strong>Show on Discover Events</strong>
+              <small>List this RSVP page publicly on the landing Discover section.</small>
+            </span>
+          </label>
           <div className="pre-event-link-row pre-event-link-grid">
             <label className="pre-event-field">
               <span>Venue Name</span>
@@ -346,12 +364,14 @@ function PreEventDetail() {
                 ))}
               </select>
             </label>
-            <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
-              {savingLink ? 'Saving...' : 'Save Settings'}
-            </button>
+            <div className="pre-event-save-cell">
+              <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
+                {savingLink ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
           </div>
           <p className="pre-event-discover-note">
-            Discover is opt-in. Private RSVP links remain accessible even when public discovery is off.
+            Discover is opt-in. Private RSVP links remain accessible when public discovery is off. Only active, upcoming RSVP events appear on the landing page and /discover after refresh.
           </p>
         </section>
 

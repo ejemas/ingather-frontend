@@ -388,13 +388,107 @@
 }
 
 .pre-event-link-row.pre-event-link-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr) minmax(220px, 1fr) auto;
+  align-items: end;
+}
+
+.pre-event-save-cell {
+  display: flex;
+  align-items: end;
+  min-height: 74px;
+}
+
+.pre-event-save-cell .pre-events-primary-btn {
+  min-height: 48px;
+  white-space: nowrap;
 }
 
 .pre-event-discover-card {
   background:
     linear-gradient(135deg, rgba(232, 89, 12, 0.08), rgba(255, 255, 255, 0.02)),
     #ffffff;
+}
+
+.pre-event-discover-switch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: -2px 0 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pre-event-discover-switch:hover {
+  border-color: rgba(232, 89, 12, 0.34);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+.pre-event-discover-switch.enabled {
+  border-color: rgba(232, 89, 12, 0.45);
+  background: linear-gradient(135deg, rgba(232, 89, 12, 0.1), rgba(255, 255, 255, 0.92));
+}
+
+.pre-event-discover-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pre-event-switch-track {
+  width: 48px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 999px;
+  background: #dbe2ea;
+  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pre-event-switch-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.22);
+  transform: translateX(0);
+  transition: transform 0.18s ease;
+}
+
+.pre-event-discover-switch.enabled .pre-event-switch-track {
+  background: var(--color-orange);
+  box-shadow: 0 8px 18px rgba(232, 89, 12, 0.22);
+}
+
+.pre-event-discover-switch.enabled .pre-event-switch-thumb {
+  transform: translateX(20px);
+}
+
+.pre-event-discover-switch:focus-within {
+  outline: 3px solid rgba(232, 89, 12, 0.18);
+  outline-offset: 3px;
+}
+
+.pre-event-switch-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.pre-event-switch-copy strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.pre-event-switch-copy small {
+  color: var(--text-secondary);
+  line-height: 1.45;
 }
 
 .pre-event-discover-note {
@@ -1264,6 +1358,14 @@
 @media (max-width: 860px) {
   .pre-event-link-row.pre-event-link-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pre-event-save-cell {
+    min-height: 0;
+  }
+
+  .pre-event-save-cell .pre-events-primary-btn {
+    width: 100%;
   }
 
   .rsvp-event-shell {
