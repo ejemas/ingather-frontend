@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createProgram } from '../api/programService';
 import { useToast } from '../components/Toast';
+import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
+import { MAX_CUSTOM_FIELDS } from '../utils/customFields';
 import '../styles/Dashboard.css';
 import '../styles/CreateProgram.css';
 
@@ -210,6 +212,7 @@ function CreateProgram() {
     dataFieldConfig: {
       textareaLabel: 'Additional Response'
     },
+    customFormSchema: [],
     proxyCheckinEnabled: false,
     strictDeviceFingerprinting: true,
     enableGifting: false,
@@ -266,6 +269,7 @@ function CreateProgram() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSponsorSetup, setShowSponsorSetup] = useState(false);
   const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
+  const [customFieldModal, setCustomFieldModal] = useState(null);
   const profileMenuRef = useRef(null);
   const flyerInputRef = useRef(null);
   const sponsorsRef = useRef([]);
@@ -771,6 +775,34 @@ function CreateProgram() {
     }));
   };
 
+  const openCustomFieldModal = (field = null) => {
+    if (!field && formData.customFormSchema.length >= MAX_CUSTOM_FIELDS) {
+      toast.error(`You can add up to ${MAX_CUSTOM_FIELDS} custom fields.`);
+      return;
+    }
+    setCustomFieldModal(field || {});
+  };
+
+  const handleSaveCustomField = (field) => {
+    setFormData(prev => {
+      const exists = prev.customFormSchema.some(item => item.id === field.id);
+      return {
+        ...prev,
+        customFormSchema: exists
+          ? prev.customFormSchema.map(item => item.id === field.id ? field : item)
+          : [...prev.customFormSchema, field]
+      };
+    });
+    setCustomFieldModal(null);
+  };
+
+  const handleRemoveCustomField = (fieldId) => {
+    setFormData(prev => ({
+      ...prev,
+      customFormSchema: prev.customFormSchema.filter(field => field.id !== fieldId)
+    }));
+  };
+
   const handleGiftingToggle = () => {
     setFormData({
       ...formData,
@@ -918,6 +950,7 @@ function CreateProgram() {
         trackingMode: formData.trackingMode,
         dataFields: formData.dataFields,
         dataFieldConfig: formData.dataFieldConfig,
+        customFormSchema: formData.customFormSchema,
         proxyCheckinEnabled: formData.trackingMode === 'collect-data' && formData.proxyCheckinEnabled,
         strictDeviceFingerprinting: formData.trackingMode === 'collect-data'
           ? formData.strictDeviceFingerprinting
@@ -1721,6 +1754,31 @@ function CreateProgram() {
                     <small>This is what attendees will see above the long-answer field.</small>
                   </label>
                 )}
+                <div className="custom-field-list" aria-label="Customized fields">
+                  <div className="section-subhead">
+                    <h4>Customized Fields</h4>
+                    <p>Add extra questions for this event without changing the preset Ingather fields.</p>
+                  </div>
+                  {formData.customFormSchema.map(field => (
+                    <div className="custom-field-card" key={field.id}>
+                      <div>
+                        <strong>{field.label}</strong>
+                        <span>
+                          {field.type === 'text' ? 'Short Text' : field.type === 'radio' ? 'Radio Buttons' : 'Checkboxes'}
+                          {field.required ? ' · Required' : ' · Optional'}
+                          {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
+                        </span>
+                      </div>
+                      <div className="custom-field-card-actions">
+                        <button type="button" onClick={() => openCustomFieldModal(field)}>Edit</button>
+                        <button type="button" onClick={() => handleRemoveCustomField(field.id)}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" className="custom-field-add-btn" onClick={() => openCustomFieldModal()}>
+                    Add Custom Field
+                  </button>
+                </div>
                 {errors.dataFields && <span className="error-text">{errors.dataFields}</span>}
               </div>
             )}
@@ -1832,6 +1890,13 @@ function CreateProgram() {
         <FingerprintWarningModal
           onCancel={() => setShowFingerprintWarning(false)}
           onConfirm={confirmDisableStrictFingerprinting}
+        />
+      )}
+      {customFieldModal && (
+        <CustomFieldBuilderModal
+          field={customFieldModal.id ? customFieldModal : null}
+          onClose={() => setCustomFieldModal(null)}
+          onSave={handleSaveCustomField}
         />
       )}
     </div>

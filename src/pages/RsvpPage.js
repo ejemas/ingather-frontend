@@ -233,6 +233,17 @@ function RsvpPage() {
     setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
+  const updateCustomField = (fieldId, value) => {
+    setFormData(prev => ({
+      ...prev,
+      customResponses: {
+        ...(prev.customResponses || {}),
+        [fieldId]: value
+      }
+    }));
+    setErrors(prev => ({ ...prev, [fieldId]: '' }));
+  };
+
   const validate = () => {
     const nextErrors = {};
 
@@ -268,6 +279,19 @@ function RsvpPage() {
       }
       if (!String(formData[field] || '').trim()) {
         nextErrors[field] = `${FIELD_LABELS[field]} is required.`;
+      }
+    });
+
+    (preEvent?.customFormSchema || []).forEach((field) => {
+      const value = formData.customResponses?.[field.id];
+      if (field.type === 'checkbox') {
+        if (field.required && (!Array.isArray(value) || value.length === 0)) {
+          nextErrors[field.id] = `${field.label} is required.`;
+        }
+        return;
+      }
+      if (field.required && !String(value || '').trim()) {
+        nextErrors[field.id] = `${field.label} is required.`;
       }
     });
 
@@ -484,6 +508,75 @@ function RsvpPage() {
                         required
                       />
                       {errors[field] && <small>{errors[field]}</small>}
+                    </label>
+                  );
+                })}
+
+                {(preEvent.customFormSchema || []).map((field) => {
+                  const value = formData.customResponses?.[field.id];
+                  if (field.type === 'radio') {
+                    return (
+                      <fieldset className="rsvp-public-field rsvp-custom-choice-group" key={field.id}>
+                        <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                        {field.options.map(option => (
+                          <label className="rsvp-public-choice" key={option}>
+                            <input
+                              type="radio"
+                              name={field.id}
+                              value={option}
+                              checked={value === option}
+                              onChange={(event) => updateCustomField(field.id, event.target.value)}
+                              disabled={!preEvent.isRsvpActive || submitting}
+                              required={field.required}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        ))}
+                        {errors[field.id] && <small>{errors[field.id]}</small>}
+                      </fieldset>
+                    );
+                  }
+
+                  if (field.type === 'checkbox') {
+                    const selected = Array.isArray(value) ? value : [];
+                    return (
+                      <fieldset className="rsvp-public-field rsvp-custom-choice-group" key={field.id}>
+                        <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                        {field.options.map(option => (
+                          <label className="rsvp-public-choice" key={option}>
+                            <input
+                              type="checkbox"
+                              value={option}
+                              checked={selected.includes(option)}
+                              onChange={(event) => {
+                                const next = event.target.checked
+                                  ? [...selected, option]
+                                  : selected.filter(item => item !== option);
+                                updateCustomField(field.id, next);
+                              }}
+                              disabled={!preEvent.isRsvpActive || submitting}
+                            />
+                            <span>{option}</span>
+                          </label>
+                        ))}
+                        {errors[field.id] && <small>{errors[field.id]}</small>}
+                      </fieldset>
+                    );
+                  }
+
+                  return (
+                    <label className="rsvp-public-field" key={field.id}>
+                      <span>{field.label}{field.required ? ' *' : ''}</span>
+                      <input
+                        type="text"
+                        value={value || ''}
+                        onChange={(event) => updateCustomField(field.id, event.target.value)}
+                        placeholder="Type your answer"
+                        disabled={!preEvent.isRsvpActive || submitting}
+                        maxLength={500}
+                        required={field.required}
+                      />
+                      {errors[field.id] && <small>{errors[field.id]}</small>}
                     </label>
                   );
                 })}

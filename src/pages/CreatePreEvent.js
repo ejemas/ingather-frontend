@@ -4,7 +4,9 @@ import { createPreEvent } from '../api/preEventService';
 import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
+import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
+import { MAX_CUSTOM_FIELDS } from '../utils/customFields';
 import '../styles/PreEvents.css';
 
 const FIELD_LABELS = {
@@ -85,7 +87,8 @@ function CreatePreEvent() {
     },
     rsvpFieldConfig: {
       textareaLabel: 'Additional Response'
-    }
+    },
+    customFormSchema: []
   });
   const [programOptions, setProgramOptions] = useState([]);
   const [bannerData, setBannerData] = useState({
@@ -98,6 +101,7 @@ function CreatePreEvent() {
     error: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [customFieldModal, setCustomFieldModal] = useState(null);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -136,6 +140,34 @@ function CreatePreEvent() {
         ...prev.rsvpFieldConfig,
         [field]: value
       }
+    }));
+  };
+
+  const openCustomFieldModal = (field = null) => {
+    if (!field && formData.customFormSchema.length >= MAX_CUSTOM_FIELDS) {
+      toast.error(`You can add up to ${MAX_CUSTOM_FIELDS} custom fields.`);
+      return;
+    }
+    setCustomFieldModal(field || {});
+  };
+
+  const handleSaveCustomField = (field) => {
+    setFormData(prev => {
+      const exists = prev.customFormSchema.some(item => item.id === field.id);
+      return {
+        ...prev,
+        customFormSchema: exists
+          ? prev.customFormSchema.map(item => item.id === field.id ? field : item)
+          : [...prev.customFormSchema, field]
+      };
+    });
+    setCustomFieldModal(null);
+  };
+
+  const handleRemoveCustomField = (fieldId) => {
+    setFormData(prev => ({
+      ...prev,
+      customFormSchema: prev.customFormSchema.filter(field => field.id !== fieldId)
     }));
   };
 
@@ -221,6 +253,7 @@ function CreatePreEvent() {
         isRsvpActive: formData.isRsvpActive,
         rsvpFields: formData.rsvpFields,
         rsvpFieldConfig: formData.rsvpFieldConfig,
+        customFormSchema: formData.customFormSchema,
         banner
       });
 
@@ -410,6 +443,34 @@ function CreatePreEvent() {
                 <small>This is the label attendees will see on the RSVP page.</small>
               </label>
             )}
+
+            <div className="custom-field-list" aria-label="Customized RSVP fields">
+              <div className="pre-event-card-heading">
+                <div>
+                  <h2>Customized Fields</h2>
+                  <p>Add your own RSVP questions without changing Ingather’s preset fields.</p>
+                </div>
+              </div>
+              {formData.customFormSchema.map(field => (
+                <div className="custom-field-card" key={field.id}>
+                  <div>
+                    <strong>{field.label}</strong>
+                    <span>
+                      {field.type === 'text' ? 'Short Text' : field.type === 'radio' ? 'Radio Buttons' : 'Checkboxes'}
+                      {field.required ? ' · Required' : ' · Optional'}
+                      {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
+                    </span>
+                  </div>
+                  <div className="custom-field-card-actions">
+                    <button type="button" onClick={() => openCustomFieldModal(field)}>Edit</button>
+                    <button type="button" onClick={() => handleRemoveCustomField(field.id)}>Delete</button>
+                  </div>
+                </div>
+              ))}
+              <button type="button" className="custom-field-add-btn" onClick={() => openCustomFieldModal()}>
+                Add Custom Field
+              </button>
+            </div>
           </section>
 
           <div className="pre-event-submit-row">
@@ -419,6 +480,13 @@ function CreatePreEvent() {
             </button>
           </div>
         </form>
+        {customFieldModal && (
+          <CustomFieldBuilderModal
+            field={customFieldModal.id ? customFieldModal : null}
+            onClose={() => setCustomFieldModal(null)}
+            onSave={handleSaveCustomField}
+          />
+        )}
       </div>
     </DashboardShell>
   );

@@ -2063,3 +2063,58 @@
 .custom-bar-chart svg {
   display: block;
 }
+.pd-manual-custom-choice {
+  border: 1px solid var(--pd-border, #e5e7eb);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--pd-surface-soft, #fbfbfc);
+}
+
+.pd-manual-custom-choice legend {
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--pd-text, #071126);
+}
+
+.pd-manual-choice-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pd-manual-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid var(--pd-border, #e5e7eb);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pd-text, #071126);
+}
+
+.pd-manual-choice input {
+  width: 16px;
+  height: 16px;
+  accent-color: #f96d10;
+  flex: 0 0 auto;
+}
+
+[data-theme='dark'] .pd-manual-custom-choice {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .pd-manual-custom-choice legend,
+[data-theme='dark'] .pd-manual-choice {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .pd-manual-choice {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}

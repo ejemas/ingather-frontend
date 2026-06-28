@@ -13,6 +13,8 @@ import { getPreEvent, resendRsvpQrEmail, updatePreEvent } from '../api/preEventS
 import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
+import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
+import { MAX_CUSTOM_FIELDS, formatCustomAnswer } from '../utils/customFields';
 import '../styles/PreEvents.css';
 
 const FIELD_LABELS = {
@@ -94,6 +96,8 @@ function PreEventDetail() {
   const [programOptions, setProgramOptions] = useState([]);
   const [linkedProgramId, setLinkedProgramId] = useState('');
   const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false });
+  const [customFormSchema, setCustomFormSchema] = useState([]);
+  const [customFieldModal, setCustomFieldModal] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
   const [resendingRsvpId, setResendingRsvpId] = useState(null);
   const toast = useToast();
@@ -110,6 +114,7 @@ function PreEventDetail() {
           city: response.preEvent?.city || '',
           discoverEnabled: response.preEvent?.discoverEnabled === true
         });
+        setCustomFormSchema(response.preEvent?.customFormSchema || []);
         setRsvps(response.rsvps || []);
         setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
       } catch (error) {
@@ -146,8 +151,11 @@ function PreEventDetail() {
       if (preEvent.rsvpFields?.[field]) selected.push(field);
     });
     selected.push('createdAt');
+    customFormSchema.forEach((field) => {
+      selected.push(`custom:${field.id}`);
+    });
     return selected;
-  }, [preEvent]);
+  }, [preEvent, customFormSchema]);
 
   const filteredRsvps = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -155,6 +163,7 @@ function PreEventDetail() {
     return rsvps.filter((rsvp) => (
       [rsvp.emailAddress, rsvp.fullName, rsvp.phoneNumber, rsvp.school, rsvp.organization, rsvp.ticketType]
         .concat([rsvp.linkUrl, rsvp.textareaResponse, rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
+        .concat(Object.values(rsvp.customAnswers || {}).flat())
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(query))
     ));
@@ -192,6 +201,7 @@ function PreEventDetail() {
         discoverEnabled: eventMeta.discoverEnabled,
         rsvpFields: preEvent.rsvpFields,
         rsvpFieldConfig: preEvent.rsvpFieldConfig,
+        customFormSchema,
         isRsvpActive: preEvent.isRsvpActive,
         programId: linkedProgramId || null
       });
@@ -202,6 +212,7 @@ function PreEventDetail() {
         city: response.preEvent?.city || '',
         discoverEnabled: response.preEvent?.discoverEnabled === true
       });
+      setCustomFormSchema(response.preEvent?.customFormSchema || []);
       const canAppearOnDiscover = response.preEvent?.discoverEnabled === true
         && response.preEvent?.isRsvpActive
         && isFutureDiscoverDate(response.preEvent?.eventDate);
@@ -217,16 +228,41 @@ function PreEventDetail() {
 
   const getColumnLabel = (column) => {
     if (column === 'createdAt') return 'Submitted';
+    if (column.startsWith('custom:')) {
+      const fieldId = column.slice('custom:'.length);
+      return customFormSchema.find(field => field.id === fieldId)?.label || 'Custom Field';
+    }
     if (column === 'textarea') return preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
     return FIELD_LABELS[column] || column;
   };
 
   const getRsvpValue = (rsvp, column) => {
     if (column === 'createdAt') return formatSubmittedAt(rsvp.createdAt);
+    if (column.startsWith('custom:')) return formatCustomAnswer(rsvp.customAnswers?.[column.slice('custom:'.length)]);
     if (column === 'firstTimer') return rsvp.firstTimer ? 'Yes' : 'No';
     if (column === 'link') return rsvp.linkUrl || '-';
     if (column === 'textarea') return rsvp.textareaResponse || '-';
     return rsvp[column] || '-';
+  };
+
+  const openCustomFieldModal = (field = null) => {
+    if (!field && customFormSchema.length >= MAX_CUSTOM_FIELDS) {
+      toast.error(`You can add up to ${MAX_CUSTOM_FIELDS} custom fields.`);
+      return;
+    }
+    setCustomFieldModal(field || {});
+  };
+
+  const handleSaveCustomField = (field) => {
+    setCustomFormSchema(prev => {
+      const exists = prev.some(item => item.id === field.id);
+      return exists ? prev.map(item => item.id === field.id ? field : item) : [...prev, field];
+    });
+    setCustomFieldModal(null);
+  };
+
+  const handleRemoveCustomField = (fieldId) => {
+    setCustomFormSchema(prev => prev.filter(field => field.id !== fieldId));
   };
 
   const getQrStatusLabel = (rsvp) => {
@@ -375,6 +411,38 @@ function PreEventDetail() {
           </p>
         </section>
 
+        <section className="pre-event-form-card">
+          <div className="pre-event-card-heading">
+            <div>
+              <h2>Customized Fields</h2>
+              <p>Add extra RSVP questions for attendees. Click Save Settings above after editing.</p>
+            </div>
+            <button type="button" className="custom-field-add-btn" onClick={() => openCustomFieldModal()}>
+              Add Custom Field
+            </button>
+          </div>
+          <div className="custom-field-list">
+            {customFormSchema.length === 0 ? (
+              <p className="pre-event-discover-note">No custom RSVP questions yet.</p>
+            ) : customFormSchema.map(field => (
+              <div className="custom-field-card" key={field.id}>
+                <div>
+                  <strong>{field.label}</strong>
+                  <span>
+                    {field.type === 'text' ? 'Short Text' : field.type === 'radio' ? 'Radio Buttons' : 'Checkboxes'}
+                    {field.required ? ' · Required' : ' · Optional'}
+                    {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
+                  </span>
+                </div>
+                <div className="custom-field-card-actions">
+                  <button type="button" onClick={() => openCustomFieldModal(field)}>Edit</button>
+                  <button type="button" onClick={() => handleRemoveCustomField(field.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <section className="pre-event-analytics-grid">
           <article className="pre-event-chart-panel">
             <div className="pre-event-section-heading">
@@ -486,6 +554,13 @@ function PreEventDetail() {
             </div>
           )}
         </section>
+        {customFieldModal && (
+          <CustomFieldBuilderModal
+            field={customFieldModal.id ? customFieldModal : null}
+            onClose={() => setCustomFieldModal(null)}
+            onSave={handleSaveCustomField}
+          />
+        )}
       </div>
     </DashboardShell>
   );

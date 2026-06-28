@@ -1400,3 +1400,44 @@
     font-size: clamp(2.1rem, 12vw, 3.2rem);
   }
 }
+.rsvp-custom-choice-group {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.rsvp-custom-choice-group legend {
+  padding: 0 4px;
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.rsvp-custom-choice-group small {
+  display: block;
+  margin-top: 8px;
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+.rsvp-public-choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.rsvp-public-choice input {
+  width: 17px;
+  height: 17px;
+  accent-color: #f96d10;
+  flex: 0 0 auto;
+}

@@ -279,6 +279,76 @@ function ScanTextareaField({ label, error, ...textareaProps }) {
   );
 }
 
+function ScanCustomFields({ fields = [], values = {}, errors = {}, onChange }) {
+  if (!fields.length) return null;
+
+  return fields.map((field) => {
+    const value = values[field.id];
+    const label = `${field.label}${field.required ? ' *' : ''}`;
+
+    if (field.type === 'radio') {
+      return (
+        <fieldset className="scan-figma-field scan-custom-choice-group" key={field.id}>
+          <legend>{label}</legend>
+          {field.options.map(option => (
+            <label className="scan-custom-choice" key={option}>
+              <input
+                type="radio"
+                name={field.id}
+                value={option}
+                checked={value === option}
+                onChange={(event) => onChange(field.id, event.target.value)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {errors[field.id] && <span className="scan-figma-error">{errors[field.id]}</span>}
+        </fieldset>
+      );
+    }
+
+    if (field.type === 'checkbox') {
+      const selected = Array.isArray(value) ? value : [];
+      return (
+        <fieldset className="scan-figma-field scan-custom-choice-group" key={field.id}>
+          <legend>{label}</legend>
+          {field.options.map(option => (
+            <label className="scan-custom-choice" key={option}>
+              <input
+                type="checkbox"
+                value={option}
+                checked={selected.includes(option)}
+                onChange={(event) => {
+                  const next = event.target.checked
+                    ? [...selected, option]
+                    : selected.filter(item => item !== option);
+                  onChange(field.id, next);
+                }}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {errors[field.id] && <span className="scan-figma-error">{errors[field.id]}</span>}
+        </fieldset>
+      );
+    }
+
+    return (
+      <ScanInputField
+        key={field.id}
+        label={label}
+        type="text"
+        id={field.id}
+        value={value || ''}
+        onChange={(event) => onChange(field.id, event.target.value)}
+        placeholder="Type your answer"
+        maxLength={500}
+        error={errors[field.id]}
+      />
+    );
+  });
+}
+
 function PersonalizedFlyerViewer({ programData, programId, attendeeName, personalizedMessage, onClose, standalone = false, toast }) {
   const fallbackTemplateRef = useRef('');
   const fallbackTemplateKeyRef = useRef('');
@@ -964,7 +1034,8 @@ function ScanPage() {
     department: '',
     fellowship: '',
     age: '',
-    sex: ''
+    sex: '',
+    customResponses: {}
   });
   const [proxyFormErrors, setProxyFormErrors] = useState({});
   const [submittingProxy, setSubmittingProxy] = useState(false);
@@ -1156,7 +1227,8 @@ function ScanPage() {
       department: '',
       fellowship: '',
       age: '',
-      sex: ''
+      sex: '',
+      customResponses: {}
     });
     setProxyFormData({
       fullName: '',
@@ -1170,7 +1242,8 @@ function ScanPage() {
       department: '',
       fellowship: '',
       age: '',
-      sex: ''
+      sex: '',
+      customResponses: {}
     });
     setProxyFormErrors({});
     setLoading(true);
@@ -1194,6 +1267,49 @@ function ScanPage() {
         [name]: ''
       });
     }
+  };
+
+  const handleCustomResponseChange = (fieldId, value) => {
+    setFormData(prev => ({
+      ...prev,
+      customResponses: {
+        ...(prev.customResponses || {}),
+        [fieldId]: value
+      }
+    }));
+    if (formErrors[fieldId]) {
+      setFormErrors(prev => ({ ...prev, [fieldId]: '' }));
+    }
+  };
+
+  const handleProxyCustomResponseChange = (fieldId, value) => {
+    setProxyFormData(prev => ({
+      ...prev,
+      customResponses: {
+        ...(prev.customResponses || {}),
+        [fieldId]: value
+      }
+    }));
+    if (proxyFormErrors[fieldId]) {
+      setProxyFormErrors(prev => ({ ...prev, [fieldId]: '' }));
+    }
+  };
+
+  const validateCustomResponses = (values = {}) => {
+    const errors = {};
+    (programData?.customFormSchema || []).forEach((field) => {
+      const value = values[field.id];
+      if (field.type === 'checkbox') {
+        if (field.required && (!Array.isArray(value) || value.length === 0)) {
+          errors[field.id] = `${field.label} is required`;
+        }
+        return;
+      }
+      if (field.required && !String(value || '').trim()) {
+        errors[field.id] = `${field.label} is required`;
+      }
+    });
+    return errors;
   };
 
   const validateForm = () => {
@@ -1242,6 +1358,8 @@ function ScanPage() {
     if (programData.dataFields.sex && !formData.sex) {
       errors.sex = 'Please select your gender';
     }
+
+    Object.assign(errors, validateCustomResponses(formData.customResponses || {}));
 
     return errors;
   };
@@ -1307,7 +1425,8 @@ function ScanPage() {
         department: attendee.department || '',
         fellowship: attendee.fellowship || '',
         age: attendee.age || '',
-        sex: attendee.sex || ''
+        sex: attendee.sex || '',
+        customResponses: attendee.customResponses || {}
       };
 
       setFormData(attendeeFormData);
@@ -1340,7 +1459,8 @@ function ScanPage() {
     department: '',
     fellowship: '',
     age: '',
-    sex: ''
+    sex: '',
+    customResponses: {}
   });
 
   const handleProxyChange = (e) => {
@@ -1374,6 +1494,8 @@ function ScanPage() {
     if (dataFields.address && !proxyFormData.address.trim()) errors.address = 'Address is required';
     if (dataFields.department && !proxyFormData.department.trim()) errors.department = 'Department is required';
     if (dataFields.sex && !proxyFormData.sex) errors.sex = 'Please select gender';
+
+    Object.assign(errors, validateCustomResponses(proxyFormData.customResponses || {}));
 
     return errors;
   };
@@ -1970,6 +2092,12 @@ function ScanPage() {
                 <span>This attendee is a first-timer</span>
               </label>
             )}
+            <ScanCustomFields
+              fields={programData.customFormSchema || []}
+              values={proxyFormData.customResponses || {}}
+              errors={proxyFormErrors}
+              onChange={handleProxyCustomResponseChange}
+            />
           </div>
 
           <button type="submit" className="scan-figma-submit" disabled={submittingProxy}>
@@ -2189,6 +2317,12 @@ function ScanPage() {
                 <span>I am a first-timer</span>
               </label>
             )}
+            <ScanCustomFields
+              fields={programData.customFormSchema || []}
+              values={formData.customResponses || {}}
+              errors={formErrors}
+              onChange={handleCustomResponseChange}
+            />
           </div>
 
           <button

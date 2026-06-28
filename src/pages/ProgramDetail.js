@@ -5,6 +5,7 @@ import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootst
 import InfoTooltip from '../components/InfoTooltip';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
+import { formatCustomAnswer } from '../utils/customFields';
 import '../styles/Dashboard.css';
 import '../styles/ProgramDetail.css';
 
@@ -28,6 +29,38 @@ const isValidHttpUrl = (value) => {
   } catch (error) {
     return false;
   }
+};
+
+const getCustomFieldErrorKey = (fieldId) => `customResponses.${fieldId}`;
+
+const validateCustomFieldResponses = (fields = [], responses = {}) => {
+  const errors = {};
+
+  fields.forEach(field => {
+    const value = responses[field.id];
+    const errorKey = getCustomFieldErrorKey(field.id);
+
+    if (field.required) {
+      if (field.type === 'checkbox') {
+        if (!Array.isArray(value) || value.length === 0) {
+          errors[errorKey] = `${field.label} is required`;
+        }
+      } else if (!String(value || '').trim()) {
+        errors[errorKey] = `${field.label} is required`;
+      }
+    }
+
+    if (field.type === 'radio' && value && !field.options?.includes(value)) {
+      errors[errorKey] = `Select a valid option for ${field.label}`;
+    }
+
+    if (field.type === 'checkbox' && Array.isArray(value)) {
+      const invalid = value.some(option => !field.options?.includes(option));
+      if (invalid) errors[errorKey] = `Select valid options for ${field.label}`;
+    }
+  });
+
+  return errors;
 };
 
 /* ============================================
@@ -414,10 +447,12 @@ function ManualAttendeeModal({
   errors,
   submitting,
   onChange,
+  onCustomChange,
   onClose,
   onSubmit
 }) {
   const dataFields = program?.dataFields || {};
+  const customFields = program?.customFormSchema || [];
   const fieldLabels = {
     fullName: 'Full Name',
     emailAddress: 'Email Address',
@@ -550,6 +585,74 @@ function ManualAttendeeModal({
                 <span>Mark as first timer</span>
               </label>
             )}
+
+            {customFields.map(field => {
+              const errorKey = getCustomFieldErrorKey(field.id);
+              const value = formData.customResponses?.[field.id];
+
+              if (field.type === 'radio') {
+                return (
+                  <fieldset className="pd-manual-field pd-manual-custom-choice" key={field.id}>
+                    <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                    <div className="pd-manual-choice-list">
+                      {field.options.map(option => (
+                        <label key={option} className="pd-manual-choice">
+                          <input
+                            type="radio"
+                            name={`custom-${field.id}`}
+                            value={option}
+                            checked={value === option}
+                            onChange={() => onCustomChange(field.id, option)}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {errors[errorKey] && <small>{errors[errorKey]}</small>}
+                  </fieldset>
+                );
+              }
+
+              if (field.type === 'checkbox') {
+                const selectedOptions = Array.isArray(value) ? value : [];
+                return (
+                  <fieldset className="pd-manual-field pd-manual-custom-choice" key={field.id}>
+                    <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                    <div className="pd-manual-choice-list">
+                      {field.options.map(option => (
+                        <label key={option} className="pd-manual-choice">
+                          <input
+                            type="checkbox"
+                            checked={selectedOptions.includes(option)}
+                            onChange={(event) => {
+                              const nextValue = event.target.checked
+                                ? [...selectedOptions, option]
+                                : selectedOptions.filter(item => item !== option);
+                              onCustomChange(field.id, nextValue);
+                            }}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {errors[errorKey] && <small>{errors[errorKey]}</small>}
+                  </fieldset>
+                );
+              }
+
+              return (
+                <label className="pd-manual-field" key={field.id}>
+                  <span>{field.label}{field.required ? ' *' : ''}</span>
+                  <input
+                    name={`custom-${field.id}`}
+                    value={value || ''}
+                    onChange={(event) => onCustomChange(field.id, event.target.value)}
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                  />
+                  {errors[errorKey] && <small>{errors[errorKey]}</small>}
+                </label>
+              );
+            })}
           </div>
 
           <div className="pd-manual-actions">
@@ -807,7 +910,8 @@ function ProgramDetail() {
     fellowship: '',
     age: '',
     sex: '',
-    firstTimer: false
+    firstTimer: false,
+    customResponses: {}
   });
   const [manualErrors, setManualErrors] = useState({});
   const [manualSubmitting, setManualSubmitting] = useState(false);
@@ -1234,7 +1338,8 @@ function ProgramDetail() {
       fellowship: '',
       age: '',
       sex: '',
-      firstTimer: false
+      firstTimer: false,
+      customResponses: {}
     });
     setManualErrors({});
   };
@@ -1314,9 +1419,26 @@ function ProgramDetail() {
     }
   };
 
+  const handleManualCustomChange = (fieldId, value) => {
+    setManualFormData(prev => ({
+      ...prev,
+      customResponses: {
+        ...(prev.customResponses || {}),
+        [fieldId]: value
+      }
+    }));
+
+    const errorKey = getCustomFieldErrorKey(fieldId);
+    if (manualErrors[errorKey]) {
+      setManualErrors(prev => ({ ...prev, [errorKey]: '' }));
+    }
+  };
+
   const validateManualForm = () => {
     const dataFields = program?.dataFields || {};
-    const errors = {};
+    const errors = {
+      ...validateCustomFieldResponses(program?.customFormSchema || [], manualFormData.customResponses || {})
+    };
 
     if (dataFields.fullName && !manualFormData.fullName.trim()) errors.fullName = 'Full name is required';
     if (dataFields.emailAddress) {
@@ -1663,6 +1785,12 @@ function ProgramDetail() {
       if (dataFields.age) tableColumns.push({ header: 'Age', value: attendee => attendee.age ? `${attendee.age} Years` : '-' });
       if (dataFields.sex) tableColumns.push({ header: 'Gender', value: attendee => safeText(attendee.sex) });
       if (dataFields.firstTimer) tableColumns.push({ header: 'First Timer', value: attendee => attendee.firstTimer ? 'Yes' : 'No' });
+      (program.customFormSchema || []).forEach(field => {
+        tableColumns.push({
+          header: field.label,
+          value: attendee => safeText(formatCustomAnswer(attendee.customResponses?.[field.id]))
+        });
+      });
       if (program.giftingEnabled) {
         tableColumns.push({ header: 'Winner', value: attendee => attendee.isWinner ? 'Selected' : '-' });
         tableColumns.push({ header: 'Gifted', value: attendee => attendee.isWinner ? (attendee.isGifted ? 'Gifted' : 'Pending') : '-' });
@@ -1785,9 +1913,11 @@ function ProgramDetail() {
   ];
   const filteredAttendees = attendees.filter(attendee => {
     const matchesFilter = attendeeFilter === 'all' || getAttendeeRegistrationType(attendee) === attendeeFilter;
+    const customSearchValues = Object.values(attendee.customResponses || {})
+      .flatMap(value => Array.isArray(value) ? value : [value]);
     const matchesSearch = !searchQuery.trim()
-      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee)]
-        .some(value => (value || '').toLowerCase().includes(searchQuery.toLowerCase()));
+      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee), ...customSearchValues]
+        .some(value => String(value || '').toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesFilter && matchesSearch;
   });
   const attendeeTableColumnCount = [
@@ -1798,6 +1928,7 @@ function ProgramDetail() {
     program?.dataFields?.textarea,
     program?.dataFields?.fellowship,
     program?.dataFields?.age,
+    ...(program?.customFormSchema || []).map(() => true),
     program?.giftingEnabled,
     program?.giftingEnabled,
     true,
@@ -2294,6 +2425,9 @@ function ProgramDetail() {
                       {program.dataFields?.textarea && <th>{program.dataFieldConfig?.textareaLabel || 'Additional Response'}</th>}
                       {program.dataFields?.fellowship && <th>Group</th>}
                       {program.dataFields?.age && <th>Age</th>}
+                      {(program.customFormSchema || []).map(field => (
+                        <th key={field.id}>{field.label}</th>
+                      ))}
                       {program.giftingEnabled && <th>Winner</th>}
                       {program.giftingEnabled && <th>Gifted</th>}
                       <th>Source</th>
@@ -2332,6 +2466,11 @@ function ProgramDetail() {
                         {program.dataFields?.textarea && <td data-label={program.dataFieldConfig?.textareaLabel || 'Additional Response'}>{attendee.textareaResponse || '-'}</td>}
                         {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
                         {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
+                        {(program.customFormSchema || []).map(field => (
+                          <td key={field.id} data-label={field.label}>
+                            {formatCustomAnswer(attendee.customResponses?.[field.id])}
+                          </td>
+                        ))}
                         {program.giftingEnabled && (
                           <td data-label="Winner">
                             {attendee.isWinner ? <span className="pill-winner">✓ Completed</span> : <span className="pill-dash">-</span>}
@@ -2381,6 +2520,7 @@ function ProgramDetail() {
           errors={manualErrors}
           submitting={manualSubmitting}
           onChange={handleManualChange}
+          onCustomChange={handleManualCustomChange}
           onClose={closeManualModal}
           onSubmit={handleManualSubmit}
         />
