@@ -893,6 +893,7 @@ function ProgramDetail() {
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [attendeeFilter, setAttendeeFilter] = useState('all');
+  const [attendanceModeFilter, setAttendanceModeFilter] = useState('all');
   const [winnersGifted, setWinnersGifted] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
@@ -1604,6 +1605,8 @@ function ProgramDetail() {
       const reportStats = program.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
       const dataFields = program.dataFields || {};
       const hasProxyGuests = attendees.some(attendee => Boolean(attendee.proxyHostFingerprint));
+      const hasAttendanceModeData = attendees.some(attendee => Boolean(attendee.attendanceMode));
+      const virtualCheckins = attendees.filter(attendee => attendee.attendanceMode === 'virtual').length;
       const winnersSelected = attendees.filter(attendee => attendee.isWinner).length;
       const sponsorCount = latestSponsorAnalytics?.sponsorCount || 0;
       const totalSponsorClicks = latestSponsorAnalytics?.totalClicks || 0;
@@ -1693,6 +1696,9 @@ function ProgramDetail() {
       }
       if (hasSharedDeviceMetric) {
         metricCards.push({ label: 'Shared Devices', value: sharedDeviceCheckins.toLocaleString(), helper: 'Duplicate-device check-ins', accent: [14, 165, 233] });
+      }
+      if (hasAttendanceModeData && virtualCheckins > 0) {
+        metricCards.push({ label: 'Virtual Check-ins', value: virtualCheckins.toLocaleString(), helper: 'Attendees checked in virtually', accent: [99, 102, 241] });
       }
 
       doc.setFillColor(...dark);
@@ -1798,6 +1804,9 @@ function ProgramDetail() {
       if (hasProxyGuests) {
         tableColumns.push({ header: 'Entry Type', value: attendee => attendee.proxyHostFingerprint ? 'Proxy Guest' : 'Direct' });
       }
+      if (hasAttendanceModeData) {
+        tableColumns.push({ header: 'Attendance Mode', value: attendee => formatAttendanceMode(attendee.attendanceMode) });
+      }
       tableColumns.push({ header: 'Registration Type', value: attendee => getAttendeeSourceLabel(attendee) });
       tableColumns.push({ header: 'Checked In At', value: attendee => formatReportDateTime(attendee.checkedInAt || attendee.scanTime) });
 
@@ -1899,11 +1908,23 @@ function ProgramDetail() {
     if (type === 'proxy') return 'Proxy';
     return 'Walk-In';
   };
+  const formatAttendanceMode = (mode) => {
+    if (mode === 'virtual') return 'Virtual';
+    if (mode === 'physical') return 'Physical';
+    return '-';
+  };
   const attendeeSourceCounts = attendees.reduce((counts, attendee) => {
     const type = getAttendeeRegistrationType(attendee);
     counts[type] = (counts[type] || 0) + 1;
     return counts;
   }, {});
+  const attendanceModeCounts = attendees.reduce((counts, attendee) => {
+    const mode = attendee.attendanceMode || 'physical';
+    counts[mode] = (counts[mode] || 0) + 1;
+    return counts;
+  }, {});
+  const hasAttendanceModeData = attendees.some(attendee => Boolean(attendee.attendanceMode));
+  const virtualCheckinCount = attendanceModeCounts.virtual || 0;
   const attendeeFilterOptions = [
     { key: 'all', label: 'All', count: attendees.length },
     { key: 'rsvp', label: 'Pre-Registered', count: attendeeSourceCounts.rsvp || 0 },
@@ -1911,14 +1932,20 @@ function ProgramDetail() {
     { key: 'manual', label: 'Manual', count: attendeeSourceCounts.manual || 0 },
     { key: 'proxy', label: 'Proxy', count: attendeeSourceCounts.proxy || 0 }
   ];
+  const attendanceModeFilterOptions = [
+    { key: 'all', label: 'All Modes', count: attendees.length },
+    { key: 'physical', label: 'Physical', count: attendanceModeCounts.physical || 0 },
+    { key: 'virtual', label: 'Virtual', count: attendanceModeCounts.virtual || 0 }
+  ];
   const filteredAttendees = attendees.filter(attendee => {
     const matchesFilter = attendeeFilter === 'all' || getAttendeeRegistrationType(attendee) === attendeeFilter;
+    const matchesAttendanceMode = attendanceModeFilter === 'all' || (attendee.attendanceMode || 'physical') === attendanceModeFilter;
     const customSearchValues = Object.values(attendee.customResponses || {})
       .flatMap(value => Array.isArray(value) ? value : [value]);
     const matchesSearch = !searchQuery.trim()
-      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee), ...customSearchValues]
+      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee), formatAttendanceMode(attendee.attendanceMode), ...customSearchValues]
         .some(value => String(value || '').toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesFilter && matchesSearch;
+    return matchesFilter && matchesAttendanceMode && matchesSearch;
   });
   const attendeeTableColumnCount = [
     program?.dataFields?.fullName,
@@ -1929,6 +1956,7 @@ function ProgramDetail() {
     program?.dataFields?.fellowship,
     program?.dataFields?.age,
     ...(program?.customFormSchema || []).map(() => true),
+    hasAttendanceModeData,
     program?.giftingEnabled,
     program?.giftingEnabled,
     true,
@@ -2245,7 +2273,7 @@ function ProgramDetail() {
               </div>
 
               {/* Row 2: Secondary Metrics — Gender / Gifting (conditional) */}
-              {(program.dataFields?.sex || program.giftingEnabled || showSharedDeviceMetric) && (
+              {(program.dataFields?.sex || program.giftingEnabled || showSharedDeviceMetric || (hasAttendanceModeData && virtualCheckinCount > 0)) && (
                 <div className="pd-secondary-metrics">
                   {/* Gender Card */}
                   {program.dataFields?.sex && (
@@ -2305,6 +2333,23 @@ function ProgramDetail() {
                       </div>
                       <p className="pd-shared-device-copy">
                         {sharedDeviceCheckins.toLocaleString()} {sharedDeviceCheckins === 1 ? 'attendee checked' : 'attendees checked'} in from devices already used before.
+                      </p>
+                    </div>
+                  )}
+                  {hasAttendanceModeData && virtualCheckinCount > 0 && (
+                    <div className="pd-metric-card pd-virtual-mode-card">
+                      <span className="pd-metric-pill blue">Attendance Mode</span>
+                      <div className="pd-metric-row">
+                        <div className="pd-metric-item">
+                          <span className="pd-metric-icon virtual">{Icons.people}</span>
+                          <div>
+                            <div className="pd-metric-item-label">Virtual Check-ins</div>
+                            <div className="pd-metric-item-value">{virtualCheckinCount.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="pd-shared-device-copy">
+                        {virtualCheckinCount.toLocaleString()} {virtualCheckinCount === 1 ? 'attendee is' : 'attendees are'} marked as virtual.
                       </p>
                     </div>
                   )}
@@ -2414,6 +2459,20 @@ function ProgramDetail() {
                   </button>
                 ))}
               </div>
+              {hasAttendanceModeData && (
+                <div className="pd-attendee-filter-row pd-attendance-mode-filter-row" role="tablist" aria-label="Filter attendance mode">
+                  {attendanceModeFilterOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={`pd-attendee-filter ${attendanceModeFilter === option.key ? 'active' : ''}`}
+                      onClick={() => setAttendanceModeFilter(option.key)}
+                    >
+                      {option.label} <span>{option.count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="pd-table-container">
                 <table className="pd-table">
                   <thead>
@@ -2428,6 +2487,7 @@ function ProgramDetail() {
                       {(program.customFormSchema || []).map(field => (
                         <th key={field.id}>{field.label}</th>
                       ))}
+                      {hasAttendanceModeData && <th>Attendance Mode</th>}
                       {program.giftingEnabled && <th>Winner</th>}
                       {program.giftingEnabled && <th>Gifted</th>}
                       <th>Source</th>
@@ -2471,6 +2531,13 @@ function ProgramDetail() {
                             {formatCustomAnswer(attendee.customResponses?.[field.id])}
                           </td>
                         ))}
+                        {hasAttendanceModeData && (
+                          <td data-label="Attendance Mode">
+                            <span className={`pd-mode-badge ${attendee.attendanceMode || 'physical'}`}>
+                              {formatAttendanceMode(attendee.attendanceMode || 'physical')}
+                            </span>
+                          </td>
+                        )}
                         {program.giftingEnabled && (
                           <td data-label="Winner">
                             {attendee.isWinner ? <span className="pill-winner">✓ Completed</span> : <span className="pill-dash">-</span>}

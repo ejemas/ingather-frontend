@@ -95,7 +95,7 @@ function PreEventDetail() {
   const [page, setPage] = useState(0);
   const [programOptions, setProgramOptions] = useState([]);
   const [linkedProgramId, setLinkedProgramId] = useState('');
-  const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false });
+  const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false, virtualAttendanceEnabled: false });
   const [customFormSchema, setCustomFormSchema] = useState([]);
   const [customFieldModal, setCustomFieldModal] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
@@ -112,7 +112,8 @@ function PreEventDetail() {
         setEventMeta({
           venueName: response.preEvent?.venueName || '',
           city: response.preEvent?.city || '',
-          discoverEnabled: response.preEvent?.discoverEnabled === true
+          discoverEnabled: response.preEvent?.discoverEnabled === true,
+          virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
         });
         setCustomFormSchema(response.preEvent?.customFormSchema || []);
         setRsvps(response.rsvps || []);
@@ -147,6 +148,7 @@ function PreEventDetail() {
   const columns = useMemo(() => {
     if (!preEvent) return ['emailAddress'];
     const selected = ['emailAddress'];
+    if (preEvent.virtualAttendanceEnabled || rsvps.some(rsvp => rsvp.attendanceMode)) selected.push('attendanceMode');
     OPTIONAL_FIELDS.forEach((field) => {
       if (preEvent.rsvpFields?.[field]) selected.push(field);
     });
@@ -155,14 +157,14 @@ function PreEventDetail() {
       selected.push(`custom:${field.id}`);
     });
     return selected;
-  }, [preEvent, customFormSchema]);
+  }, [preEvent, customFormSchema, rsvps]);
 
   const filteredRsvps = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return rsvps;
     return rsvps.filter((rsvp) => (
       [rsvp.emailAddress, rsvp.fullName, rsvp.phoneNumber, rsvp.school, rsvp.organization, rsvp.ticketType]
-        .concat([rsvp.linkUrl, rsvp.textareaResponse, rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
+        .concat([rsvp.linkUrl, rsvp.textareaResponse, rsvp.address, rsvp.department, rsvp.fellowship, rsvp.age, rsvp.sex, rsvp.attendanceMode, rsvp.firstTimer ? 'first timer yes' : 'first timer no'])
         .concat(Object.values(rsvp.customAnswers || {}).flat())
         .filter(Boolean)
         .some(value => String(value).toLowerCase().includes(query))
@@ -172,6 +174,9 @@ function PreEventDetail() {
   const totalPages = Math.max(1, Math.ceil(filteredRsvps.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages - 1);
   const visibleRsvps = filteredRsvps.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const physicalRsvpCount = rsvps.filter(rsvp => rsvp.attendanceMode === 'physical').length;
+  const virtualRsvpCount = rsvps.filter(rsvp => rsvp.attendanceMode === 'virtual').length;
+  const showAttendanceModeStats = preEvent?.virtualAttendanceEnabled || physicalRsvpCount > 0 || virtualRsvpCount > 0;
 
   const copyLink = async () => {
     if (!preEvent?.publicUrl) return;
@@ -199,6 +204,7 @@ function PreEventDetail() {
         venueName: eventMeta.venueName,
         city: eventMeta.city,
         discoverEnabled: eventMeta.discoverEnabled,
+        virtualAttendanceEnabled: eventMeta.virtualAttendanceEnabled,
         rsvpFields: preEvent.rsvpFields,
         rsvpFieldConfig: preEvent.rsvpFieldConfig,
         customFormSchema,
@@ -210,7 +216,8 @@ function PreEventDetail() {
       setEventMeta({
         venueName: response.preEvent?.venueName || '',
         city: response.preEvent?.city || '',
-        discoverEnabled: response.preEvent?.discoverEnabled === true
+        discoverEnabled: response.preEvent?.discoverEnabled === true,
+        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
       });
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
       const canAppearOnDiscover = response.preEvent?.discoverEnabled === true
@@ -228,6 +235,7 @@ function PreEventDetail() {
 
   const getColumnLabel = (column) => {
     if (column === 'createdAt') return 'Submitted';
+    if (column === 'attendanceMode') return 'Attendance Mode';
     if (column.startsWith('custom:')) {
       const fieldId = column.slice('custom:'.length);
       return customFormSchema.find(field => field.id === fieldId)?.label || 'Custom Field';
@@ -239,6 +247,7 @@ function PreEventDetail() {
   const getRsvpValue = (rsvp, column) => {
     if (column === 'createdAt') return formatSubmittedAt(rsvp.createdAt);
     if (column.startsWith('custom:')) return formatCustomAnswer(rsvp.customAnswers?.[column.slice('custom:'.length)]);
+    if (column === 'attendanceMode') return rsvp.attendanceMode ? rsvp.attendanceMode.charAt(0).toUpperCase() + rsvp.attendanceMode.slice(1) : '-';
     if (column === 'firstTimer') return rsvp.firstTimer ? 'Yes' : 'No';
     if (column === 'link') return rsvp.linkUrl || '-';
     if (column === 'textarea') return rsvp.textareaResponse || '-';
@@ -345,6 +354,20 @@ function PreEventDetail() {
             <strong>{preEvent.isRsvpActive ? 'Open' : 'Paused'}</strong>
             <p>{preEvent.isRsvpActive ? 'The RSVP page is accepting registrations.' : 'New RSVPs are currently blocked.'}</p>
           </article>
+          {showAttendanceModeStats && (
+            <>
+              <article className="pre-event-metric-card">
+                <span>Physical RSVPs</span>
+                <strong>{physicalRsvpCount}</strong>
+                <p>Attendees planning to join in person.</p>
+              </article>
+              <article className="pre-event-metric-card">
+                <span>Virtual RSVPs</span>
+                <strong>{virtualRsvpCount}</strong>
+                <p>Attendees planning to join online.</p>
+              </article>
+            </>
+          )}
         </section>
 
         <section className="pre-event-form-card pre-event-link-card">
@@ -409,6 +432,20 @@ function PreEventDetail() {
           <p className="pre-event-discover-note">
             Discover is opt-in. Private RSVP links remain accessible when public discovery is off. Only active, upcoming RSVP events appear on the landing page and /discover after refresh.
           </p>
+          <label className={`pre-event-virtual-switch ${eventMeta.virtualAttendanceEnabled ? 'enabled' : ''}`}>
+            <input
+              type="checkbox"
+              checked={eventMeta.virtualAttendanceEnabled}
+              onChange={(event) => setEventMeta(prev => ({ ...prev, virtualAttendanceEnabled: event.target.checked }))}
+            />
+            <span className="pre-event-switch-track" aria-hidden="true">
+              <span className="pre-event-switch-thumb" />
+            </span>
+            <span className="pre-event-switch-copy">
+              <strong>Track virtual attendance</strong>
+              <small>Ask attendees whether they will attend physically or virtually.</small>
+            </span>
+          </label>
         </section>
 
         <section className="pre-event-form-card">
@@ -514,6 +551,10 @@ function PreEventDetail() {
                         <td key={`${rsvp.id}-${column}`}>
                           {column === 'link' && rsvp.linkUrl ? (
                             <a className="pre-event-table-link" href={rsvp.linkUrl} target="_blank" rel="noreferrer">Open link</a>
+                          ) : column === 'attendanceMode' && rsvp.attendanceMode ? (
+                            <span className={`pre-event-mode-badge ${rsvp.attendanceMode}`}>
+                              {getRsvpValue(rsvp, column)}
+                            </span>
                           ) : (
                             getRsvpValue(rsvp, column)
                           )}

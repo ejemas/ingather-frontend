@@ -68,6 +68,7 @@ function CreatePreEvent() {
     city: '',
     description: '',
     discoverEnabled: false,
+    virtualAttendanceEnabled: false,
     isRsvpActive: true,
     rsvpFields: {
       emailAddress: true,
@@ -250,6 +251,7 @@ function CreatePreEvent() {
         city: formData.city,
         description: formData.description,
         discoverEnabled: formData.discoverEnabled,
+        virtualAttendanceEnabled: formData.virtualAttendanceEnabled,
         isRsvpActive: formData.isRsvpActive,
         rsvpFields: formData.rsvpFields,
         rsvpFieldConfig: formData.rsvpFieldConfig,
@@ -430,6 +432,22 @@ function CreatePreEvent() {
                 </button>
               ))}
             </div>
+
+            <label className={`pre-event-virtual-switch ${formData.virtualAttendanceEnabled ? 'enabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={formData.virtualAttendanceEnabled}
+                onChange={(event) => updateField('virtualAttendanceEnabled', event.target.checked)}
+              />
+              <span className="pre-event-switch-track" aria-hidden="true">
+                <span className="pre-event-switch-thumb" />
+              </span>
+              <span className="pre-event-switch-copy">
+                <strong>Track virtual attendance</strong>
+                <small>Ask attendees whether they will attend physically or virtually.</small>
+              </span>
+            </label>
+
             {formData.rsvpFields.textarea && (
               <label className="pre-event-field pre-event-field-config">
                 <span>Textarea question label</span>

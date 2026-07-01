@@ -125,7 +125,7 @@ const buildThemeFromRgb = (r, g, b) => {
 function RsvpPage() {
   const { slug } = useParams();
   const [preEvent, setPreEvent] = useState(null);
-  const [formData, setFormData] = useState({ emailAddress: '' });
+  const [formData, setFormData] = useState({ emailAddress: '', attendanceMode: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -249,6 +249,10 @@ function RsvpPage() {
 
     if (!isValidEmail(formData.emailAddress)) {
       nextErrors.emailAddress = 'Enter a valid email address.';
+    }
+
+    if (preEvent?.virtualAttendanceEnabled && !['physical', 'virtual'].includes(formData.attendanceMode)) {
+      nextErrors.attendanceMode = 'Please select how you will attend.';
     }
 
     selectedFields.forEach((field) => {
@@ -422,6 +426,37 @@ function RsvpPage() {
                 )}
 
                 {serverError && <p className="rsvp-public-error">{serverError}</p>}
+
+                {preEvent.virtualAttendanceEnabled && (
+                  <fieldset className="rsvp-public-field rsvp-attendance-mode-group">
+                    <legend>How will you attend? *</legend>
+                    <label className="rsvp-public-choice">
+                      <input
+                        type="radio"
+                        name="attendanceMode"
+                        value="physical"
+                        checked={formData.attendanceMode === 'physical'}
+                        onChange={(event) => updateField('attendanceMode', event.target.value)}
+                        disabled={!preEvent.isRsvpActive || submitting}
+                        required
+                      />
+                      <span>Physical</span>
+                    </label>
+                    <label className="rsvp-public-choice">
+                      <input
+                        type="radio"
+                        name="attendanceMode"
+                        value="virtual"
+                        checked={formData.attendanceMode === 'virtual'}
+                        onChange={(event) => updateField('attendanceMode', event.target.value)}
+                        disabled={!preEvent.isRsvpActive || submitting}
+                        required
+                      />
+                      <span>Virtual</span>
+                    </label>
+                    {errors.attendanceMode && <small>{errors.attendanceMode}</small>}
+                  </fieldset>
+                )}
 
                 {selectedFields.map((field) => {
                   if (field === 'firstTimer') {
