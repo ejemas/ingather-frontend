@@ -35,6 +35,11 @@ export const resendRsvpQrEmail = async (preEventId, rsvpId) => {
   return response.data;
 };
 
+export const addManualPreEventRsvp = async (preEventId, formData, sendQrEmail = true) => {
+  const response = await API.post(`/pre-events/${preEventId}/rsvps/manual`, { formData, sendQrEmail });
+  return response.data;
+};
+
 export const deletePreEvent = async (id) => {
   const response = await API.delete(`/pre-events/${id}`);
   return response.data;

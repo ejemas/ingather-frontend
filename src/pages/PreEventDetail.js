@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Bar,
@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { getPreEvent, resendRsvpQrEmail, updatePreEvent } from '../api/preEventService';
+import { addManualPreEventRsvp, getPreEvent, resendRsvpQrEmail, updatePreEvent } from '../api/preEventService';
 import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
 import { useToast } from '../components/Toast';
@@ -51,6 +51,40 @@ const OPTIONAL_FIELDS = [
 ];
 const PAGE_SIZE = 10;
 
+const FIELD_PLACEHOLDERS = {
+  emailAddress: 'you@example.com',
+  fullName: 'Full name',
+  phoneNumber: 'Phone number',
+  school: 'School',
+  link: 'https://github.com/attendee',
+  textarea: 'Write the attendee response',
+  organization: 'Organization, company, or group',
+  ticketType: 'General, VIP, Student...',
+  address: 'Address',
+  department: 'Department',
+  fellowship: 'Group',
+  age: 'Age'
+};
+
+const isValidEmail = (value) => {
+  const email = String(value || '').trim();
+  return email.length > 0
+    && email.length <= 255
+    && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    && email.indexOf('@') === email.lastIndexOf('@');
+};
+
+const isValidHttpUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch (error) {
+    return false;
+  }
+};
+
 const isFutureDiscoverDate = (value) => {
   if (!value) return false;
   const date = new Date(value);
@@ -85,6 +119,332 @@ const formatSubmittedAt = (value) => {
   });
 };
 
+function ManualRsvpModal({ preEvent, customFormSchema, submitting, onClose, onSubmit }) {
+  const [formData, setFormData] = useState({ emailAddress: '', attendanceMode: '', customResponses: {} });
+  const [sendQrEmail, setSendQrEmail] = useState(true);
+  const [errors, setErrors] = useState({});
+
+  const selectedFields = useMemo(() => {
+    const fields = ['emailAddress'];
+    OPTIONAL_FIELDS.forEach((field) => {
+      if (preEvent?.rsvpFields?.[field]) fields.push(field);
+    });
+    return fields;
+  }, [preEvent]);
+
+  const updateField = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: '' }));
+  };
+
+  const updateCustomField = (fieldId, value) => {
+    setFormData(prev => ({
+      ...prev,
+      customResponses: {
+        ...(prev.customResponses || {}),
+        [fieldId]: value
+      }
+    }));
+    setErrors(prev => ({ ...prev, [fieldId]: '' }));
+  };
+
+  const validate = () => {
+    const nextErrors = {};
+
+    if (!isValidEmail(formData.emailAddress)) {
+      nextErrors.emailAddress = 'Enter a valid email address.';
+    }
+
+    if (preEvent?.virtualAttendanceEnabled && !['physical', 'virtual'].includes(formData.attendanceMode)) {
+      nextErrors.attendanceMode = 'Please select how this attendee will attend.';
+    }
+
+    selectedFields.forEach((field) => {
+      if (field === 'emailAddress' || field === 'firstTimer') return;
+
+      if (field === 'link') {
+        if (!String(formData.linkUrl || '').trim()) {
+          nextErrors.linkUrl = 'Link is required.';
+        } else if (!isValidHttpUrl(formData.linkUrl)) {
+          nextErrors.linkUrl = 'Enter a valid link starting with http:// or https://.';
+        }
+        return;
+      }
+
+      if (field === 'textarea') {
+        if (!String(formData.textareaResponse || '').trim()) {
+          nextErrors.textareaResponse = 'Response is required.';
+        }
+        return;
+      }
+
+      if (field === 'age') {
+        const age = Number(formData.age);
+        if (!String(formData.age || '').trim()) {
+          nextErrors.age = 'Age is required.';
+        } else if (!Number.isInteger(age) || age < 1 || age > 120) {
+          nextErrors.age = 'Enter an age between 1 and 120.';
+        }
+        return;
+      }
+
+      if (!String(formData[field] || '').trim()) {
+        nextErrors[field] = `${FIELD_LABELS[field]} is required.`;
+      }
+    });
+
+    (customFormSchema || []).forEach((field) => {
+      const value = formData.customResponses?.[field.id];
+      if (field.type === 'checkbox') {
+        if (field.required && (!Array.isArray(value) || value.length === 0)) {
+          nextErrors[field.id] = `${field.label} is required.`;
+        }
+        return;
+      }
+
+      if (field.required && !String(value || '').trim()) {
+        nextErrors[field.id] = `${field.label} is required.`;
+      }
+    });
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    if (!validate()) return;
+    onSubmit(formData, sendQrEmail);
+  };
+
+  return (
+    <div className="pre-event-manual-overlay" role="presentation" onMouseDown={onClose}>
+      <form
+        className="pre-event-manual-modal"
+        onSubmit={submit}
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manual-rsvp-title"
+      >
+        <div className="pre-event-manual-header">
+          <div>
+            <span>Manual RSVP entry</span>
+            <h3 id="manual-rsvp-title">Add pre-registered attendee</h3>
+            <p>Save someone as pre-registered so live QR fast-track can check them in by email.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={submitting} aria-label="Close manual RSVP entry">x</button>
+        </div>
+
+        <div className="pre-event-manual-body">
+          {preEvent?.virtualAttendanceEnabled && (
+            <fieldset className="pre-event-manual-choice-group">
+              <legend>How will this attendee attend? *</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="manualAttendanceMode"
+                  value="physical"
+                  checked={formData.attendanceMode === 'physical'}
+                  onChange={(event) => updateField('attendanceMode', event.target.value)}
+                  disabled={submitting}
+                />
+                <span>Physical</span>
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="manualAttendanceMode"
+                  value="virtual"
+                  checked={formData.attendanceMode === 'virtual'}
+                  onChange={(event) => updateField('attendanceMode', event.target.value)}
+                  disabled={submitting}
+                />
+                <span>Virtual</span>
+              </label>
+              {errors.attendanceMode && <small>{errors.attendanceMode}</small>}
+            </fieldset>
+          )}
+
+          <div className="pre-event-manual-grid">
+            {selectedFields.map((field) => {
+              if (field === 'firstTimer') {
+                return (
+                  <label className="pre-event-manual-check" key={field}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(formData.firstTimer)}
+                      onChange={(event) => updateField('firstTimer', event.target.checked)}
+                      disabled={submitting}
+                    />
+                    <span>I am a first-time attendee</span>
+                  </label>
+                );
+              }
+
+              if (field === 'sex') {
+                return (
+                  <label className="pre-event-manual-field" key={field}>
+                    <span>{FIELD_LABELS[field]}</span>
+                    <select
+                      value={formData.sex || ''}
+                      onChange={(event) => updateField('sex', event.target.value)}
+                      disabled={submitting}
+                    >
+                      <option value="">Select gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                    {errors[field] && <small>{errors[field]}</small>}
+                  </label>
+                );
+              }
+
+              if (field === 'link') {
+                return (
+                  <label className="pre-event-manual-field" key={field}>
+                    <span>{FIELD_LABELS[field]}</span>
+                    <input
+                      type="url"
+                      value={formData.linkUrl || ''}
+                      onChange={(event) => updateField('linkUrl', event.target.value)}
+                      placeholder={FIELD_PLACEHOLDERS[field]}
+                      disabled={submitting}
+                    />
+                    {errors.linkUrl && <small>{errors.linkUrl}</small>}
+                  </label>
+                );
+              }
+
+              if (field === 'textarea') {
+                const textareaLabel = preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
+                return (
+                  <label className="pre-event-manual-field wide" key={field}>
+                    <span>{textareaLabel}</span>
+                    <textarea
+                      value={formData.textareaResponse || ''}
+                      onChange={(event) => updateField('textareaResponse', event.target.value)}
+                      placeholder={FIELD_PLACEHOLDERS[field]}
+                      disabled={submitting}
+                      rows={4}
+                      maxLength={5000}
+                    />
+                    {errors.textareaResponse && <small>{errors.textareaResponse}</small>}
+                  </label>
+                );
+              }
+
+              return (
+                <label className="pre-event-manual-field" key={field}>
+                  <span>{FIELD_LABELS[field]}</span>
+                  <input
+                    type={field === 'emailAddress' ? 'email' : field === 'age' ? 'number' : 'text'}
+                    value={formData[field] || ''}
+                    onChange={(event) => updateField(field, event.target.value)}
+                    placeholder={FIELD_PLACEHOLDERS[field]}
+                    disabled={submitting}
+                    maxLength={field === 'emailAddress' ? 255 : undefined}
+                    min={field === 'age' ? 1 : undefined}
+                    max={field === 'age' ? 120 : undefined}
+                  />
+                  {errors[field] && <small>{errors[field]}</small>}
+                </label>
+              );
+            })}
+          </div>
+
+          {(customFormSchema || []).map((field) => {
+            const value = formData.customResponses?.[field.id];
+            if (field.type === 'radio') {
+              return (
+                <fieldset className="pre-event-manual-choice-group" key={field.id}>
+                  <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                  {field.options.map(option => (
+                    <label key={option}>
+                      <input
+                        type="radio"
+                        name={`manual-${field.id}`}
+                        value={option}
+                        checked={value === option}
+                        onChange={(event) => updateCustomField(field.id, event.target.value)}
+                        disabled={submitting}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                  {errors[field.id] && <small>{errors[field.id]}</small>}
+                </fieldset>
+              );
+            }
+
+            if (field.type === 'checkbox') {
+              const selected = Array.isArray(value) ? value : [];
+              return (
+                <fieldset className="pre-event-manual-choice-group" key={field.id}>
+                  <legend>{field.label}{field.required ? ' *' : ''}</legend>
+                  {field.options.map(option => (
+                    <label key={option}>
+                      <input
+                        type="checkbox"
+                        value={option}
+                        checked={selected.includes(option)}
+                        onChange={(event) => {
+                          const next = event.target.checked
+                            ? [...selected, option]
+                            : selected.filter(item => item !== option);
+                          updateCustomField(field.id, next);
+                        }}
+                        disabled={submitting}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                  {errors[field.id] && <small>{errors[field.id]}</small>}
+                </fieldset>
+              );
+            }
+
+            return (
+              <label className="pre-event-manual-field wide" key={field.id}>
+                <span>{field.label}{field.required ? ' *' : ''}</span>
+                <input
+                  type="text"
+                  value={value || ''}
+                  onChange={(event) => updateCustomField(field.id, event.target.value)}
+                  placeholder="Type the attendee answer"
+                  disabled={submitting}
+                  maxLength={500}
+                />
+                {errors[field.id] && <small>{errors[field.id]}</small>}
+              </label>
+            );
+          })}
+
+          <label className="pre-event-manual-email-toggle">
+            <input
+              type="checkbox"
+              checked={sendQrEmail}
+              onChange={(event) => setSendQrEmail(event.target.checked)}
+              disabled={submitting}
+            />
+            <span>
+              <strong>Send RSVP QR email now</strong>
+              <small>Attendee receives their QR code and short RSVP token immediately.</small>
+            </span>
+          </label>
+        </div>
+
+        <div className="pre-event-manual-actions">
+          <button type="button" className="pre-event-manual-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button type="submit" className="pre-events-primary-btn" disabled={submitting}>
+            {submitting ? 'Adding...' : 'Add RSVP'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function PreEventDetail() {
   const { id } = useParams();
   const [preEvent, setPreEvent] = useState(null);
@@ -100,33 +460,35 @@ function PreEventDetail() {
   const [customFieldModal, setCustomFieldModal] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
   const [resendingRsvpId, setResendingRsvpId] = useState(null);
+  const [manualRsvpOpen, setManualRsvpOpen] = useState(false);
+  const [manualRsvpSubmitting, setManualRsvpSubmitting] = useState(false);
   const toast = useToast();
 
-  useEffect(() => {
-    const loadDetail = async () => {
-      try {
-        setLoading(true);
-        const response = await getPreEvent(id);
-        setPreEvent(response.preEvent);
-        setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
-        setEventMeta({
-          venueName: response.preEvent?.venueName || '',
-          city: response.preEvent?.city || '',
-          discoverEnabled: response.preEvent?.discoverEnabled === true,
-          virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
-        });
-        setCustomFormSchema(response.preEvent?.customFormSchema || []);
-        setRsvps(response.rsvps || []);
-        setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
-      } catch (error) {
-        toast.error(error.response?.data?.error || 'Unable to load pre-event dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDetail();
+  const loadDetail = useCallback(async (showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
+      const response = await getPreEvent(id);
+      setPreEvent(response.preEvent);
+      setLinkedProgramId(response.preEvent?.programId ? String(response.preEvent.programId) : '');
+      setEventMeta({
+        venueName: response.preEvent?.venueName || '',
+        city: response.preEvent?.city || '',
+        discoverEnabled: response.preEvent?.discoverEnabled === true,
+        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
+      });
+      setCustomFormSchema(response.preEvent?.customFormSchema || []);
+      setRsvps(response.rsvps || []);
+      setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Unable to load pre-event dashboard');
+    } finally {
+      if (showLoader) setLoading(false);
+    }
   }, [id, toast]);
+
+  useEffect(() => {
+    loadDetail();
+  }, [loadDetail]);
 
   useEffect(() => {
     const loadPrograms = async () => {
@@ -292,6 +654,27 @@ function PreEventDetail() {
       toast.error(error.response?.data?.error || 'Unable to resend RSVP QR email');
     } finally {
       setResendingRsvpId(null);
+    }
+  };
+
+  const addManualRsvp = async (formData, sendQrEmail) => {
+    try {
+      setManualRsvpSubmitting(true);
+      const response = await addManualPreEventRsvp(preEvent.id, formData, sendQrEmail);
+      await loadDetail(false);
+      setManualRsvpOpen(false);
+
+      if (response.emailWarning) {
+        toast.warning(response.message || response.emailWarning);
+      } else if (sendQrEmail && response.qrEmailSent) {
+        toast.success('RSVP added and QR email sent.');
+      } else {
+        toast.success(response.message || 'RSVP added successfully.');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Unable to add RSVP manually');
+    } finally {
+      setManualRsvpSubmitting(false);
     }
   };
 
@@ -516,13 +899,18 @@ function PreEventDetail() {
               <h2>RSVP Attendees</h2>
               <p>Dynamic columns mirror the fields selected during setup.</p>
             </div>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search RSVPs..."
-              className="pre-event-search"
-            />
+            <div className="pre-event-table-actions">
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search RSVPs..."
+                className="pre-event-search"
+              />
+              <button type="button" className="pre-event-add-manual-btn" onClick={() => setManualRsvpOpen(true)}>
+                + Add Manually
+              </button>
+            </div>
           </div>
 
           <div className="pre-event-table-scroll">
@@ -600,6 +988,17 @@ function PreEventDetail() {
             field={customFieldModal.id ? customFieldModal : null}
             onClose={() => setCustomFieldModal(null)}
             onSave={handleSaveCustomField}
+          />
+        )}
+        {manualRsvpOpen && (
+          <ManualRsvpModal
+            preEvent={preEvent}
+            customFormSchema={customFormSchema}
+            submitting={manualRsvpSubmitting}
+            onClose={() => {
+              if (!manualRsvpSubmitting) setManualRsvpOpen(false);
+            }}
+            onSubmit={addManualRsvp}
           />
         )}
       </div>
