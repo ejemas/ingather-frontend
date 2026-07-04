@@ -122,6 +122,13 @@ const buildThemeFromRgb = (r, g, b) => {
   };
 };
 
+const LocationIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 8.5c0 4.5-6 8.5-6 8.5s-6-4-6-8.5a6 6 0 1 1 12 0Z" />
+    <circle cx="10" cy="8.5" r="2" />
+  </svg>
+);
+
 function RsvpPage() {
   const { slug } = useParams();
   const [preEvent, setPreEvent] = useState(null);
@@ -380,6 +387,10 @@ function RsvpPage() {
             <strong>{preEvent.rsvpCount || 0} Going</strong>
             <p>Attendees who have secured access through Ingather.</p>
           </div>
+          <section className="rsvp-event-about">
+            <h2>About Event</h2>
+            <p>{preEvent.description || 'More details will be shared by the organizer soon.'}</p>
+          </section>
         </aside>
 
         <section className="rsvp-event-main">
@@ -398,7 +409,7 @@ function RsvpPage() {
               </p>
             </div>
             <div className="rsvp-event-meta">
-              <span className="rsvp-event-meta-icon">⌖</span>
+              <span className="rsvp-event-meta-icon"><LocationIcon /></span>
               <p>
                 <strong>{preEvent.venueName || 'Venue details coming soon'}</strong>
                 <span>{preEvent.city || 'Location will be shared by the host'}</span>
@@ -623,10 +634,6 @@ function RsvpPage() {
             )}
           </section>
 
-          <section className="rsvp-event-about">
-            <h2>About Event</h2>
-            <p>{preEvent.description || 'More details will be shared by the organizer soon.'}</p>
-          </section>
         </section>
       </section>
     </main>

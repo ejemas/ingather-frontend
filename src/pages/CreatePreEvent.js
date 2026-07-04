@@ -357,15 +357,21 @@ function CreatePreEvent() {
                 <h2>Discover Visibility</h2>
                 <p>Choose whether this RSVP page should be listed publicly on Ingather Discover.</p>
               </div>
-              <label className="pre-event-active-toggle">
-                <input
-                  type="checkbox"
-                  checked={formData.discoverEnabled}
-                  onChange={(event) => updateField('discoverEnabled', event.target.checked)}
-                />
-                <span>Show on Discover Events</span>
-              </label>
             </div>
+            <label className={`pre-event-discover-switch ${formData.discoverEnabled ? 'enabled' : ''}`}>
+              <input
+                type="checkbox"
+                checked={formData.discoverEnabled}
+                onChange={(event) => updateField('discoverEnabled', event.target.checked)}
+              />
+              <span className="pre-event-switch-track" aria-hidden="true">
+                <span className="pre-event-switch-thumb" />
+              </span>
+              <span className="pre-event-switch-copy">
+                <strong>Show on Discover Events</strong>
+                <small>List this RSVP page publicly on the landing Discover section.</small>
+              </span>
+            </label>
             <p className="pre-event-discover-note">
               Private RSVP links still work when this is off. Turn it on only for events you want visitors to find from the landing page.
             </p>

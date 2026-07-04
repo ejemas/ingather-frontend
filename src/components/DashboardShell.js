@@ -241,7 +241,9 @@ function DashboardShell({ activeNav = 'pre-events', pageTitle = 'Pre-Events', ch
               aria-expanded={isMobileMenuOpen}
               onClick={() => setIsMobileMenuOpen(true)}
             >
-              {Icons.dashboard}
+              <span></span>
+              <span></span>
+              <span></span>
             </button>
             <span className="navbar-church-name">{pageTitle}</span>
           </div>

@@ -51,6 +51,13 @@ const OPTIONAL_FIELDS = [
 ];
 const PAGE_SIZE = 10;
 
+const SearchIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="9" cy="9" r="5.5" />
+    <path d="M13.2 13.2 17 17" />
+  </svg>
+);
+
 const FIELD_PLACEHOLDERS = {
   emailAddress: 'you@example.com',
   fullName: 'Full name',
@@ -806,11 +813,6 @@ function PreEventDetail() {
                 ))}
               </select>
             </label>
-            <div className="pre-event-save-cell">
-              <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
-                {savingLink ? 'Saving...' : 'Save Settings'}
-              </button>
-            </div>
           </div>
           <p className="pre-event-discover-note">
             Discover is opt-in. Private RSVP links remain accessible when public discovery is off. Only active, upcoming RSVP events appear on the landing page and /discover after refresh.
@@ -829,13 +831,18 @@ function PreEventDetail() {
               <small>Ask attendees whether they will attend physically or virtually.</small>
             </span>
           </label>
+          <div className="pre-event-save-cell pre-event-save-footer">
+            <button type="button" className="pre-events-primary-btn" onClick={saveProgramLink} disabled={savingLink}>
+              {savingLink ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
         </section>
 
         <section className="pre-event-form-card">
           <div className="pre-event-card-heading">
             <div>
               <h2>Customized Fields</h2>
-              <p>Add extra RSVP questions for attendees. Click Save Settings above after editing.</p>
+              <p>Add extra RSVP questions for attendees. Click Save Settings in the Event Visibility section after editing.</p>
             </div>
             <button type="button" className="custom-field-add-btn" onClick={() => openCustomFieldModal()}>
               Add Custom Field
@@ -900,13 +907,16 @@ function PreEventDetail() {
               <p>Dynamic columns mirror the fields selected during setup.</p>
             </div>
             <div className="pre-event-table-actions">
-              <input
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search RSVPs..."
-                className="pre-event-search"
-              />
+              <div className="pre-event-search-box">
+                <SearchIcon />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search RSVPs..."
+                  className="pre-event-search-input"
+                />
+              </div>
               <button type="button" className="pre-event-add-manual-btn" onClick={() => setManualRsvpOpen(true)}>
                 + Add Manually
               </button>
