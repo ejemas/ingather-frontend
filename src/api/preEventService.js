@@ -1,14 +1,14 @@
 import axios from 'axios';
 import API from './axios';
+import { API_BASE_URL, API_TIMEOUT_MS, attachApiErrorHandling } from './apiErrorUtils';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-const PublicAPI = axios.create({
+const PublicAPI = attachApiErrorHandling(axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json'
   }
-});
+}));
 
 export const createPreEvent = async (data) => {
   const response = await API.post('/pre-events', data);

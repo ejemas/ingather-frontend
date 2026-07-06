@@ -158,7 +158,7 @@ function WaitlistPage() {
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleChange}
-                      placeholder="Ejemighaye"
+                      placeholder="Frank"
                       autoComplete="given-name"
                     />
                     {errors.firstName && <small>{errors.firstName}</small>}
@@ -170,7 +170,7 @@ function WaitlistPage() {
                       name="lastName"
                       value={formData.lastName}
                       onChange={handleChange}
-                      placeholder="Maro"
+                      placeholder="Leo"
                       autoComplete="family-name"
                     />
                     {errors.lastName && <small>{errors.lastName}</small>}

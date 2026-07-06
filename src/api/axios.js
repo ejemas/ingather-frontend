@@ -1,11 +1,13 @@
 import axios from 'axios';
+import { API_BASE_URL, API_TIMEOUT_MS, attachApiErrorHandling } from './apiErrorUtils';
 
-const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+const API = attachApiErrorHandling(axios.create({
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json'
   }
-});
+}));
 
 // Add token to requests if it exists
 API.interceptors.request.use(

@@ -1,8 +1,10 @@
 import axios from 'axios';
+import { API_BASE_URL, API_TIMEOUT_MS, attachApiErrorHandling } from './apiErrorUtils';
 
-const SCAN_API = axios.create({
-  baseURL: `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/scan`
-});
+const SCAN_API = attachApiErrorHandling(axios.create({
+  baseURL: `${API_BASE_URL}/scan`,
+  timeout: API_TIMEOUT_MS
+}));
 
 export const getProgramInfo = async (programId) => {
   const response = await SCAN_API.get(`/program/${programId}`);
