@@ -58,14 +58,20 @@ function OnboardingModal({ onSelect }) {
   };
 
   return (
-    <div className="onboarding-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
-      <div className="onboarding-modal">
+    <div className="onboarding-modal-overlay" role="presentation">
+      <div
+        className="onboarding-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        aria-describedby="onboarding-description"
+      >
         <div className="onboarding-modal-header">
           <span className="onboarding-modal-kicker">Account setup</span>
           <h2 id="onboarding-title">
             Welcome to Ingather. Let's personalize your workspace.
           </h2>
-          <p>What kind of events do you primarily organize?</p>
+          <p id="onboarding-description">What kind of events do you primarily organize?</p>
         </div>
 
         <div className="onboarding-option-grid">

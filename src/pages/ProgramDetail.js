@@ -469,19 +469,20 @@ function ManualAttendeeModal({
   };
 
   return (
-    <div className="pd-modal-overlay" role="presentation" onMouseDown={onClose}>
+    <div className="pd-modal-overlay pd-manual-entry-overlay" role="presentation" onMouseDown={onClose}>
       <section
-        className="pd-manual-modal"
+        className="pd-manual-modal pd-manual-entry-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="manual-attendee-title"
+        aria-describedby="manual-attendee-description"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="pd-manual-modal-header">
           <div>
             <span className="pd-manual-kicker">Manual check-in</span>
             <h3 id="manual-attendee-title">Add {template.attendee.singular.toLowerCase()} manually</h3>
-            <p>Use this when someone checks in without a smartphone.</p>
+            <p id="manual-attendee-description">Use this when someone checks in without a smartphone.</p>
           </div>
           <button type="button" className="pd-modal-close" onClick={onClose} aria-label="Close manual entry modal">×</button>
         </div>

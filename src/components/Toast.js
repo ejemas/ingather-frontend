@@ -63,12 +63,20 @@ export function ToastProvider({ children }) {
             </div>
             {confirmDialog && (
                 <div className="confirm-overlay" onClick={handleCancel}>
-                    <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
-                        <div className="confirm-icon">⚠️</div>
-                        <p className="confirm-message">{confirmDialog.message}</p>
+                    <div
+                        className="confirm-dialog"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="confirm-dialog-title"
+                        aria-describedby="confirm-dialog-message"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <span className="confirm-kicker">Confirmation</span>
+                        <h2 id="confirm-dialog-title">Confirm action</h2>
+                        <p id="confirm-dialog-message" className="confirm-message">{confirmDialog.message}</p>
                         <div className="confirm-actions">
                             <button className="confirm-btn confirm-cancel" onClick={handleCancel}>Cancel</button>
-                            <button className="confirm-btn confirm-ok" onClick={handleConfirm}>Yes, Continue</button>
+                            <button className="confirm-btn confirm-ok" onClick={handleConfirm}>Confirm</button>
                         </div>
                     </div>
                 </div>

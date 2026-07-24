@@ -128,7 +128,7 @@ const formatSubmittedAt = (value) => {
 
 function ManualRsvpModal({ preEvent, customFormSchema, submitting, onClose, onSubmit }) {
   const [formData, setFormData] = useState({ emailAddress: '', attendanceMode: '', customResponses: {} });
-  const [sendQrEmail, setSendQrEmail] = useState(true);
+  const [sendQrEmail, setSendQrEmail] = useState(false);
   const [errors, setErrors] = useState({});
 
   const selectedFields = useMemo(() => {

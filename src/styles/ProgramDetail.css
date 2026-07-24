@@ -2169,3 +2169,205 @@
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.12);
 }
+
+/* Manual attendee entry follows Ingather's standard white data-entry modal. */
+.pd-modal-overlay.pd-manual-entry-overlay {
+  padding: 24px;
+  background: rgba(8, 10, 15, 0.58);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pd-manual-modal.pd-manual-entry-modal {
+  width: min(780px, 100%);
+  max-height: min(88vh, 860px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(232, 89, 12, 0.22);
+  border-radius: 22px;
+  background: #ffffff;
+  color: #071126;
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.24);
+}
+
+.pd-manual-entry-modal .pd-manual-modal-header {
+  align-items: flex-start;
+  margin: 0;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid #e4e7ec;
+  background:
+    radial-gradient(circle at top right, rgba(249, 109, 16, 0.11), transparent 19rem),
+    #ffffff;
+}
+
+.pd-manual-entry-modal .pd-manual-kicker {
+  margin-bottom: 8px;
+  color: #f96d10;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.pd-manual-entry-modal .pd-manual-modal-header h3 {
+  margin: 0;
+  color: #071126;
+  font-size: clamp(1.35rem, 3vw, 1.9rem);
+  line-height: 1.08;
+}
+
+.pd-manual-entry-modal .pd-manual-modal-header p {
+  max-width: 560px;
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.pd-manual-entry-modal .pd-modal-close {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e4e7ec;
+  background: #ffffff;
+  color: #667085;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.pd-manual-entry-modal .pd-modal-close:hover,
+.pd-manual-entry-modal .pd-modal-close:focus-visible {
+  border-color: rgba(249, 109, 16, 0.45);
+  color: #e8590c;
+  box-shadow: 0 0 0 3px rgba(249, 109, 16, 0.14);
+  outline: none;
+}
+
+.pd-manual-entry-modal .pd-manual-form {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+}
+
+.pd-manual-entry-modal .pd-manual-grid {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 24px;
+  background: #ffffff;
+}
+
+.pd-manual-entry-modal .pd-manual-field span,
+.pd-manual-entry-modal .pd-manual-check span,
+.pd-manual-entry-modal .pd-manual-custom-choice legend {
+  color: #071126;
+  font-weight: 800;
+}
+
+.pd-manual-entry-modal .pd-manual-field input,
+.pd-manual-entry-modal .pd-manual-field select,
+.pd-manual-entry-modal .pd-manual-field textarea {
+  border-color: #d9dde5;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #071126;
+}
+
+.pd-manual-entry-modal .pd-manual-field input::placeholder,
+.pd-manual-entry-modal .pd-manual-field textarea::placeholder {
+  color: #7c8494;
+}
+
+.pd-manual-entry-modal .pd-manual-field input:focus,
+.pd-manual-entry-modal .pd-manual-field select:focus,
+.pd-manual-entry-modal .pd-manual-field textarea:focus {
+  border-color: #f96d10;
+  box-shadow: 0 0 0 3px rgba(249, 109, 16, 0.14);
+}
+
+.pd-manual-entry-modal .pd-manual-check,
+.pd-manual-entry-modal .pd-manual-custom-choice {
+  border-color: #e4e7ec;
+  background: #fbfbfc;
+}
+
+.pd-manual-entry-modal .pd-manual-choice {
+  border-color: #e4e7ec;
+  background: #ffffff;
+  color: #071126;
+}
+
+.pd-manual-entry-modal .pd-manual-actions {
+  margin: 0;
+  padding: 18px 24px 24px;
+  border-top: 1px solid #e4e7ec;
+  background: #ffffff;
+}
+
+.pd-manual-entry-modal .pd-btn-cancel,
+.pd-manual-entry-modal .pd-btn-submit-manual {
+  min-height: 44px;
+  border-radius: 10px;
+  font-weight: 850;
+}
+
+.pd-manual-entry-modal .pd-btn-cancel {
+  border-color: #d9dde5;
+  background: #ffffff;
+  color: #071126;
+}
+
+.pd-manual-entry-modal .pd-btn-cancel:hover,
+.pd-manual-entry-modal .pd-btn-cancel:focus-visible {
+  border-color: rgba(249, 109, 16, 0.45);
+  color: #e8590c;
+  outline: none;
+}
+
+.pd-manual-entry-modal .pd-btn-submit-manual {
+  background: #f96d10;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.pd-manual-entry-modal .pd-btn-submit-manual:hover,
+.pd-manual-entry-modal .pd-btn-submit-manual:focus-visible {
+  background: #e8590c;
+  box-shadow: none;
+  outline: none;
+}
+
+@media (max-width: 768px) {
+  .pd-modal-overlay.pd-manual-entry-overlay {
+    align-items: center;
+    padding: 12px;
+  }
+
+  .pd-manual-modal.pd-manual-entry-modal {
+    max-height: 94vh;
+    padding: 0;
+    border-radius: 18px;
+  }
+
+  .pd-manual-entry-modal .pd-manual-modal-header,
+  .pd-manual-entry-modal .pd-manual-grid,
+  .pd-manual-entry-modal .pd-manual-actions {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .pd-manual-entry-modal .pd-manual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-manual-entry-modal .pd-manual-actions {
+    flex-direction: column-reverse;
+  }
+
+  .pd-manual-entry-modal .pd-btn-cancel,
+  .pd-manual-entry-modal .pd-btn-submit-manual {
+    width: 100%;
+  }
+}
