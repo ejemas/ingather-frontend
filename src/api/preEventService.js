@@ -35,6 +35,25 @@ export const resendRsvpQrEmail = async (preEventId, rsvpId) => {
   return response.data;
 };
 
+export const sendImportedRsvpQrBatch = async (preEventId) => {
+  const response = await API.post(
+    `/pre-events/${preEventId}/rsvps/send-imported-qr-batch`,
+    undefined,
+    { timeout: 120000 }
+  );
+  return response.data;
+};
+
+export const importPreEventRsvps = async (preEventId, rows) => {
+  const response = await API.post(`/pre-events/${preEventId}/rsvps/import`, { rows });
+  return response.data;
+};
+
+export const getRsvpQrEmailQuota = async () => {
+  const response = await API.get('/pre-events/qr-email-quota');
+  return response.data;
+};
+
 export const addManualPreEventRsvp = async (preEventId, formData, sendQrEmail = true) => {
   const response = await API.post(`/pre-events/${preEventId}/rsvps/manual`, { formData, sendQrEmail });
   return response.data;

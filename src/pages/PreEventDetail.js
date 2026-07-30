@@ -9,9 +9,17 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { addManualPreEventRsvp, getPreEvent, resendRsvpQrEmail, updatePreEvent } from '../api/preEventService';
+import {
+  addManualPreEventRsvp,
+  getPreEvent,
+  importPreEventRsvps,
+  resendRsvpQrEmail,
+  sendImportedRsvpQrBatch,
+  updatePreEvent
+} from '../api/preEventService';
 import { getPrograms } from '../api/programService';
 import DashboardShell from '../components/DashboardShell';
+import RsvpImportModal from '../components/RsvpImportModal';
 import { useToast } from '../components/Toast';
 import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { MAX_CUSTOM_FIELDS, formatCustomAnswer } from '../utils/customFields';
@@ -50,6 +58,16 @@ const OPTIONAL_FIELDS = [
   'sex'
 ];
 const PAGE_SIZE = 10;
+const QR_EMAIL_BATCH_LIMIT = 100;
+const DEFAULT_QR_EMAIL_QUOTA = {
+  limit: 100,
+  used: 0,
+  remaining: 100,
+  timezone: 'Africa/Lagos',
+  resetsAt: null
+};
+
+const usesQrEmailQuota = (rsvp) => rsvp?.registrationSource !== 'public';
 
 const SearchIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -126,7 +144,21 @@ const formatSubmittedAt = (value) => {
   });
 };
 
-function ManualRsvpModal({ preEvent, customFormSchema, submitting, onClose, onSubmit }) {
+const formatQuotaReset = (value) => {
+  if (!value) return 'midnight Lagos time';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'midnight Lagos time';
+  return date.toLocaleString('en-NG', {
+    timeZone: 'Africa/Lagos',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+};
+
+function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting, onClose, onSubmit }) {
   const [formData, setFormData] = useState({ emailAddress: '', attendanceMode: '', customResponses: {} });
   const [sendQrEmail, setSendQrEmail] = useState(false);
   const [errors, setErrors] = useState({});
@@ -432,11 +464,15 @@ function ManualRsvpModal({ preEvent, customFormSchema, submitting, onClose, onSu
               type="checkbox"
               checked={sendQrEmail}
               onChange={(event) => setSendQrEmail(event.target.checked)}
-              disabled={submitting}
+              disabled={submitting || qrEmailQuota.remaining <= 0}
             />
             <span>
               <strong>Send RSVP QR email now</strong>
-              <small>Attendee receives their QR code and short RSVP token immediately.</small>
+              <small>
+                {qrEmailQuota.remaining > 0
+                  ? `${qrEmailQuota.remaining} of ${qrEmailQuota.limit} QR emails remain today.`
+                  : `Daily limit reached. Resets ${formatQuotaReset(qrEmailQuota.resetsAt)}.`}
+              </small>
             </span>
           </label>
         </div>
@@ -448,6 +484,42 @@ function ManualRsvpModal({ preEvent, customFormSchema, submitting, onClose, onSu
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function BulkQrConfirmationModal({ count, remainingAfter, onClose, onConfirm }) {
+  return (
+    <div className="pre-event-bulk-confirm-overlay" role="presentation" onMouseDown={onClose}>
+      <div
+        className="pre-event-bulk-confirm"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bulk-qr-confirm-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <span className="pre-event-bulk-confirm-eyebrow">Bulk QR delivery</span>
+        <h3 id="bulk-qr-confirm-title">Send {count} QR {count === 1 ? 'email' : 'emails'}?</h3>
+        <p>
+          InGather will email the oldest imported guests whose QR code has never been sent.
+        </p>
+        <div className="pre-event-bulk-confirm-summary">
+          <span>
+            <small>Recipients</small>
+            <strong>{count}</strong>
+          </span>
+          <span>
+            <small>Expected remaining today</small>
+            <strong>{remainingAfter}</strong>
+          </span>
+        </div>
+        <div className="pre-event-bulk-confirm-actions">
+          <button type="button" className="secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="primary" onClick={onConfirm}>
+            Send {count} QR {count === 1 ? 'email' : 'emails'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -469,9 +541,14 @@ function PreEventDetail() {
   const [resendingRsvpId, setResendingRsvpId] = useState(null);
   const [manualRsvpOpen, setManualRsvpOpen] = useState(false);
   const [manualRsvpSubmitting, setManualRsvpSubmitting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [qrEmailQuota, setQrEmailQuota] = useState(DEFAULT_QR_EMAIL_QUOTA);
+  const [bulkQrConfirmOpen, setBulkQrConfirmOpen] = useState(false);
+  const [bulkQrSending, setBulkQrSending] = useState(false);
+  const [bulkQrSendingCount, setBulkQrSendingCount] = useState(0);
   const toast = useToast();
 
-  const loadDetail = useCallback(async (showLoader = true) => {
+  const loadDetail = useCallback(async (showLoader = true, { showError = true } = {}) => {
     try {
       if (showLoader) setLoading(true);
       const response = await getPreEvent(id);
@@ -486,8 +563,13 @@ function PreEventDetail() {
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
       setRsvps(response.rsvps || []);
       setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
+      setQrEmailQuota(response.qrEmailQuota || DEFAULT_QR_EMAIL_QUOTA);
+      return true;
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Unable to load pre-event dashboard');
+      if (showError) {
+        toast.error(error.response?.data?.error || 'Unable to load pre-event dashboard');
+      }
+      return false;
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -516,10 +598,12 @@ function PreEventDetail() {
 
   const columns = useMemo(() => {
     if (!preEvent) return ['emailAddress'];
-    const selected = ['emailAddress'];
+    const selected = [];
+    if (preEvent.rsvpFields?.fullName || rsvps.some(rsvp => Boolean(rsvp.fullName))) selected.push('fullName');
+    selected.push('emailAddress');
     if (preEvent.virtualAttendanceEnabled || rsvps.some(rsvp => rsvp.attendanceMode)) selected.push('attendanceMode');
     OPTIONAL_FIELDS.forEach((field) => {
-      if (preEvent.rsvpFields?.[field]) selected.push(field);
+      if (field !== 'fullName' && preEvent.rsvpFields?.[field]) selected.push(field);
     });
     selected.push('createdAt');
     customFormSchema.forEach((field) => {
@@ -546,6 +630,17 @@ function PreEventDetail() {
   const physicalRsvpCount = rsvps.filter(rsvp => rsvp.attendanceMode === 'physical').length;
   const virtualRsvpCount = rsvps.filter(rsvp => rsvp.attendanceMode === 'virtual').length;
   const showAttendanceModeStats = preEvent?.virtualAttendanceEnabled || physicalRsvpCount > 0 || virtualRsvpCount > 0;
+  const unsentImportedRsvpCount = rsvps.filter(rsvp => (
+    rsvp.registrationSource === 'import'
+    && rsvp.status !== 'checked_in'
+    && !rsvp.checkinQrSentAt
+    && !rsvp.checkinQrLastSentAt
+  )).length;
+  const bulkQrSendCount = Math.min(
+    QR_EMAIL_BATCH_LIMIT,
+    Math.max(0, Number(qrEmailQuota.remaining) || 0),
+    unsentImportedRsvpCount
+  );
 
   const copyLink = async () => {
     if (!preEvent?.publicUrl) return;
@@ -650,15 +745,18 @@ function PreEventDetail() {
   };
 
   const resendQr = async (rsvp) => {
+    const wasPreviouslySent = Boolean(rsvp.checkinQrLastSentAt || rsvp.checkinQrSentAt);
     try {
       setResendingRsvpId(rsvp.id);
       const response = await resendRsvpQrEmail(preEvent.id, rsvp.id);
       if (response.rsvp) {
         setRsvps(prev => prev.map(item => item.id === response.rsvp.id ? response.rsvp : item));
       }
-      toast.success('RSVP QR email resent');
+      if (response.quota) setQrEmailQuota(response.quota);
+      toast.success(wasPreviouslySent ? 'RSVP QR email resent' : 'RSVP QR email sent');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Unable to resend RSVP QR email');
+      if (error.response?.data?.quota) setQrEmailQuota(error.response.data.quota);
+      toast.error(error.response?.data?.error || 'Unable to send RSVP QR email');
     } finally {
       setResendingRsvpId(null);
     }
@@ -668,6 +766,7 @@ function PreEventDetail() {
     try {
       setManualRsvpSubmitting(true);
       const response = await addManualPreEventRsvp(preEvent.id, formData, sendQrEmail);
+      if (response.qrEmailQuota) setQrEmailQuota(response.qrEmailQuota);
       await loadDetail(false);
       setManualRsvpOpen(false);
 
@@ -682,6 +781,60 @@ function PreEventDetail() {
       toast.error(error.response?.data?.error || 'Unable to add RSVP manually');
     } finally {
       setManualRsvpSubmitting(false);
+    }
+  };
+
+  const importGuests = async (rows) => {
+    const response = await importPreEventRsvps(preEvent.id, rows);
+    const dashboardRefreshed = await loadDetail(false, { showError: false });
+    setPage(0);
+    const importedCount = response.summary?.imported || 0;
+    const guestLabel = importedCount === 1 ? 'guest' : 'guests';
+
+    if (!dashboardRefreshed) {
+      const dashboardRefreshWarning = `${importedCount} ${guestLabel} ${importedCount === 1 ? 'was' : 'were'} imported, but the dashboard could not refresh. Refresh the page to see the latest totals.`;
+      toast.warning(dashboardRefreshWarning);
+      return { ...response, dashboardRefreshWarning };
+    }
+
+    toast.success(`${importedCount} ${guestLabel} imported.`);
+    return response;
+  };
+
+  const sendImportedQrEmails = async () => {
+    const requestedCount = bulkQrSendCount;
+    if (!preEvent || requestedCount <= 0 || bulkQrSending) return;
+
+    setBulkQrConfirmOpen(false);
+    setBulkQrSending(true);
+    setBulkQrSendingCount(requestedCount);
+
+    try {
+      const response = await sendImportedRsvpQrBatch(preEvent.id);
+      if (response.quota) setQrEmailQuota(response.quota);
+
+      const refreshed = await loadDetail(false, { showError: false });
+      const sent = response.summary?.sent || 0;
+      const failed = response.summary?.failed || 0;
+      const remainingUnsent = response.summary?.remainingUnsent || 0;
+      const remainingToday = response.quota?.remaining ?? qrEmailQuota.remaining;
+      const emailLabel = sent === 1 ? 'email' : 'emails';
+
+      if (!refreshed && sent > 0) {
+        toast.warning(`${sent} QR ${emailLabel} sent, but the dashboard could not refresh. Refresh the page to see the latest statuses.`);
+      } else if (failed > 0) {
+        toast.warning(`${sent} QR ${emailLabel} sent. ${failed} failed, and ${remainingUnsent} uploaded guests still need QR emails. ${remainingToday} remaining today.`);
+      } else if (sent > 0) {
+        toast.success(`${sent} QR ${emailLabel} sent. ${remainingToday} remaining today.`);
+      } else {
+        toast.warning('No QR emails were sent. The eligible uploaded guests remain available to retry.');
+      }
+    } catch (error) {
+      if (error.response?.data?.quota) setQrEmailQuota(error.response.data.quota);
+      toast.error(error.response?.data?.error || 'Unable to send imported guest QR emails');
+    } finally {
+      setBulkQrSending(false);
+      setBulkQrSendingCount(0);
     }
   };
 
@@ -917,9 +1070,47 @@ function PreEventDetail() {
                   className="pre-event-search-input"
                 />
               </div>
+              <button type="button" className="pre-event-upload-data-btn" onClick={() => setImportOpen(true)}>
+                Upload Data
+              </button>
               <button type="button" className="pre-event-add-manual-btn" onClick={() => setManualRsvpOpen(true)}>
                 + Add Manually
               </button>
+            </div>
+          </div>
+
+          <div className="pre-event-qr-quota" aria-live="polite">
+            <span className="pre-event-qr-quota-copy">
+              <strong>QR email allowance</strong>
+              <small>
+                100 daily QR emails for uploaded/manual guests; public RSVPs are excluded.
+              </small>
+            </span>
+            <div className="pre-event-qr-quota-actions">
+              <button
+                type="button"
+                className="pre-event-bulk-qr-btn"
+                onClick={() => setBulkQrConfirmOpen(true)}
+                disabled={bulkQrSendCount <= 0 || bulkQrSending || resendingRsvpId !== null}
+                title={
+                  qrEmailQuota.remaining <= 0
+                    ? `Daily limit reached. Resets ${formatQuotaReset(qrEmailQuota.resetsAt)}.`
+                    : unsentImportedRsvpCount <= 0
+                      ? 'No unsent imported guest QR emails are available.'
+                      : undefined
+                }
+              >
+                {bulkQrSending && <span className="pre-event-bulk-qr-spinner" aria-hidden="true" />}
+                {bulkQrSending
+                  ? `Sending ${bulkQrSendingCount}...`
+                  : bulkQrSendCount > 0
+                    ? `Send ${bulkQrSendCount} QR ${bulkQrSendCount === 1 ? 'email' : 'emails'}`
+                    : 'Send QR emails'}
+              </button>
+              <span className="pre-event-qr-quota-status">
+                <b>{qrEmailQuota.remaining} / {qrEmailQuota.limit} remaining</b>
+                <small>Resets {formatQuotaReset(qrEmailQuota.resetsAt)}.</small>
+              </span>
             </div>
           </div>
 
@@ -969,9 +1160,21 @@ function PreEventDetail() {
                           type="button"
                           className="pre-event-table-action"
                           onClick={() => resendQr(rsvp)}
-                          disabled={rsvp.status === 'checked_in' || resendingRsvpId === rsvp.id}
+                          disabled={
+                            rsvp.status === 'checked_in'
+                            || resendingRsvpId === rsvp.id
+                            || (bulkQrSending && usesQrEmailQuota(rsvp))
+                            || (usesQrEmailQuota(rsvp) && qrEmailQuota.remaining <= 0)
+                          }
+                          title={
+                            usesQrEmailQuota(rsvp) && qrEmailQuota.remaining <= 0
+                              ? `Daily limit reached. Resets ${formatQuotaReset(qrEmailQuota.resetsAt)}.`
+                              : undefined
+                          }
                         >
-                          {resendingRsvpId === rsvp.id ? 'Sending...' : 'Resend QR'}
+                          {resendingRsvpId === rsvp.id
+                            ? 'Sending...'
+                            : (rsvp.checkinQrLastSentAt || rsvp.checkinQrSentAt ? 'Resend QR' : 'Send QR')}
                         </button>
                       </td>
                     </tr>
@@ -1004,11 +1207,26 @@ function PreEventDetail() {
           <ManualRsvpModal
             preEvent={preEvent}
             customFormSchema={customFormSchema}
+            qrEmailQuota={qrEmailQuota}
             submitting={manualRsvpSubmitting}
             onClose={() => {
               if (!manualRsvpSubmitting) setManualRsvpOpen(false);
             }}
             onSubmit={addManualRsvp}
+          />
+        )}
+        {importOpen && (
+          <RsvpImportModal
+            onClose={() => setImportOpen(false)}
+            onImport={importGuests}
+          />
+        )}
+        {bulkQrConfirmOpen && (
+          <BulkQrConfirmationModal
+            count={bulkQrSendCount}
+            remainingAfter={Math.max(0, qrEmailQuota.remaining - bulkQrSendCount)}
+            onClose={() => setBulkQrConfirmOpen(false)}
+            onConfirm={sendImportedQrEmails}
           />
         )}
       </div>
