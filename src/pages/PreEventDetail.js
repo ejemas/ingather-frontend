@@ -501,7 +501,7 @@ function BulkQrConfirmationModal({ count, remainingAfter, onClose, onConfirm }) 
         <span className="pre-event-bulk-confirm-eyebrow">Bulk QR delivery</span>
         <h3 id="bulk-qr-confirm-title">Send {count} QR {count === 1 ? 'email' : 'emails'}?</h3>
         <p>
-          InGather will email the oldest imported guests whose QR code has never been sent.
+          Ingather will email the oldest imported guests whose QR code has never been sent.
         </p>
         <div className="pre-event-bulk-confirm-summary">
           <span>

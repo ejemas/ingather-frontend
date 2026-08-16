@@ -139,7 +139,7 @@ function RsvpImportModal({ onClose, onImport }) {
           <div>
             <span>Pre-event guest list</span>
             <h3 id="rsvp-import-title">Upload RSVP data</h3>
-            <p>The spreadsheet stays in this browser. Only confirmed names and emails are sent to InGather.</p>
+            <p>The spreadsheet stays in this browser. Only confirmed names and emails are sent to Ingather.</p>
           </div>
           <button type="button" onClick={close} disabled={importing} aria-label="Close attendee import">x</button>
         </header>
@@ -224,7 +224,7 @@ function RsvpImportModal({ onClose, onImport }) {
               <div className="rsvp-import-preview-heading">
                 <div>
                   <h4>Review before importing</h4>
-                  <p>Only rows marked Ready will be sent to InGather.</p>
+                  <p>Only rows marked Ready will be sent to Ingather.</p>
                 </div>
                 <button type="button" onClick={() => setStage('mapping')}>Edit mapping</button>
               </div>
