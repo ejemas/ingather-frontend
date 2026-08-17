@@ -58,7 +58,7 @@ const OPTIONAL_FIELDS = [
   'sex'
 ];
 const PAGE_SIZE = 10;
-const QR_EMAIL_BATCH_LIMIT = 500;
+const QR_EMAIL_BATCH_LIMIT = 50;
 const DEFAULT_QR_EMAIL_QUOTA = {
   limit: 500,
   used: 0,
@@ -1083,7 +1083,7 @@ function PreEventDetail() {
             <span className="pre-event-qr-quota-copy">
               <strong>QR email allowance</strong>
               <small>
-                500 daily QR emails for uploaded/manual guests; public RSVPs are excluded.
+                500 daily QR emails for uploaded/manual guests (sent in batches of up to 50); public RSVPs are excluded.
               </small>
             </span>
             <div className="pre-event-qr-quota-actions">
