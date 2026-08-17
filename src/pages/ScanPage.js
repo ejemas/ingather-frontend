@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom';
 import { getProgramInfo, submitScan, submitFormData, submitFastTrackRsvp, submitProxyAttendee, updateScanData, trackSponsorClick } from '../api/scanService';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
+import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
 import '../styles/ScanPage.css';
 
 const INGATHER_PUBLIC_ORIGIN = 'https://ingather.app';
@@ -1143,6 +1144,7 @@ function ScanPage() {
             scanError.response?.data?.error?.includes('already scanned'))) {
           // Device has already scanned this program
           setAlreadyScanned(true);
+          playErrorSound();
         }
         setLoading(false); // Turn off loading on error
       }
@@ -1173,28 +1175,33 @@ function ScanPage() {
       return;
     }
 
+    if (!gender) {
+      toast.warning('Please select your gender');
+      return;
+    }
+
     setSubmittingGender(true);
 
     try {
       const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
       deviceFingerprintRef.current = fingerprint;
       await updateScanData(programId, fingerprint, gender, isFirstTimer, scanSessionTokenRef.current, scanSessionIdRef.current);
-
       console.log('Gender data updated successfully');
 
       setSubmittingGender(false);
       setShowGenderForm(false);
 
-      // Show result based on first-timer status
       if (isFirstTimer) {
         setResult('first-timer-message');
       } else {
         setResult('count-only-success');
       }
+      playSuccessSound();
     } catch (error) {
       console.error('Gender submit error:', error);
       toast.error('Failed to submit. Please try again.');
       setSubmittingGender(false);
+      playErrorSound();
     }
   };
 

@@ -6,6 +6,7 @@ import InfoTooltip from '../components/InfoTooltip';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { formatCustomAnswer } from '../utils/customFields';
+import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
 import '../styles/Dashboard.css';
 import '../styles/ProgramDetail.css';
 
@@ -1542,10 +1543,12 @@ function ProgramDetail() {
       await refreshAttendanceChart();
       setRsvpQrResult(response);
       toast.success('RSVP attendee checked in.');
+      playSuccessSound();
     } catch (error) {
       const message = error.response?.data?.error || 'Unable to check in this RSVP QR.';
       setRsvpQrError(message);
       toast.error(message);
+      playErrorSound();
     } finally {
       rsvpQrSubmittingRef.current = false;
       setRsvpQrSubmitting(false);

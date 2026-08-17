@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { checkInRsvpFromScanner, getRsvpScannerInfo } from '../api/rsvpScannerService';
+import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
 import '../styles/RsvpScanner.css';
 
 function formatEventDate(program) {
@@ -63,10 +64,12 @@ function RsvpScannerPage() {
       setResult(response);
       setManualToken('');
       setCameraMessage('Checked in. Tap Scan next for the next attendee.');
+      playSuccessSound();
     } catch (error) {
       setScanError(error.response?.data?.error || 'Unable to check in this RSVP.');
       setCameraMessage('Check-in failed. Scan again or enter the RSVP token.');
       submittedRef.current = false;
+      playErrorSound();
     } finally {
       setSubmitting(false);
     }
