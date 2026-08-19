@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import { checkInRsvpFromScanner, getRsvpScannerInfo } from '../api/rsvpScannerService';
-import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
+import { isSoundMuted, toggleSoundMuted, playSuccessSound, playErrorSound } from '../utils/scanSounds';
 import '../styles/RsvpScanner.css';
 
 function formatEventDate(program) {
@@ -30,6 +30,12 @@ function RsvpScannerPage() {
   const [scanError, setScanError] = useState('');
   const [cameraState, setCameraState] = useState('idle');
   const [cameraMessage, setCameraMessage] = useState('Requesting camera access...');
+  const [muted, setMuted] = useState(isSoundMuted);
+
+  const handleToggleSound = () => {
+    const next = toggleSoundMuted();
+    setMuted(next);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -196,8 +202,20 @@ function RsvpScannerPage() {
     <main className="rsvp-scanner-page">
       <section className="rsvp-scanner-card">
         <img src="/ingather-logo.png" alt="Ingather" className="rsvp-scanner-logo" />
-        <span className="rsvp-scanner-kicker">Usher RSVP scanner</span>
-        <h1>Scan pre-registered attendee</h1>
+        <div className="rsvp-scanner-header-row">
+          <div>
+            <span className="rsvp-scanner-kicker">Usher RSVP scanner</span>
+            <h1>Scan pre-registered attendee</h1>
+          </div>
+          <button
+            type="button"
+            className="rsvp-scanner-sound-toggle"
+            onClick={handleToggleSound}
+            title={muted ? "Sound is muted. Tap to unmute." : "Sound is active. Tap to mute."}
+          >
+            {muted ? '🔇 Muted' : '🔊 Sound On'}
+          </button>
+        </div>
         <p className="rsvp-scanner-intro">Use this page to scan RSVP QR codes or enter attendee RSVP tokens at the entrance.</p>
 
         <div className="rsvp-scanner-event">

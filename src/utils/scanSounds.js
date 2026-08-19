@@ -2,6 +2,31 @@
 // Zero latency, no external assets/downloads required, cross-browser supported.
 
 let audioCtx = null;
+const MUTE_STORAGE_KEY = 'ingather_scan_sound_muted';
+
+export const isSoundMuted = () => {
+  try {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(MUTE_STORAGE_KEY) === 'true';
+  } catch (error) {
+    return false;
+  }
+};
+
+export const setSoundMuted = (muted) => {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(MUTE_STORAGE_KEY, String(Boolean(muted)));
+  } catch (error) {
+    // Ignore storage restrictions
+  }
+};
+
+export const toggleSoundMuted = () => {
+  const next = !isSoundMuted();
+  setSoundMuted(next);
+  return next;
+};
 
 const getAudioContext = () => {
   if (typeof window === 'undefined') return null;
@@ -22,6 +47,8 @@ const getAudioContext = () => {
 
 // High pleasant double-beep chime for successful check-in
 export const playSuccessSound = () => {
+  if (isSoundMuted()) return;
+
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -58,6 +85,8 @@ export const playSuccessSound = () => {
 
 // Low double warning buzz for already checked-in or failed scan
 export const playErrorSound = () => {
+  if (isSoundMuted()) return;
+
   try {
     const ctx = getAudioContext();
     if (!ctx) return;

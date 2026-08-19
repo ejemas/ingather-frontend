@@ -6,7 +6,7 @@ import InfoTooltip from '../components/InfoTooltip';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { formatCustomAnswer } from '../utils/customFields';
-import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
+import { isSoundMuted, toggleSoundMuted, playSuccessSound, playErrorSound } from '../utils/scanSounds';
 import '../styles/Dashboard.css';
 import '../styles/ProgramDetail.css';
 
@@ -703,6 +703,12 @@ function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onRese
   const [manualToken, setManualToken] = useState('');
   const [cameraState, setCameraState] = useState('idle');
   const [cameraMessage, setCameraMessage] = useState('Requesting camera access...');
+  const [muted, setMuted] = useState(isSoundMuted);
+
+  const handleToggleSound = () => {
+    const next = toggleSoundMuted();
+    setMuted(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -825,7 +831,18 @@ function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onRese
             <h3 id="pd-rsvp-scanner-title">Scan pre-registered attendee</h3>
             <p>Use this for guests who brought the personalized QR code from their RSVP email.</p>
           </div>
-          <button type="button" className="pd-modal-close" onClick={onClose} disabled={scanning} aria-label="Close RSVP scanner">×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              className="rsvp-scanner-sound-toggle"
+              onClick={handleToggleSound}
+              title={muted ? "Sound is muted. Tap to unmute." : "Sound is active. Tap to mute."}
+              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+            >
+              {muted ? '🔇 Muted' : '🔊 Sound On'}
+            </button>
+            <button type="button" className="pd-modal-close" onClick={onClose} disabled={scanning} aria-label="Close RSVP scanner">×</button>
+          </div>
         </div>
 
         <div className={`pd-rsvp-camera ${cameraState}`}>
