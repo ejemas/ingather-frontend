@@ -2498,12 +2498,12 @@
 }
 
 .rsvp-event-about-copy {
-  display: grid;
-  gap: 10px;
+  display: block;
 }
 
 .rsvp-event-about-copy p {
   margin: 0;
+  white-space: pre-line;
 }
 
 .rsvp-event-about-toggle {
@@ -2819,8 +2819,11 @@
     font-size: clamp(2.1rem, 12vw, 3.2rem);
   }
 
-  .rsvp-event-about-copy:not(.expanded) p:nth-child(n + 4) {
-    display: none;
+  .rsvp-event-about-copy:not(.expanded) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
 
   .rsvp-event-about-toggle {

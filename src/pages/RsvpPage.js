@@ -277,6 +277,8 @@ function RsvpPage() {
     () => getDescriptionParagraphs(preEvent?.description),
     [preEvent?.description]
   );
+  const aboutText = aboutParagraphs.join('\n\n');
+  const hasExpandableAbout = aboutText.length > 220 || aboutParagraphs.length > 3;
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -435,9 +437,9 @@ function RsvpPage() {
           <section className="rsvp-event-about">
             <h2>About Event</h2>
             <div className={`rsvp-event-about-copy ${aboutExpanded ? 'expanded' : ''}`}>
-              {aboutParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}
+              <p>{aboutText}</p>
             </div>
-            {aboutParagraphs.length > 3 && (
+            {hasExpandableAbout && (
               <button
                 type="button"
                 className="rsvp-event-about-toggle"

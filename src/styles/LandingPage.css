@@ -423,6 +423,13 @@
   font-style: normal;
 }
 
+.lp-discover-copy em {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lp-discover-copy strong {
   color: #071122;
   font-size: 1rem;
