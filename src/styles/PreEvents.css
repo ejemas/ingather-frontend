@@ -2497,6 +2497,33 @@
   line-height: 1.65;
 }
 
+.rsvp-event-about-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.rsvp-event-about-copy p {
+  margin: 0;
+}
+
+.rsvp-event-about-toggle {
+  display: none;
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--rsvp-theme-accent);
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.rsvp-event-about-toggle:focus-visible {
+  outline: 2px solid var(--rsvp-theme-accent);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
 .rsvp-event-main {
   min-width: 0;
 }
@@ -2790,6 +2817,14 @@
 
   .rsvp-event-main > h1 {
     font-size: clamp(2.1rem, 12vw, 3.2rem);
+  }
+
+  .rsvp-event-about-copy:not(.expanded) p:nth-child(n + 4) {
+    display: none;
+  }
+
+  .rsvp-event-about-toggle {
+    display: inline-block;
   }
 
   .pre-event-community-row {

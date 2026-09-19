@@ -253,6 +253,7 @@ function LandingPage() {
                       ) : (
                         <span>RSVP</span>
                       )}
+                      <span className="lp-discover-tap">Tap to view</span>
                     </span>
                     <span className="lp-discover-copy">
                       <small>{formatEventDate(event.eventDate)}</small>

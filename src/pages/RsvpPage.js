@@ -102,6 +102,13 @@ const formatDateBadge = (value) => {
   };
 };
 
+const getDescriptionParagraphs = (description) => (
+  String(description || 'More details will be shared by the organizer soon.')
+    .split(/\r?\n\s*\r?\n/)
+    .map(paragraph => paragraph.trim())
+    .filter(Boolean)
+);
+
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const rgbToHex = (r, g, b) => (
@@ -165,6 +172,7 @@ function RsvpPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [aboutExpanded, setAboutExpanded] = useState(false);
   const [qrEmailSent, setQrEmailSent] = useState(false);
   const [emailWarning, setEmailWarning] = useState('');
   const [serverError, setServerError] = useState('');
@@ -264,6 +272,11 @@ function RsvpPage() {
     });
     return fields;
   }, [preEvent]);
+
+  const aboutParagraphs = useMemo(
+    () => getDescriptionParagraphs(preEvent?.description),
+    [preEvent?.description]
+  );
 
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -421,7 +434,18 @@ function RsvpPage() {
           </div>
           <section className="rsvp-event-about">
             <h2>About Event</h2>
-            <p>{preEvent.description || 'More details will be shared by the organizer soon.'}</p>
+            <div className={`rsvp-event-about-copy ${aboutExpanded ? 'expanded' : ''}`}>
+              {aboutParagraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 20)}`}>{paragraph}</p>)}
+            </div>
+            {aboutParagraphs.length > 3 && (
+              <button
+                type="button"
+                className="rsvp-event-about-toggle"
+                onClick={() => setAboutExpanded(prev => !prev)}
+              >
+                {aboutExpanded ? 'See less' : 'See more'}
+              </button>
+            )}
           </section>
         </aside>
 
