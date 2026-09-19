@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
 import { MAX_CUSTOM_FIELDS } from '../utils/customFields';
+import { COMMUNITY_PLATFORMS, createCommunityLink, isValidCommunityUrl } from '../utils/communityLinks';
 import '../styles/PreEvents.css';
 
 const FIELD_LABELS = {
@@ -89,7 +90,8 @@ function CreatePreEvent() {
     rsvpFieldConfig: {
       textareaLabel: 'Additional Response'
     },
-    customFormSchema: []
+    customFormSchema: [],
+    communityLinks: []
   });
   const [programOptions, setProgramOptions] = useState([]);
   const [bannerData, setBannerData] = useState({
@@ -172,6 +174,24 @@ function CreatePreEvent() {
     }));
   };
 
+  const addCommunityLink = () => {
+    if (formData.communityLinks.length >= 3) {
+      toast.error('You can add up to 3 community links.');
+      return;
+    }
+    updateField('communityLinks', [...formData.communityLinks, createCommunityLink()]);
+  };
+
+  const updateCommunityLink = (index, field, value) => {
+    updateField('communityLinks', formData.communityLinks.map((link, linkIndex) => (
+      linkIndex === index ? { ...link, [field]: value } : link
+    )));
+  };
+
+  const removeCommunityLink = (index) => {
+    updateField('communityLinks', formData.communityLinks.filter((_, linkIndex) => linkIndex !== index));
+  };
+
   const handleBannerChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -227,6 +247,10 @@ function CreatePreEvent() {
       toast.error('City is required when showing an event on Discover');
       return false;
     }
+    if (formData.communityLinks.some(link => !isValidCommunityUrl(link.url))) {
+      toast.error('Each community link must use a valid http:// or https:// URL.');
+      return false;
+    }
     return true;
   };
 
@@ -256,6 +280,7 @@ function CreatePreEvent() {
         rsvpFields: formData.rsvpFields,
         rsvpFieldConfig: formData.rsvpFieldConfig,
         customFormSchema: formData.customFormSchema,
+        communityLinks: formData.communityLinks,
         banner
       });
 
@@ -349,6 +374,39 @@ function CreatePreEvent() {
                 maxLength={5000}
               />
             </label>
+          </section>
+
+          <section className="pre-event-form-card pre-event-community-card">
+            <div className="pre-event-card-heading">
+              <div>
+                <h2>Community Links</h2>
+                <p>Optionally invite registered attendees to connect with this event community.</p>
+              </div>
+              <button type="button" className="custom-field-add-btn" onClick={addCommunityLink} disabled={formData.communityLinks.length >= 3}>
+                Add Link
+              </button>
+            </div>
+            {formData.communityLinks.length === 0 ? (
+              <p className="pre-event-discover-note">No community links added. You can add up to 3.</p>
+            ) : (
+              <div className="pre-event-community-list">
+                {formData.communityLinks.map((link, index) => (
+                  <div className="pre-event-community-row" key={`${index}-${link.platform}`}>
+                    <label className="pre-event-field">
+                      <span>Platform</span>
+                      <select value={link.platform} onChange={(event) => updateCommunityLink(index, 'platform', event.target.value)}>
+                        {COMMUNITY_PLATFORMS.map(platform => <option key={platform.value} value={platform.value}>{platform.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="pre-event-field">
+                      <span>Community URL</span>
+                      <input type="url" value={link.url} onChange={(event) => updateCommunityLink(index, 'url', event.target.value)} placeholder="https://..." maxLength={2048} required />
+                    </label>
+                    <button type="button" className="pre-event-community-remove" onClick={() => removeCommunityLink(index)}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="pre-event-form-card pre-event-discover-card">

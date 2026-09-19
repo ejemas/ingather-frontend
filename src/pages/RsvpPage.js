@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getPublicPreEvent, submitPreEventRsvp } from '../api/preEventService';
+import { getCommunityCta, getCommunityLabel } from '../utils/communityLinks';
 import '../styles/PreEvents.css';
 
 const FIELD_LABELS = {
@@ -129,6 +130,33 @@ const LocationIcon = () => (
   </svg>
 );
 
+const CommunityIcon = ({ platform }) => {
+  const common = {
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: '1.8',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true'
+  };
+
+  return (
+    <span className={`rsvp-community-icon rsvp-community-icon-${platform}`}>
+      <svg {...common}>
+        {platform === 'instagram' && <><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3.5" /><circle cx="17.5" cy="6.5" r="0.7" fill="currentColor" /></>}
+        {platform === 'whatsapp' && <><path d="M5 19l1.2-3A7.5 7.5 0 1 1 19 16.7L16 18z" /><path d="M9 9.5c.5 2 2 3.5 4 4" /></>}
+        {platform === 'discord' && <><path d="M6.5 7.5a14 14 0 0 1 11 0l1.5 8a12 12 0 0 1-4 1.5l-1.2-1.5a8 8 0 0 1-3.6 0L9 17a12 12 0 0 1-4-1.5z" /><circle cx="9" cy="12" r="1" fill="currentColor" /><circle cx="15" cy="12" r="1" fill="currentColor" /></>}
+        {platform === 'telegram' && <><path d="M20 5 4 11l6 2 2 6 2-5 4-7z" /><path d="m10 13 4-3" /></>}
+        {platform === 'facebook' && <path d="M13.5 20v-7h2.5l.5-3h-3V8.3c0-.9.3-1.5 1.6-1.5h1.6V4.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V10H8.5v3h2.3v7z" />}
+        {platform === 'linkedin' && <><path d="M6 9v9" /><path d="M6 6.5v.1" /><path d="M10 18v-5a3 3 0 0 1 6 0v5" /><path d="M10 10v8" /></>}
+        {platform === 'x' && <path d="m5 5 14 14M19 5 5 19" />}
+        {!['instagram', 'whatsapp', 'discord', 'telegram', 'facebook', 'linkedin', 'x'].includes(platform) && <><circle cx="12" cy="12" r="7" /><path d="M9 15 15 9M10 9h5v5" /></>}
+      </svg>
+    </span>
+  );
+};
+
 function RsvpPage() {
   const { slug } = useParams();
   const [preEvent, setPreEvent] = useState(null);
@@ -137,6 +165,8 @@ function RsvpPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [qrEmailSent, setQrEmailSent] = useState(false);
+  const [emailWarning, setEmailWarning] = useState('');
   const [serverError, setServerError] = useState('');
   const [visualTheme, setVisualTheme] = useState({
     accent: '#E8590C',
@@ -318,7 +348,9 @@ function RsvpPage() {
 
     try {
       setSubmitting(true);
-      await submitPreEventRsvp(slug, formData);
+      const response = await submitPreEventRsvp(slug, formData);
+      setQrEmailSent(Boolean(response.qrEmailSent));
+      setEmailWarning(response.emailWarning || '');
       setSuccess(true);
     } catch (error) {
       setServerError(error.response?.data?.error || 'Unable to secure your access. Please try again.');
@@ -422,8 +454,29 @@ function RsvpPage() {
             {success ? (
               <div className="rsvp-success-state">
                 <span className="rsvp-success-mark">✓</span>
-                <h2>Your access is secured. See you there!</h2>
-                <p>Your RSVP has been recorded by Ingather.</p>
+                <span className="rsvp-success-label">Registration Successful</span>
+                <h2>Your access is secured. See you there.</h2>
+                <p>Your RSVP has been recorded by <strong>{preEvent.churchName || 'the event host'}</strong>.</p>
+                {qrEmailSent ? (
+                  <p>Kindly check your email. Your QR code has been sent to your email.</p>
+                ) : (
+                  <p className="rsvp-success-warning">{emailWarning || 'Your QR code email could not be sent yet. Please contact the event host.'}</p>
+                )}
+                {preEvent.communityLinks?.length > 0 && (
+                  <section className="rsvp-community-section" aria-labelledby="rsvp-community-title">
+                    <span className="rsvp-success-label">Connect with the event community</span>
+                    <h3 id="rsvp-community-title">Join the Community</h3>
+                    <div className="rsvp-community-links">
+                      {preEvent.communityLinks.slice(0, 3).map((link) => (
+                        <a key={`${link.platform}-${link.url}`} className="rsvp-community-link" href={link.url} target="_blank" rel="noopener noreferrer">
+                          <CommunityIcon platform={link.platform} />
+                          <span>{getCommunityLabel(link.platform)}</span>
+                          <strong>{getCommunityCta(link.platform)}</strong>
+                        </a>
+                      ))}
+                    </div>
+                  </section>
+                )}
               </div>
             ) : (
               <form onSubmit={handleSubmit}>

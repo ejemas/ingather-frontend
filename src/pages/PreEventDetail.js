@@ -23,6 +23,7 @@ import RsvpImportModal from '../components/RsvpImportModal';
 import { useToast } from '../components/Toast';
 import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { MAX_CUSTOM_FIELDS, formatCustomAnswer } from '../utils/customFields';
+import { COMMUNITY_PLATFORMS, createCommunityLink, isValidCommunityUrl } from '../utils/communityLinks';
 import '../styles/PreEvents.css';
 
 const FIELD_LABELS = {
@@ -534,7 +535,7 @@ function PreEventDetail() {
   const [page, setPage] = useState(0);
   const [programOptions, setProgramOptions] = useState([]);
   const [linkedProgramId, setLinkedProgramId] = useState('');
-  const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false, virtualAttendanceEnabled: false });
+  const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false, virtualAttendanceEnabled: false, communityLinks: [] });
   const [customFormSchema, setCustomFormSchema] = useState([]);
   const [customFieldModal, setCustomFieldModal] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
@@ -558,7 +559,8 @@ function PreEventDetail() {
         venueName: response.preEvent?.venueName || '',
         city: response.preEvent?.city || '',
         discoverEnabled: response.preEvent?.discoverEnabled === true,
-        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
+        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true,
+        communityLinks: response.preEvent?.communityLinks || []
       });
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
       setRsvps(response.rsvps || []);
@@ -658,6 +660,10 @@ function PreEventDetail() {
       toast.error('City is required when showing this event on Discover');
       return;
     }
+    if (eventMeta.communityLinks.some(link => !isValidCommunityUrl(link.url))) {
+      toast.error('Each community link must use a valid http:// or https:// URL.');
+      return;
+    }
 
     try {
       setSavingLink(true);
@@ -672,6 +678,7 @@ function PreEventDetail() {
         rsvpFields: preEvent.rsvpFields,
         rsvpFieldConfig: preEvent.rsvpFieldConfig,
         customFormSchema,
+        communityLinks: eventMeta.communityLinks,
         isRsvpActive: preEvent.isRsvpActive,
         programId: linkedProgramId || null
       });
@@ -681,7 +688,8 @@ function PreEventDetail() {
         venueName: response.preEvent?.venueName || '',
         city: response.preEvent?.city || '',
         discoverEnabled: response.preEvent?.discoverEnabled === true,
-        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true
+        virtualAttendanceEnabled: response.preEvent?.virtualAttendanceEnabled === true,
+        communityLinks: response.preEvent?.communityLinks || []
       });
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
       const canAppearOnDiscover = response.preEvent?.discoverEnabled === true
@@ -695,6 +703,30 @@ function PreEventDetail() {
     } finally {
       setSavingLink(false);
     }
+  };
+
+  const addCommunityLink = () => {
+    if (eventMeta.communityLinks.length >= 3) {
+      toast.error('You can add up to 3 community links.');
+      return;
+    }
+    setEventMeta(prev => ({ ...prev, communityLinks: [...prev.communityLinks, createCommunityLink()] }));
+  };
+
+  const updateCommunityLink = (index, field, value) => {
+    setEventMeta(prev => ({
+      ...prev,
+      communityLinks: prev.communityLinks.map((link, linkIndex) => (
+        linkIndex === index ? { ...link, [field]: value } : link
+      ))
+    }));
+  };
+
+  const removeCommunityLink = (index) => {
+    setEventMeta(prev => ({
+      ...prev,
+      communityLinks: prev.communityLinks.filter((_, linkIndex) => linkIndex !== index)
+    }));
   };
 
   const getColumnLabel = (column) => {
@@ -970,6 +1002,38 @@ function PreEventDetail() {
           <p className="pre-event-discover-note">
             Discover is opt-in. Private RSVP links remain accessible when public discovery is off. Only active, upcoming RSVP events appear on the landing page and /discover after refresh.
           </p>
+          <div className="pre-event-community-settings">
+            <div className="pre-event-card-heading">
+              <div>
+                <h3>Community Links</h3>
+                <p>Optionally show event community links after an attendee registers.</p>
+              </div>
+              <button type="button" className="custom-field-add-btn" onClick={addCommunityLink} disabled={eventMeta.communityLinks.length >= 3}>
+                Add Link
+              </button>
+            </div>
+            {eventMeta.communityLinks.length === 0 ? (
+              <p className="pre-event-discover-note">No community links added. You can add up to 3.</p>
+            ) : (
+              <div className="pre-event-community-list">
+                {eventMeta.communityLinks.map((link, index) => (
+                  <div className="pre-event-community-row" key={`${index}-${link.platform}`}>
+                    <label className="pre-event-field">
+                      <span>Platform</span>
+                      <select value={link.platform} onChange={(event) => updateCommunityLink(index, 'platform', event.target.value)}>
+                        {COMMUNITY_PLATFORMS.map(platform => <option key={platform.value} value={platform.value}>{platform.label}</option>)}
+                      </select>
+                    </label>
+                    <label className="pre-event-field">
+                      <span>Community URL</span>
+                      <input type="url" value={link.url} onChange={(event) => updateCommunityLink(index, 'url', event.target.value)} placeholder="https://..." maxLength={2048} required />
+                    </label>
+                    <button type="button" className="pre-event-community-remove" onClick={() => removeCommunityLink(index)}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <label className={`pre-event-virtual-switch ${eventMeta.virtualAttendanceEnabled ? 'enabled' : ''}`}>
             <input
               type="checkbox"
