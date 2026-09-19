@@ -834,6 +834,12 @@
     display: none;
   }
 
+  .lp-discover-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 14px;
+  }
+
   .lp-discover-card {
     grid-template-columns: 1fr;
   }

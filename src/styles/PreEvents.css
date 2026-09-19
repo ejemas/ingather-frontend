@@ -2819,6 +2819,22 @@
     font-size: clamp(2.1rem, 12vw, 3.2rem);
   }
 
+  .rsvp-event-shell {
+    width: min(100%, calc(100% - 20px));
+    padding-top: 18px;
+  }
+
+  .rsvp-event-registration {
+    --rsvp-card-padding: 18px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .rsvp-registration-bar {
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+
   .rsvp-event-about-copy:not(.expanded) {
     display: -webkit-box;
     overflow: hidden;
