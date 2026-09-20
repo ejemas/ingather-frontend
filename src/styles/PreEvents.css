@@ -2068,7 +2068,7 @@
 
 .rsvp-success-state {
   text-align: center;
-  padding: 24px 4px;
+  padding: 28px 8px 24px;
 }
 
 .rsvp-success-mark {
@@ -2078,22 +2078,26 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #F96D10, #E8590C);
-  color: #FFFFFF;
+  background: #151d18;
+  border: 2px solid #4ade80;
+  color: #4ade80;
   font-size: 1.7rem;
   font-weight: 900;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 0 8px rgba(74, 222, 128, 0.1);
 }
 
 .rsvp-success-state h2 {
   margin: 0 0 10px;
-  font-size: 1.5rem;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1.18;
   color: #FFFFFF;
 }
 
 .rsvp-success-state p {
-  color: rgba(255, 255, 255, 0.72);
+  color: #d1d5db;
   margin: 0;
+  line-height: 1.6;
 }
 
 .rsvp-public-checkbox {
@@ -2703,7 +2707,7 @@
 .rsvp-success-label {
   display: block;
   margin-bottom: 8px;
-  color: var(--rsvp-theme-accent);
+  color: #86efac;
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -2715,17 +2719,21 @@
   font-weight: 700;
 }
 
+.rsvp-event-detail-page .rsvp-success-state p {
+  color: #d1d5db;
+}
+
 .rsvp-community-section {
   margin-top: 24px;
   padding-top: 22px;
-  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-top: 1px solid rgba(209, 213, 219, 0.28);
   text-align: left;
 }
 
 .rsvp-community-section h3 {
   margin: 0 0 12px;
-  color: var(--rsvp-theme-text);
-  font-size: 1.25rem;
+  color: #FFFFFF;
+  font-size: clamp(1.3rem, 4vw, 1.6rem);
 }
 
 .rsvp-community-links {
@@ -2740,19 +2748,22 @@
   gap: 10px;
   min-height: 52px;
   padding: 9px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  color: var(--rsvp-theme-text);
+  border: 1px solid rgba(209, 213, 219, 0.3);
+  border-radius: 12px;
+  color: #FFFFFF;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.075);
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
 }
 
 .rsvp-community-link:hover {
-  border-color: var(--rsvp-theme-accent);
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+  transform: translateY(-1px);
 }
 
 .rsvp-community-link strong {
-  color: var(--rsvp-theme-accent);
+  color: #86efac;
   font-size: 0.78rem;
   text-align: right;
 }
@@ -2760,18 +2771,24 @@
 .rsvp-community-icon {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--rsvp-theme-accent);
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 900;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
 }
 
-.rsvp-community-icon svg {
-  width: 18px;
-  height: 18px;
+.rsvp-community-icon img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  object-fit: contain;
+}
+
+.rsvp-community-fallback {
+  color: #86efac;
+  font-size: 1.15rem;
+  font-weight: 900;
 }
 
 @media (max-width: 860px) {

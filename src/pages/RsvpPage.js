@@ -137,29 +137,22 @@ const LocationIcon = () => (
   </svg>
 );
 
-const CommunityIcon = ({ platform }) => {
-  const common = {
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: '1.8',
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    'aria-hidden': 'true'
-  };
+const COMMUNITY_ICON_ASSETS = {
+  whatsapp: '/icon logo/whatsapp.png',
+  instagram: '/icon logo/Instagram.png',
+  discord: '/icon logo/Discord.png',
+  telegram: '/icon logo/Telegram.png',
+  facebook: '/icon logo/Facebook.png',
+  linkedin: '/icon logo/LinkedIn.png',
+  x: '/icon logo/X.png'
+};
+
+const CommunityIcon = ({ platform, label }) => {
+  const asset = COMMUNITY_ICON_ASSETS[platform];
 
   return (
     <span className={`rsvp-community-icon rsvp-community-icon-${platform}`}>
-      <svg {...common}>
-        {platform === 'instagram' && <><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3.5" /><circle cx="17.5" cy="6.5" r="0.7" fill="currentColor" /></>}
-        {platform === 'whatsapp' && <><path d="M5 19l1.2-3A7.5 7.5 0 1 1 19 16.7L16 18z" /><path d="M9 9.5c.5 2 2 3.5 4 4" /></>}
-        {platform === 'discord' && <><path d="M6.5 7.5a14 14 0 0 1 11 0l1.5 8a12 12 0 0 1-4 1.5l-1.2-1.5a8 8 0 0 1-3.6 0L9 17a12 12 0 0 1-4-1.5z" /><circle cx="9" cy="12" r="1" fill="currentColor" /><circle cx="15" cy="12" r="1" fill="currentColor" /></>}
-        {platform === 'telegram' && <><path d="M20 5 4 11l6 2 2 6 2-5 4-7z" /><path d="m10 13 4-3" /></>}
-        {platform === 'facebook' && <path d="M13.5 20v-7h2.5l.5-3h-3V8.3c0-.9.3-1.5 1.6-1.5h1.6V4.1c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8V10H8.5v3h2.3v7z" />}
-        {platform === 'linkedin' && <><path d="M6 9v9" /><path d="M6 6.5v.1" /><path d="M10 18v-5a3 3 0 0 1 6 0v5" /><path d="M10 10v8" /></>}
-        {platform === 'x' && <path d="m5 5 14 14M19 5 5 19" />}
-        {!['instagram', 'whatsapp', 'discord', 'telegram', 'facebook', 'linkedin', 'x'].includes(platform) && <><circle cx="12" cy="12" r="7" /><path d="M9 15 15 9M10 9h5v5" /></>}
-      </svg>
+      {asset ? <img src={asset} alt={`${label} icon`} /> : <span className="rsvp-community-fallback">↗</span>}
     </span>
   );
 };
@@ -495,8 +488,8 @@ function RsvpPage() {
                     <div className="rsvp-community-links">
                       {preEvent.communityLinks.slice(0, 3).map((link) => (
                         <a key={`${link.platform}-${link.url}`} className="rsvp-community-link" href={link.url} target="_blank" rel="noopener noreferrer">
-                          <CommunityIcon platform={link.platform} />
-                          <span>{getCommunityLabel(link.platform)}</span>
+                          <CommunityIcon platform={link.platform} label={getCommunityLabel(link.platform)} />
+                          <span className="rsvp-community-platform">{getCommunityLabel(link.platform)}</span>
                           <strong>{getCommunityCta(link.platform)}</strong>
                         </a>
                       ))}
