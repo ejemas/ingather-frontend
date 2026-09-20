@@ -2707,7 +2707,7 @@
 .rsvp-success-label {
   display: block;
   margin-bottom: 8px;
-  color: #86efac;
+  color: #f96d10;
   font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -2757,13 +2757,13 @@
 }
 
 .rsvp-community-link:hover {
-  border-color: #4ade80;
-  background: rgba(74, 222, 128, 0.1);
+  border-color: #f96d10;
+  background: rgba(249, 109, 16, 0.1);
   transform: translateY(-1px);
 }
 
 .rsvp-community-link strong {
-  color: #86efac;
+  color: #f96d10;
   font-size: 0.78rem;
   text-align: right;
 }
