@@ -646,6 +646,50 @@
   font-size: 0.76rem;
 }
 
+.pre-event-field-card.editable {
+  cursor: default;
+}
+
+.pre-event-field-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.pre-event-field-card .pre-event-field-required-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.pre-event-field-required-toggle input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--color-orange);
+}
+
+.pre-event-field-card .pre-event-field-required-toggle span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.pre-event-field-card-actions button {
+  min-height: 34px;
+  margin-left: auto;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(249, 109, 16, 0.28);
+  background: rgba(249, 109, 16, 0.08);
+  color: #e8590c;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .pre-event-submit-row {
   justify-content: flex-end;
   margin-bottom: 32px;

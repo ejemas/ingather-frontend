@@ -375,3 +375,36 @@ test('keeps public QR actions enabled when the organizer-added allowance is exha
   expect(within(publicRow).getByRole('button', { name: 'Resend QR' })).toBeEnabled();
   expect(within(importedRow).getByRole('button', { name: 'Send QR' })).toBeDisabled();
 });
+
+test('lets the host change live RSVP form fields and keeps old answers visible', async () => {
+  const { updatePreEvent } = jest.requireMock('../api/preEventService');
+  const liveEvent = {
+    ...preEvent,
+    rsvpFields: { emailAddress: true, phoneNumber: true },
+    rsvpFieldConfig: { textareaLabel: 'Additional Response', requiredFields: {} }
+  };
+  getPreEvent.mockResolvedValue({
+    ...initialDetail,
+    preEvent: liveEvent,
+    rsvps: [{ ...initialDetail.rsvps[0], school: 'Unilag' }]
+  });
+  updatePreEvent.mockImplementation(async (id, payload) => ({
+    preEvent: { ...liveEvent, rsvpFields: payload.rsvpFields, rsvpFieldConfig: payload.rsvpFieldConfig }
+  }));
+
+  render(<PreEventDetail />);
+
+  expect(await screen.findByText('RSVP Form Fields')).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'School' })).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Make Phone Number required' }));
+  const ageCard = screen.getByText('Age', { selector: 'span' }).closest('.pre-event-field-card');
+  fireEvent.click(within(ageCard).getByRole('button', { name: 'Add to form' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
+
+  await waitFor(() => expect(updatePreEvent).toHaveBeenCalledTimes(1));
+  const payload = updatePreEvent.mock.calls[0][1];
+  expect(payload.rsvpFields).toEqual(expect.objectContaining({ emailAddress: true, phoneNumber: true, age: true }));
+  expect(payload.rsvpFieldConfig.requiredFields).toEqual({ phoneNumber: false });
+  expect(await screen.findByText('Optional', { selector: 'strong' })).toBeInTheDocument();
+});

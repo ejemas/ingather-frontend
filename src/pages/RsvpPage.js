@@ -266,6 +266,15 @@ function RsvpPage() {
     return fields;
   }, [preEvent]);
 
+  // Enabled fields are required unless the host marked them optional; email is always required.
+  const isFieldRequired = (field) => {
+    if (field === 'emailAddress') return true;
+    if (field === 'firstTimer') return false;
+    return Boolean(preEvent?.rsvpFields?.[field]) && preEvent?.rsvpFieldConfig?.requiredFields?.[field] !== false;
+  };
+
+  const optionalSuffix = (field) => (isFieldRequired(field) ? '' : ' (optional)');
+
   const aboutParagraphs = useMemo(
     () => getDescriptionParagraphs(preEvent?.description),
     [preEvent?.description]
@@ -303,16 +312,17 @@ function RsvpPage() {
     selectedFields.forEach((field) => {
       if (field === 'emailAddress') return;
       if (field === 'firstTimer') return;
+      const required = isFieldRequired(field);
       if (field === 'link') {
         if (!String(formData.linkUrl || '').trim()) {
-          nextErrors.linkUrl = 'Link is required.';
+          if (required) nextErrors.linkUrl = 'Link is required.';
         } else if (!isValidHttpUrl(formData.linkUrl)) {
           nextErrors.linkUrl = 'Enter a valid link starting with http:// or https://.';
         }
         return;
       }
       if (field === 'textarea') {
-        if (!String(formData.textareaResponse || '').trim()) {
+        if (required && !String(formData.textareaResponse || '').trim()) {
           nextErrors.textareaResponse = 'Response is required.';
         }
         return;
@@ -320,13 +330,13 @@ function RsvpPage() {
       if (field === 'age') {
         const age = Number(formData.age);
         if (!String(formData.age || '').trim()) {
-          nextErrors.age = 'Age is required.';
+          if (required) nextErrors.age = 'Age is required.';
         } else if (!Number.isInteger(age) || age < 1 || age > 120) {
           nextErrors.age = 'Enter an age between 1 and 120.';
         }
         return;
       }
-      if (!String(formData[field] || '').trim()) {
+      if (required && !String(formData[field] || '').trim()) {
         nextErrors[field] = `${FIELD_LABELS[field]} is required.`;
       }
     });
@@ -559,12 +569,12 @@ function RsvpPage() {
                   if (field === 'sex') {
                     return (
                       <label className="rsvp-public-field" key={field}>
-                        <span>{FIELD_LABELS[field]}</span>
+                        <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                         <select
                           value={formData.sex || ''}
                           onChange={(event) => updateField('sex', event.target.value)}
                           disabled={!preEvent.isRsvpActive || submitting}
-                          required
+                          required={isFieldRequired(field)}
                         >
                           <option value="">Select gender</option>
                           <option value="Male">Male</option>
@@ -578,14 +588,14 @@ function RsvpPage() {
                   if (field === 'link') {
                     return (
                       <label className="rsvp-public-field" key={field}>
-                        <span>{FIELD_LABELS[field]}</span>
+                        <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                         <input
                           type="url"
                           value={formData.linkUrl || ''}
                           onChange={(event) => updateField('linkUrl', event.target.value)}
                           placeholder={FIELD_PLACEHOLDERS[field]}
                           disabled={!preEvent.isRsvpActive || submitting}
-                          required
+                          required={isFieldRequired(field)}
                         />
                         {errors.linkUrl && <small>{errors.linkUrl}</small>}
                       </label>
@@ -596,7 +606,7 @@ function RsvpPage() {
                     const textareaLabel = preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
                     return (
                       <label className="rsvp-public-field rsvp-public-field-wide" key={field}>
-                        <span>{textareaLabel}</span>
+                        <span>{textareaLabel}{optionalSuffix(field)}</span>
                         <textarea
                           value={formData.textareaResponse || ''}
                           onChange={(event) => updateField('textareaResponse', event.target.value)}
@@ -604,7 +614,7 @@ function RsvpPage() {
                           disabled={!preEvent.isRsvpActive || submitting}
                           rows={4}
                           maxLength={5000}
-                          required
+                          required={isFieldRequired(field)}
                         />
                         {errors.textareaResponse && <small>{errors.textareaResponse}</small>}
                       </label>
@@ -613,7 +623,7 @@ function RsvpPage() {
 
                   return (
                     <label className="rsvp-public-field" key={field}>
-                      <span>{FIELD_LABELS[field]}</span>
+                      <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                       <input
                         type={field === 'emailAddress' ? 'email' : field === 'age' ? 'number' : 'text'}
                         value={formData[field] || ''}
@@ -623,7 +633,7 @@ function RsvpPage() {
                         maxLength={field === 'emailAddress' ? 255 : undefined}
                         min={field === 'age' ? 1 : undefined}
                         max={field === 'age' ? 120 : undefined}
-                        required
+                        required={isFieldRequired(field)}
                       />
                       {errors[field] && <small>{errors[field]}</small>}
                     </label>

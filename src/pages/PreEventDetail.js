@@ -70,6 +70,37 @@ const DEFAULT_QR_EMAIL_QUOTA = {
 
 const usesQrEmailQuota = (rsvp) => rsvp?.registrationSource !== 'public';
 
+// Enabled fields are required unless the host marked them optional; email is always required.
+const isRsvpFieldRequired = (rsvpFields, rsvpFieldConfig, field) => {
+  if (field === 'emailAddress') return true;
+  if (field === 'firstTimer') return false;
+  return Boolean(rsvpFields?.[field]) && rsvpFieldConfig?.requiredFields?.[field] !== false;
+};
+
+const hasRsvpFieldValue = (rsvp, field) => {
+  if (field === 'firstTimer') return rsvp.firstTimer === true;
+  if (field === 'link') return Boolean(rsvp.linkUrl);
+  if (field === 'textarea') return Boolean(rsvp.textareaResponse);
+  if (field === 'age') return rsvp.age !== null && rsvp.age !== undefined && rsvp.age !== '';
+  return Boolean(rsvp[field]);
+};
+
+const FIELD_COPY = {
+  fullName: 'Capture each attendee name before the event.',
+  phoneNumber: 'Useful for reminders and door operations.',
+  school: 'Good for campus, youth, and student events.',
+  link: 'Collect GitHub, portfolio, website, or social links.',
+  textarea: 'Ask a longer custom question for attendees to answer.',
+  organization: 'Capture company, ministry, team, or group affiliation.',
+  ticketType: 'Let attendees identify their access category.',
+  address: 'Collect location details when needed.',
+  firstTimer: 'Identify first-time attendees before event day.',
+  department: 'Capture department, unit, or ministry team.',
+  fellowship: 'Capture group, fellowship, or community.',
+  age: 'Useful for youth, school, or segmented events.',
+  sex: 'Capture gender breakdown for event planning.'
+};
+
 const SearchIcon = () => (
   <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="9" cy="9" r="5.5" />
@@ -172,6 +203,9 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
     return fields;
   }, [preEvent]);
 
+  const isFieldRequired = (field) => isRsvpFieldRequired(preEvent?.rsvpFields, preEvent?.rsvpFieldConfig, field);
+  const optionalSuffix = (field) => (isFieldRequired(field) ? '' : ' (optional)');
+
   const updateField = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: '' }));
@@ -201,10 +235,11 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
 
     selectedFields.forEach((field) => {
       if (field === 'emailAddress' || field === 'firstTimer') return;
+      const required = isFieldRequired(field);
 
       if (field === 'link') {
         if (!String(formData.linkUrl || '').trim()) {
-          nextErrors.linkUrl = 'Link is required.';
+          if (required) nextErrors.linkUrl = 'Link is required.';
         } else if (!isValidHttpUrl(formData.linkUrl)) {
           nextErrors.linkUrl = 'Enter a valid link starting with http:// or https://.';
         }
@@ -212,7 +247,7 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
       }
 
       if (field === 'textarea') {
-        if (!String(formData.textareaResponse || '').trim()) {
+        if (required && !String(formData.textareaResponse || '').trim()) {
           nextErrors.textareaResponse = 'Response is required.';
         }
         return;
@@ -221,14 +256,14 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
       if (field === 'age') {
         const age = Number(formData.age);
         if (!String(formData.age || '').trim()) {
-          nextErrors.age = 'Age is required.';
+          if (required) nextErrors.age = 'Age is required.';
         } else if (!Number.isInteger(age) || age < 1 || age > 120) {
           nextErrors.age = 'Enter an age between 1 and 120.';
         }
         return;
       }
 
-      if (!String(formData[field] || '').trim()) {
+      if (required && !String(formData[field] || '').trim()) {
         nextErrors[field] = `${FIELD_LABELS[field]} is required.`;
       }
     });
@@ -325,7 +360,7 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
               if (field === 'sex') {
                 return (
                   <label className="pre-event-manual-field" key={field}>
-                    <span>{FIELD_LABELS[field]}</span>
+                    <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                     <select
                       value={formData.sex || ''}
                       onChange={(event) => updateField('sex', event.target.value)}
@@ -343,7 +378,7 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
               if (field === 'link') {
                 return (
                   <label className="pre-event-manual-field" key={field}>
-                    <span>{FIELD_LABELS[field]}</span>
+                    <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                     <input
                       type="url"
                       value={formData.linkUrl || ''}
@@ -360,7 +395,7 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
                 const textareaLabel = preEvent.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea;
                 return (
                   <label className="pre-event-manual-field wide" key={field}>
-                    <span>{textareaLabel}</span>
+                    <span>{textareaLabel}{optionalSuffix(field)}</span>
                     <textarea
                       value={formData.textareaResponse || ''}
                       onChange={(event) => updateField('textareaResponse', event.target.value)}
@@ -376,7 +411,7 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
 
               return (
                 <label className="pre-event-manual-field" key={field}>
-                  <span>{FIELD_LABELS[field]}</span>
+                  <span>{FIELD_LABELS[field]}{optionalSuffix(field)}</span>
                   <input
                     type={field === 'emailAddress' ? 'email' : field === 'age' ? 'number' : 'text'}
                     value={formData[field] || ''}
@@ -537,6 +572,8 @@ function PreEventDetail() {
   const [linkedProgramId, setLinkedProgramId] = useState('');
   const [eventMeta, setEventMeta] = useState({ venueName: '', city: '', discoverEnabled: false, virtualAttendanceEnabled: false, communityLinks: [] });
   const [customFormSchema, setCustomFormSchema] = useState([]);
+  const [rsvpFields, setRsvpFields] = useState({});
+  const [rsvpFieldConfig, setRsvpFieldConfig] = useState({ textareaLabel: FIELD_LABELS.textarea, requiredFields: {} });
   const [customFieldModal, setCustomFieldModal] = useState(null);
   const [savingLink, setSavingLink] = useState(false);
   const [resendingRsvpId, setResendingRsvpId] = useState(null);
@@ -563,6 +600,11 @@ function PreEventDetail() {
         communityLinks: response.preEvent?.communityLinks || []
       });
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
+      setRsvpFields(response.preEvent?.rsvpFields || {});
+      setRsvpFieldConfig({
+        textareaLabel: response.preEvent?.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea,
+        requiredFields: response.preEvent?.rsvpFieldConfig?.requiredFields || {}
+      });
       setRsvps(response.rsvps || []);
       setAnalytics(response.analytics || { totalRsvps: 0, todayRsvps: 0, velocity: [] });
       setQrEmailQuota(response.qrEmailQuota || DEFAULT_QR_EMAIL_QUOTA);
@@ -604,8 +646,10 @@ function PreEventDetail() {
     if (preEvent.rsvpFields?.fullName || rsvps.some(rsvp => Boolean(rsvp.fullName))) selected.push('fullName');
     selected.push('emailAddress');
     if (preEvent.virtualAttendanceEnabled || rsvps.some(rsvp => rsvp.attendanceMode)) selected.push('attendanceMode');
+    // Keep a column for a field the host turned off if attendees already answered it.
     OPTIONAL_FIELDS.forEach((field) => {
-      if (field !== 'fullName' && preEvent.rsvpFields?.[field]) selected.push(field);
+      if (field === 'fullName') return;
+      if (preEvent.rsvpFields?.[field] || rsvps.some(rsvp => hasRsvpFieldValue(rsvp, field))) selected.push(field);
     });
     selected.push('createdAt');
     customFormSchema.forEach((field) => {
@@ -675,8 +719,8 @@ function PreEventDetail() {
         city: eventMeta.city,
         discoverEnabled: eventMeta.discoverEnabled,
         virtualAttendanceEnabled: eventMeta.virtualAttendanceEnabled,
-        rsvpFields: preEvent.rsvpFields,
-        rsvpFieldConfig: preEvent.rsvpFieldConfig,
+        rsvpFields,
+        rsvpFieldConfig,
         customFormSchema,
         communityLinks: eventMeta.communityLinks,
         isRsvpActive: preEvent.isRsvpActive,
@@ -692,6 +736,11 @@ function PreEventDetail() {
         communityLinks: response.preEvent?.communityLinks || []
       });
       setCustomFormSchema(response.preEvent?.customFormSchema || []);
+      setRsvpFields(response.preEvent?.rsvpFields || {});
+      setRsvpFieldConfig({
+        textareaLabel: response.preEvent?.rsvpFieldConfig?.textareaLabel || FIELD_LABELS.textarea,
+        requiredFields: response.preEvent?.rsvpFieldConfig?.requiredFields || {}
+      });
       const canAppearOnDiscover = response.preEvent?.discoverEnabled === true
         && response.preEvent?.isRsvpActive
         && isFutureDiscoverDate(response.preEvent?.eventDate);
@@ -768,6 +817,20 @@ function PreEventDetail() {
 
   const handleRemoveCustomField = (fieldId) => {
     setCustomFormSchema(prev => prev.filter(field => field.id !== fieldId));
+  };
+
+  const toggleRsvpField = (field) => {
+    setRsvpFields(prev => ({ ...prev, emailAddress: true, [field]: !prev[field] }));
+  };
+
+  const toggleRsvpFieldRequired = (field) => {
+    setRsvpFieldConfig(prev => ({
+      ...prev,
+      requiredFields: {
+        ...(prev.requiredFields || {}),
+        [field]: !isRsvpFieldRequired(rsvpFields, prev, field)
+      }
+    }));
   };
 
   const getQrStatusLabel = (rsvp) => {
@@ -1053,6 +1116,62 @@ function PreEventDetail() {
               {savingLink ? 'Saving...' : 'Save Settings'}
             </button>
           </div>
+        </section>
+
+        <section className="pre-event-form-card">
+          <div className="pre-event-card-heading">
+            <div>
+              <h2>RSVP Form Fields</h2>
+              <p>Add, remove, or change whether a field is required, even while the RSVP page is live. Answers already collected are kept. Click Save Settings in the Event Visibility section after editing.</p>
+            </div>
+          </div>
+          <div className="pre-event-field-grid">
+            <div className="pre-event-field-card selected locked">
+              <span>{FIELD_LABELS.emailAddress}</span>
+              <small>Always required so organizers can identify RSVP records.</small>
+              <strong>Required</strong>
+            </div>
+            {OPTIONAL_FIELDS.map((field) => {
+              const enabled = Boolean(rsvpFields[field]);
+              const required = isRsvpFieldRequired(rsvpFields, rsvpFieldConfig, field);
+              return (
+                <div className={`pre-event-field-card editable ${enabled ? 'selected' : ''}`} key={field}>
+                  <span>{field === 'textarea' ? rsvpFieldConfig.textareaLabel || FIELD_LABELS.textarea : FIELD_LABELS[field]}</span>
+                  <small>{FIELD_COPY[field]}</small>
+                  <strong>{!enabled ? 'Not on form' : field === 'firstTimer' ? 'Optional checkbox' : required ? 'Required' : 'Optional'}</strong>
+                  <div className="pre-event-field-card-actions">
+                    {enabled && field !== 'firstTimer' && (
+                      <label className="pre-event-field-required-toggle">
+                        <input
+                          type="checkbox"
+                          checked={required}
+                          onChange={() => toggleRsvpFieldRequired(field)}
+                          aria-label={`Make ${FIELD_LABELS[field]} required`}
+                        />
+                        <span>Required</span>
+                      </label>
+                    )}
+                    <button type="button" onClick={() => toggleRsvpField(field)}>
+                      {enabled ? 'Remove' : 'Add to form'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {rsvpFields.textarea && (
+            <label className="pre-event-field pre-event-field-config">
+              <span>Textarea question label</span>
+              <input
+                type="text"
+                value={rsvpFieldConfig.textareaLabel}
+                onChange={(event) => setRsvpFieldConfig(prev => ({ ...prev, textareaLabel: event.target.value }))}
+                placeholder="What do you expect from this event?"
+                maxLength={120}
+              />
+              <small>This is the label attendees will see on the RSVP page.</small>
+            </label>
+          )}
         </section>
 
         <section className="pre-event-form-card">
