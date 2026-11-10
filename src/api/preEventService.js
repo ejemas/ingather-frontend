@@ -78,3 +78,9 @@ export const getDiscoverPreEvents = async (params = {}) => {
   const response = await PublicAPI.get('/pre-events/discover', { params });
   return response.data;
 };
+
+// A guest's own RSVP pass, opened from the link in their RSVP email. No sign-in needed.
+export const getRsvpPass = async (token) => {
+  const response = await PublicAPI.get(`/pre-events/pass/${encodeURIComponent(token)}`);
+  return response.data;
+};

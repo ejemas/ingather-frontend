@@ -1,541 +1,369 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getPrograms, deleteProgram } from '../api/programService';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { getDashboardBootstrap, deleteProgram } from '../api/programService';
+import IgDashShell, { DashIcon, DashDialog, StatusPill, DateTile } from '../components/IgDashShell';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
-import '../styles/Dashboard.css';
+import { dateBadge, formatNumber, formatTimeRange, localToday } from '../utils/dashboardFormat';
 
-/* SVG Icons (shared with Dashboard) */
-const Icons = {
-  logo: (
-    <img src="/ingather-logo.png" alt="Ingather" className="sidebar-logo-img" />
-  ),
-  collapse: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="3" y="3" width="14" height="14" rx="2" />
-      <line x1="9" y1="3" x2="9" y2="17" />
-    </svg>
-  ),
-  dashboard: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <rect x="3" y="3" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="11" y="3" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="3" y="11" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="11" y="11" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-    </svg>
-  ),
-  createProgram: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7" />
-      <line x1="10" y1="7" x2="10" y2="13" />
-      <line x1="7" y1="10" x2="13" y2="10" />
-    </svg>
-  ),
-  allPrograms: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="14" height="12" rx="2" />
-      <line x1="3" y1="8" x2="17" y2="8" />
-      <line x1="7" y1="4" x2="7" y2="8" />
-      <line x1="13" y1="4" x2="13" y2="8" />
-    </svg>
-  ),
-  settings: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  notification: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" />
-      <path d="M8.5 17a1.5 1.5 0 003 0" />
-    </svg>
-  ),
-  logout: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" />
-      <polyline points="11,14 17,10 11,6" />
-      <line x1="17" y1="10" x2="7" y2="10" />
-    </svg>
-  ),
-  chevronRight: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6,4 10,8 6,12" />
-    </svg>
-  ),
-  chevronDown: (
-    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,5 7,9 11,5" />
-    </svg>
-  ),
-  sun: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="3.5" />
-      <line x1="10" y1="2" x2="10" y2="4" /><line x1="10" y1="16" x2="10" y2="18" />
-      <line x1="2" y1="10" x2="4" y2="10" /><line x1="16" y1="10" x2="18" y2="10" />
-      <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
-      <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" /><line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
-    </svg>
-  ),
-  moon: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" />
-    </svg>
-  ),
-  gear: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  trash: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,4 13,4" />
-      <path d="M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1" />
-      <path d="M4 4l.7 9.1a1 1 0 001 .9h4.6a1 1 0 001-.9L12 4" />
-      <line x1="7" y1="7" x2="7" y2="12" />
-      <line x1="9" y1="7" x2="9" y2="12" />
-    </svg>
-  ),
+const PAGE_SIZE = 8;
+const TABS = [['all', 'All'], ['active', 'Active'], ['upcoming', 'Upcoming'], ['completed', 'Completed']];
+const SORTS = [['newest', 'Newest first'], ['oldest', 'Oldest first'], ['attended', 'Most attended']];
+const DATA_OPTS = [['all', 'All'], ['collect-data', 'Collecting'], ['count-only', 'Count only']];
+const searchIcon = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>;
+const filterIcon = <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>;
+
+const pick = (params, key, allowed, fallback) => {
+  const value = params.get(key);
+  return allowed.some(([k]) => k === value) ? value : fallback;
 };
 
 function AllPrograms() {
-  const [programs, setPrograms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('ingather-theme') === 'dark';
-  });
   const toast = useToast();
+  const navigate = useNavigate();
   const { template, setTemplateKey } = useEventTemplate();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const profileMenuRef = useRef(null);
+  // Stable handle: changing the wording must not trigger another data load.
+  const setTemplateRef = useRef(setTemplateKey);
+  setTemplateRef.current = setTemplateKey;
+  const [params, setParams] = useSearchParams();
+  const today = useMemo(() => localToday(), []);
 
-  const getProgramStatus = (program) => {
-    if (program.status) return program.status;
-    if (!program.isActive) return 'completed';
-    const today = new Date().toISOString().split('T')[0];
-    const programDate = typeof program.date === 'string'
-      ? program.date.slice(0, 10)
-      : new Date(program.date).toISOString().split('T')[0];
-    return programDate > today ? 'upcoming' : 'active';
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [query, setQuery] = useState(params.get('q') || '');
+  const filterRef = useRef(null);
+  const listTopRef = useRef(null);
+
+  const tab = pick(params, 'status', TABS, 'all');
+  const sort = pick(params, 'sort', SORTS, 'newest');
+  const dataMode = pick(params, 'data', DATA_OPTS, 'all');
+  const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
+
+  const updateParams = (changes, keepPage = false) => {
+    const next = new URLSearchParams(params);
+    Object.entries(changes).forEach(([key, value]) => {
+      if (value === null || value === '' || value === 'all' || (key === 'sort' && value === 'newest')) next.delete(key);
+      else next.set(key, value);
+    });
+    if (!keepPage) next.delete('page');
+    setParams(next, { replace: true });
   };
 
-  // Theme effect
+  // Search updates the address bar a moment after typing stops.
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
+    const id = setTimeout(() => {
+      if ((params.get('q') || '') !== query.trim()) updateParams({ q: query.trim() });
+    }, 250);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      navigate('/login', { replace: true });
+      return undefined;
     }
-    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
-
-  useEffect(() => {
-    fetchPrograms();
-  }, []);
-
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
-    };
-    const previousOverflow = document.body.style.overflow;
-
-    document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isMobileMenuOpen]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  const fetchPrograms = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const { getCurrentChurch } = await import('../api/authService');
-      const church = await getCurrentChurch();
-      setChurchData({
-        name: church.churchName,
-        branch: church.branchName,
-        email: church.email || '',
-        logo: church.logoUrl
-      });
-      setTemplateKey(church.organizationType || 'general');
-
-      // Fetch unread notification count
+    let alive = true;
+    (async () => {
+      setLoadError('');
       try {
-        const axios = (await import('axios')).default;
-        const countRes = await axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        setUnreadCount(countRes.data.unreadCount || 0);
-      } catch (err) {
-        console.error('Error fetching unread count:', err);
+        const res = await getDashboardBootstrap(null, null, today);
+        if (!alive) return;
+        setData(res);
+        if (res.church?.organizationType) setTemplateRef.current(res.church.organizationType);
+      } catch (error) {
+        if (!alive) return;
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login', { replace: true });
+          return;
+        }
+        setLoadError(error.response?.data?.error || 'We could not load your events. Check your connection and try again.');
+      } finally {
+        if (alive) setLoading(false);
       }
+    })();
+    return () => { alive = false; };
+  }, [today, reloadKey, navigate]);
 
-      const response = await getPrograms();
-      const formattedPrograms = response.programs.map(p => ({
-        id: p.id,
-        title: p.title,
-        date: p.date,
-        startTime: p.startTime,
-        endTime: p.endTime,
-        totalScans: p.totalScans,
-        isActive: p.isActive,
-        status: getProgramStatus(p),
-        dataCollection: p.trackingMode === 'collect-data'
-      }));
+  useEffect(() => {
+    if (!filterOpen) return undefined;
+    const onDown = (event) => { if (filterRef.current && !filterRef.current.contains(event.target)) setFilterOpen(false); };
+    const onKey = (event) => { if (event.key === 'Escape') setFilterOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [filterOpen]);
 
-      setPrograms(formattedPrograms);
-      setLoading(false);
+  const stats = data?.stats;
+  const church = data?.church ? { name: data.church.churchName, email: data.church.email, logoUrl: data.church.logoUrl } : null;
+  const plural = template?.event?.plural || 'Events';
+  const singular = template?.event?.singular || 'Event';
+  const allLabel = template?.event?.all || `All ${plural}`;
+  const titleWord = allLabel.replace(/^All\s+/i, '');
+
+  const all = useMemo(() => (stats?.recentPrograms || []).map((p) => ({ ...p, status: p.status || 'completed' })), [stats]);
+  const searched = useMemo(() => {
+    const q = (params.get('q') || '').toLowerCase();
+    return all.filter((e) => (dataMode === 'all' || (dataMode === 'collect-data' ? e.trackingMode === 'collect-data' : e.trackingMode !== 'collect-data'))
+      && (!q || String(e.title || '').toLowerCase().includes(q)));
+  }, [all, params, dataMode]);
+  const counts = useMemo(() => searched.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, { all: searched.length }), [searched]);
+  const results = useMemo(() => {
+    const list = tab === 'all' ? [...searched] : searched.filter((e) => e.status === tab);
+    const key = (e) => `${e.date}T${e.startTime || '00:00'}`;
+    if (sort === 'oldest') list.sort((a, b) => key(a).localeCompare(key(b)));
+    else if (sort === 'attended') list.sort((a, b) => (b.totalScans || 0) - (a.totalScans || 0) || key(b).localeCompare(key(a)));
+    else {
+      // Newest first: what's happening now, then what's next (soonest first), then past events (latest first).
+      const rank = { active: 0, upcoming: 1, completed: 2 };
+      list.sort((a, b) => (rank[a.status] - rank[b.status])
+        || (a.status === 'upcoming' ? key(a).localeCompare(key(b)) : key(b).localeCompare(key(a))));
+    }
+    return list;
+  }, [searched, tab, sort]);
+  const maxAttendance = useMemo(() => Math.max(1, ...all.map((e) => e.totalScans || 0)), [all]);
+
+  const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const safePage = Math.min(page, pages);
+  const pageItems = results.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const from = results.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+  const to = Math.min(results.length, safePage * PAGE_SIZE);
+  const filtersChanged = sort !== 'newest' || dataMode !== 'all';
+
+  const goPage = (n) => {
+    updateParams({ page: n > 1 ? String(n) : null }, true);
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      await deleteProgram(deleting.id);
+      toast.success(template.dashboard?.deleteSuccess || 'Event deleted.');
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
     } catch (error) {
-      console.error('Error fetching programs:', error);
-      setLoading(false);
+      toast.error(error.response?.data?.error || template.dashboard?.deleteFailure || 'Could not delete this event.');
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
-  const handleLogout = () => {
-    toast.confirm('Are you sure you want to logout?', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('church');
-      window.location.href = '/';
-    });
-  };
-
-  const handleDeleteProgram = (program) => {
-    toast.confirm(
-      template.dashboard.deleteConfirm.replace('{title}', program.title),
-      async () => {
-        try {
-          await deleteProgram(program.id);
-          setPrograms(prev => prev.filter(p => p.id !== program.id));
-          toast.success(template.dashboard.deleteSuccess);
-        } catch (error) {
-          toast.error(error.response?.data?.error || template.dashboard.deleteFailure);
-        }
-      }
-    );
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate();
-    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th';
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'short' });
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${weekday}, ${month} ${day}${suffix}, ${year}`;
-  };
-
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    const [h, m] = timeStr.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
-  };
-
-  const getStatusBadge = (status) => {
-    const statusColors = {
-      active: 'status-active',
-      upcoming: 'status-upcoming',
-      completed: 'status-completed'
-    };
-    return statusColors[status] || '';
-  };
-
-  const toggleTheme = () => setDarkMode(prev => !prev);
-
-  const churchInitials = churchData.name
-    ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'IN';
-
-  const filteredPrograms = programs
-    .filter(program => {
-      if (activeFilter === 'all') return true;
-      return program.status === activeFilter;
-    })
-    .sort((a, b) => {
-      if (activeFilter !== 'upcoming') return 0;
-      return `${a.date}T${a.startTime || '00:00'}`.localeCompare(`${b.date}T${b.startTime || '00:00'}`);
-    });
-
-  const upcomingCount = programs.filter(p => p.status === 'upcoming').length;
-
-  if (loading) {
+  const deleteButton = (e) => {
+    const canDelete = e.status === 'completed';
     return (
-      <div className="dashboard">
-        <aside className="sidebar">
-          <div className="sidebar-logo">
-            <a href="/dashboard" className="sidebar-logo-link">
-              <span className="sidebar-logo-icon">{Icons.logo}</span>
-              <span className="sidebar-logo-text">Ingather</span>
-            </a>
-          </div>
-        </aside>
-        <main className="dashboard-main">
-          <div className="dashboard-loading">
-            <div className="spinner"></div>
-            <p>Loading {template.event.plural.toLowerCase()}...</p>
-          </div>
-        </main>
-      </div>
+      <button
+        type="button"
+        className="ig-db-trash"
+        aria-label={canDelete ? `Delete ${e.title}` : `Stop ${e.title} before deleting it`}
+        title={canDelete ? 'Delete' : `Stop this ${singular.toLowerCase()} before deleting it`}
+        disabled={!canDelete}
+        onClick={() => setDeleting(e)}
+      >{DashIcon.trash}</button>
     );
-  }
+  };
+
+  const total = stats?.totalProgramsAllTime || 0;
 
   return (
-    <div className="dashboard">
-      {/* Sidebar */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
-        <div className="sidebar-logo">
-          <a href="/dashboard" className="sidebar-logo-link">
-            <span className="sidebar-logo-icon">{Icons.logo}</span>
-            <span className="sidebar-logo-text">Ingather</span>
-          </a>
-          <button className="sidebar-collapse-btn" title="Toggle sidebar">
-            {Icons.collapse}
-          </button>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.dashboard}</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/pre-events" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>Pre-Events</span>
-          </a>
-          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.createProgram}</span>
-            <span>{template.event.create}</span>
-          </a>
-          <a href="/programs" className="nav-item active" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>{template.event.all}</span>
-          </a>
-          <a href="/settings" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.settings}</span>
-            <span>Settings</span>
-          </a>
-        </nav>
-
-        <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.notification}</span>
-            <span>Notification</span>
-            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-          </a>
-          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}>
-            <span className="nav-icon">{Icons.logout}</span>
-            <span>Log out</span>
-          </button>
-        </div>
-
-        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
-          <div className="sidebar-profile-avatar">
-            {churchData.logo ? (
-              <img src={churchData.logo} alt={churchData.name} />
-            ) : (
-              <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>
-            )}
+    <IgDashShell
+      active="events"
+      crumb={allLabel}
+      church={church}
+      counts={{ preEvents: stats?.preEventCount || 0, events: total }}
+      unreadCount={data?.unreadCount || 0}
+      live={stats?.live || null}
+      template={template}
+    >
+      <div className="ig-db-page">
+        <div className="ig-db-hello ig-ae-head">
+          <div className="ig-db-hello-text">
+            <span>{loading ? ' ' : `${formatNumber(total)} ${total === 1 ? singular.toLowerCase() : plural.toLowerCase()} in this workspace`}</span>
+            <h1>All <span className="ig-db-title-mark">{titleWord}</span></h1>
           </div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{churchData.name}</div>
-            <div className="sidebar-profile-email">{churchData.email}</div>
-          </div>
-          <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
-        </div>
-      </aside>
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-backdrop"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      {/* Main Content */}
-      <main className="dashboard-main">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div className="navbar-left">
+          <div className="ig-ae-tools" ref={filterRef}>
+            <label className="ig-ae-search">
+              {searchIcon}
+              <input
+                type="search"
+                placeholder={`Search ${plural.toLowerCase()}`}
+                aria-label={`Search ${plural.toLowerCase()}`}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                maxLength={120}
+              />
+            </label>
             <button
               type="button"
-              className="mobile-menu-btn"
-              aria-label="Open navigation menu"
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(true)}
+              className={`ig-ae-filter-btn${filterOpen ? ' is-open' : ''}`}
+              aria-label="Sort and filter"
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((v) => !v)}
             >
-              <span></span>
-              <span></span>
-              <span></span>
+              {filterIcon}
+              {filtersChanged && <span className="ig-ae-filter-dot" aria-hidden="true" />}
             </button>
-            <span className="navbar-church-name">{template.event.all}</span>
+            {filterOpen && (
+              <div className="ig-ae-pop" role="dialog" aria-label={`Sort and filter ${plural.toLowerCase()}`}>
+                <span className="ig-ae-pop-caret" aria-hidden="true" />
+                <div className="ig-ae-pop-head">
+                  <strong>Sort and filter</strong>
+                  <button type="button" onClick={() => updateParams({ sort: null, data: null })}>Reset</button>
+                </div>
+                <fieldset>
+                  <legend>Sort by</legend>
+                  <div className="ig-ae-sorts" role="radiogroup">
+                    {SORTS.map(([key, label]) => (
+                      <button key={key} type="button" role="radio" aria-checked={sort === key} className={sort === key ? 'is-on' : ''} onClick={() => updateParams({ sort: key })}>
+                        {label}<span aria-hidden="true" />
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <fieldset>
+                  <legend>Data collection</legend>
+                  <div className="ig-ae-chips">
+                    {DATA_OPTS.map(([key, label]) => (
+                      <button key={key} type="button" aria-pressed={dataMode === key} className={dataMode === key ? 'is-on' : ''} onClick={() => updateParams({ data: key })}>{label}</button>
+                    ))}
+                  </div>
+                </fieldset>
+                <button type="button" className="ig-db-btn-ink" onClick={() => setFilterOpen(false)}>
+                  Show {formatNumber(results.length)} {results.length === 1 ? singular.toLowerCase() : plural.toLowerCase()}
+                </button>
+              </div>
+            )}
           </div>
-          <div className="navbar-right">
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
-              <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
-            </button>
-            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
-              {Icons.notification}
-              {unreadCount > 0 && <span className="icon-badge"></span>}
-            </button>
-            <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>
-              {Icons.gear}
-            </button>
-            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
-              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
-                {churchData.logo ? (
-                  <img src={churchData.logo} alt={churchData.name} />
+          <Link to="/create-program" className="ig-db-btn-primary ig-ae-create">{DashIcon.plus}{template?.event?.create || 'Create Event'}</Link>
+        </div>
+
+        {loadError && !data && (
+          <div className="ig-db-card ig-db-error" role="alert">
+            <strong>Your {plural.toLowerCase()} didn't load</strong>
+            <span>{loadError}</span>
+            <button type="button" className="ig-db-btn-ink" onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}>Try again</button>
+          </div>
+        )}
+
+        {(loading || data) && (
+          <section className="ig-db-card ig-ae-list" aria-label={plural} ref={listTopRef}>
+            <div className="ig-db-tabs ig-ae-tabs" role="tablist" aria-label={`Filter ${plural.toLowerCase()}`}>
+              {TABS.map(([key, label]) => (
+                <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? 'is-on' : ''} onClick={() => updateParams({ status: key })}>
+                  {label}<span className={`ig-db-tab-count${key === 'upcoming' && counts.upcoming ? ' is-hot' : ''}`}>{loading ? '' : formatNumber(counts[key] || 0)}</span>
+                </button>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="ig-ae-skel">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="ig-db-skel is-row" />)}</div>
+            ) : pageItems.length === 0 ? (
+              <div className="ig-db-empty">
+                {all.length === 0 ? (
+                  <>
+                    <strong>No {plural.toLowerCase()} yet</strong>
+                    <span>Create your first {singular.toLowerCase()} to start checking guests in.</span>
+                    <Link to="/create-program" className="ig-db-btn-primary is-inline">{DashIcon.plus}{template?.event?.create || 'Create Event'}</Link>
+                  </>
                 ) : (
-                  <div className="navbar-avatar-fallback">{churchInitials}</div>
+                  <>
+                    <strong>No {plural.toLowerCase()} found for this filter.</strong>
+                    <span>Try another tab or search, or create a new {singular.toLowerCase()}.</span>
+                    <button type="button" className="ig-db-btn-ghost" onClick={() => { setQuery(''); setParams(new URLSearchParams(), { replace: true }); }}>Clear filters</button>
+                  </>
                 )}
               </div>
-              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
-                {Icons.chevronDown}
-              </span>
-              {showProfileMenu && (
-                <div className="profile-dropdown-menu">
-                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
-                    View Profile
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
-                    Log out
-                  </button>
+            ) : (
+              <>
+                <div className="ig-db-table ig-ae-table" role="table" aria-label={plural}>
+                  <div className="ig-db-tr ig-ae-tr is-head" role="row">
+                    <span role="columnheader">{singular}</span><span role="columnheader">Time</span><span role="columnheader">Status</span>
+                    <span role="columnheader">Attendance</span><span role="columnheader">Data collection</span><span role="columnheader" className="is-right">Actions</span>
+                  </div>
+                  {pageItems.map((e) => {
+                    const collecting = e.trackingMode === 'collect-data';
+                    const pct = Math.round(((e.totalScans || 0) / maxAttendance) * 100);
+                    return (
+                      <div className="ig-db-tr ig-ae-tr" role="row" key={e.id}>
+                        <span role="cell" className="ig-db-ev">
+                          <DateTile date={e.date} highlight={e.status === 'active'} large />
+                          <span className="ig-db-ev-text"><strong>{e.title}</strong><span>{dateBadge(e.date).weekday}</span></span>
+                        </span>
+                        <span role="cell" className="ig-db-muted-cell">{formatTimeRange(e.startTime, e.endTime)}</span>
+                        <span role="cell"><StatusPill status={e.status} /></span>
+                        <span role="cell" className="ig-ae-att">
+                          <strong>{e.status === 'upcoming' ? '-' : formatNumber(e.totalScans)}</strong>
+                          <span className="ig-ae-meter" aria-hidden="true"><span className={e.status === 'active' ? 'is-hot' : ''} style={{ width: `${e.status === 'upcoming' ? 0 : pct}%` }} /></span>
+                        </span>
+                        <span role="cell" className={collecting ? 'ig-db-data-cell' : 'ig-db-data-cell is-muted'}>{collecting ? 'Collecting' : 'Count only'}</span>
+                        <span role="cell" className="ig-db-actions">
+                          <Link to={`/program/${e.id}`} className="ig-db-view">View</Link>
+                          {deleteButton(e)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          </div>
-        </header>
 
-        <div className="dashboard-content">
-          <h2 className="overview-title" style={{ marginBottom: '24px' }}>{template.event.all}</h2>
-
-          <div className="programs-section">
-            <div className="section-header">
-              <div className="filter-tabs">
-                <button
-                  className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('all')}
-                >
-                  All
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'active' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('active')}
-                >
-                  Active
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'upcoming' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('upcoming')}
-                >
-                  Upcoming
-                  {upcomingCount > 0 && <span className="filter-tab-badge">{upcomingCount}</span>}
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'completed' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('completed')}
-                >
-                  Completed
-                </button>
-              </div>
-            </div>
-
-            <div className="programs-table-container">
-              <table className="programs-table">
-                <thead>
-                  <tr>
-                    <th>{template.event.titleLabel}</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th>Attendance</th>
-                    <th>Data Collection</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPrograms.length === 0 ? (
-                    <tr>
-                      <td colSpan="7">
-                        <div className="empty-state">
-                          <p>{template.dashboard.emptyState}</p>
+                <div className="ig-ae-cards">
+                  {pageItems.map((e) => {
+                    const collecting = e.trackingMode === 'collect-data';
+                    return (
+                      <div className="ig-ae-card" key={e.id}>
+                        <div className="ig-ae-card-top">
+                          <DateTile date={e.date} highlight={e.status === 'active'} large />
+                          <span className="ig-ae-card-text"><strong>{e.title}</strong><span>{formatTimeRange(e.startTime, e.endTime)}</span></span>
+                          <span className="ig-db-ev-card-count"><strong>{e.status === 'upcoming' ? '-' : formatNumber(e.totalScans)}</strong><span>attended</span></span>
                         </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPrograms.map(program => (
-                      <tr key={program.id}>
-                        <td className="program-title-cell" data-label={template.event.singular}>{program.title}</td>
-                        <td data-label="Date">{formatDate(program.date)}</td>
-                        <td data-label="Time">{formatTime(program.startTime)} - {formatTime(program.endTime)}</td>
-                        <td data-label="Status">
-                          <span className={`status-badge ${getStatusBadge(program.status)}`}>
-                            {program.status.charAt(0).toUpperCase() + program.status.slice(1)}
-                          </span>
-                        </td>
-                        <td data-label="Attendance"><strong>{program.totalScans.toLocaleString()}</strong></td>
-                        <td data-label="Data Collection">
-                          <span className={program.dataCollection ? 'badge-yes' : 'badge-no'}>
-                            {program.dataCollection ? 'Yes' : 'No'}
-                          </span>
-                        </td>
-                        <td data-label="Actions">
-                          <div className="action-buttons">
-                            <button
-                              className="btn-action btn-view"
-                              onClick={() => window.location.href = `/program/${program.id}`}
-                            >
-                              View
-                            </button>
-                            <button
-                              className="btn-action btn-delete"
-                              onClick={() => handleDeleteProgram(program)}
-                              title={`Delete ${template.event.singular.toLowerCase()}`}
-                            >
-                              {Icons.trash}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
+                        <div className="ig-ae-card-foot">
+                          <StatusPill status={e.status} />
+                          <span className="ig-ae-card-data">{collecting ? 'Collecting' : 'Count only'}</span>
+                          <Link to={`/program/${e.id}`} className="ig-db-view">View</Link>
+                          {deleteButton(e)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <nav className="ig-ae-pager" aria-label="Pages">
+                  <span>Showing <strong>{from} to {to}</strong> of {formatNumber(results.length)}</span>
+                  <span className="ig-ae-pager-btns">
+                    <button type="button" onClick={() => goPage(safePage - 1)} disabled={safePage <= 1} aria-label="Previous page">{DashIcon.chevronLeft}<span>Previous</span></button>
+                    <strong aria-live="polite">Page {safePage} of {pages}</strong>
+                    <button type="button" onClick={() => goPage(safePage + 1)} disabled={safePage >= pages} aria-label="Next page"><span>Next</span>{DashIcon.chevronRight}</button>
+                  </span>
+                </nav>
+              </>
+            )}
+          </section>
+        )}
+      </div>
+
+      {deleting && (
+        <DashDialog
+          tone="danger"
+          icon={DashIcon.trash}
+          title={`Delete "${deleting.title}"?`}
+          cancelLabel={`Keep ${singular.toLowerCase()}`}
+          confirmLabel={`Delete ${singular.toLowerCase()}`}
+          busy={deleteBusy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={confirmDelete}
+        >
+          This permanently removes the {singular.toLowerCase()}
+          {deleting.totalScans > 0 ? `, its ${formatNumber(deleting.totalScans)} check-ins and its report` : ' and its report'}. You can't undo this.
+        </DashDialog>
+      )}
+    </IgDashShell>
   );
 }
 

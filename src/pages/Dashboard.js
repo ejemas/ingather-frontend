@@ -1,1453 +1,722 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getDashboardBootstrap, getDashboardStats, deleteProgram } from '../api/programService';
-import { getCurrentChurch, updateOrganizationType } from '../api/authService';
-import InfoTooltip from '../components/InfoTooltip';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getDashboardBootstrap, deleteProgram } from '../api/programService';
+import { updateOrganizationType } from '../api/authService';
 import OnboardingModal from '../components/OnboardingModal';
+import IgDashShell, { DashIcon, DashDialog, StatusPill, DateTile, InfoTip } from '../components/IgDashShell';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
-import '../styles/Dashboard.css';
+import {
+  addDays,
+  dateBadge,
+  daysBetween,
+  formatNumber,
+  formatTime,
+  formatTimeRange,
+  fullDate,
+  greetingDate,
+  greetingWord,
+  isSafeImageUrl,
+  localToday,
+  monthTitle,
+  parseDateOnly,
+  shortDate,
+  toDateOnly,
+  weekdayShortDate
+} from '../utils/dashboardFormat';
 
-/* ============================================
-   SVG ICON COMPONENTS
-   ============================================ */
-const Icons = {
-  logo: (
-    <img src="/ingather-logo.png" alt="Ingather" className="sidebar-logo-img" />
-  ),
-  collapse: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="3" y="3" width="14" height="14" rx="2" />
-      <line x1="9" y1="3" x2="9" y2="17" />
-    </svg>
-  ),
-  dashboard: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="11" y="3" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="3" y="11" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-      <rect x="11" y="11" width="6" height="6" rx="1" fill="currentColor" stroke="none" />
-    </svg>
-  ),
-  createProgram: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7" />
-      <line x1="10" y1="7" x2="10" y2="13" />
-      <line x1="7" y1="10" x2="13" y2="10" />
-    </svg>
-  ),
-  allPrograms: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="14" height="12" rx="2" />
-      <line x1="3" y1="8" x2="17" y2="8" />
-      <line x1="7" y1="4" x2="7" y2="8" />
-      <line x1="13" y1="4" x2="13" y2="8" />
-    </svg>
-  ),
-  settings: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  notification: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" />
-      <path d="M8.5 17a1.5 1.5 0 003 0" />
-    </svg>
-  ),
-  logout: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" />
-      <polyline points="11,14 17,10 11,6" />
-      <line x1="17" y1="10" x2="7" y2="10" />
-    </svg>
-  ),
-  chevronRight: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6,4 10,8 6,12" />
-    </svg>
-  ),
-  arrowRight: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="3" y1="8" x2="13" y2="8" />
-      <polyline points="9,4 13,8 9,12" />
-    </svg>
-  ),
-  arrowLeftSmall: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="13" y1="8" x2="3" y2="8" />
-      <polyline points="7,4 3,8 7,12" />
-    </svg>
-  ),
-  sun: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="3.5" />
-      <line x1="10" y1="2" x2="10" y2="4" />
-      <line x1="10" y1="16" x2="10" y2="18" />
-      <line x1="2" y1="10" x2="4" y2="10" />
-      <line x1="16" y1="10" x2="18" y2="10" />
-      <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" />
-      <line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
-      <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" />
-      <line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
-    </svg>
-  ),
-  moon: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" />
-    </svg>
-  ),
-  plus: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <line x1="8" y1="3" x2="8" y2="13" />
-      <line x1="3" y1="8" x2="13" y2="8" />
-    </svg>
-  ),
-  calendar: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="12" height="11" rx="1.5" />
-      <line x1="2" y1="7" x2="14" y2="7" />
-      <line x1="5.5" y1="1.5" x2="5.5" y2="4.5" />
-      <line x1="10.5" y1="1.5" x2="10.5" y2="4.5" />
-    </svg>
-  ),
-  info: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="6" />
-      <line x1="8" y1="7" x2="8" y2="11" />
-      <circle cx="8" cy="5.5" r="0.3" fill="currentColor" />
-    </svg>
-  ),
-  totalPrograms: (
-    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="16" height="14" rx="2" />
-      <line x1="3" y1="9" x2="19" y2="9" />
-      <line x1="8" y1="4" x2="8" y2="9" />
-      <line x1="14" y1="4" x2="14" y2="9" />
-    </svg>
-  ),
-  totalAttendance: (
-    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="7" r="3" />
-      <circle cx="16" cy="7" r="2.5" />
-      <path d="M2 19c0-3.3 2.7-6 6-6s6 2.7 6 6" />
-      <path d="M14 19c0-2.5 1.3-4.5 3.5-4.5S21 16.5 21 19" />
-    </svg>
-  ),
-  upcomingPrograms: (
-    <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="16" height="14" rx="2" />
-      <line x1="3" y1="9" x2="19" y2="9" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="14" y1="2" x2="14" y2="6" />
-      <polyline points="9,13 11,15 15,11" />
-    </svg>
-  ),
-  trash: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,4 13,4" />
-      <path d="M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1" />
-      <path d="M4 4l.7 9.1a1 1 0 001 .9h4.6a1 1 0 001-.9L12 4" />
-      <line x1="7" y1="7" x2="7" y2="12" />
-      <line x1="9" y1="7" x2="9" y2="12" />
-    </svg>
-  ),
-  chevronDown: (
-    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,5 7,9 11,5" />
-    </svg>
-  ),
-  gear: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
+const RANGES = [['7', '7d'], ['14', '14d'], ['30', '30d'], ['all', 'All']];
+const RANGE_TEXT = { '7': 'last 7 days', '14': 'last 14 days', '30': 'last 30 days', all: 'all time' };
+const TABS = [['all', 'All'], ['active', 'Active'], ['upcoming', 'Upcoming'], ['completed', 'Completed']];
+const RECENT_LIMIT = 5;
+
+const presetRange = (key, today) => {
+  if (key === 'all') return { key, startDate: null, endDate: null };
+  const days = Number(key);
+  return { key, startDate: addDays(today, -(days - 1)), endDate: today };
 };
 
-const DASHBOARD_BARS_PER_PAGE = 12;
+const useIsCompact = (query = '(max-width: 760px)') => {
+  const get = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : false);
+  const [compact, setCompact] = useState(get);
+  useEffect(() => {
+    if (!window.matchMedia) return undefined;
+    const mq = window.matchMedia(query);
+    const onChange = () => setCompact(mq.matches);
+    onChange();
+    if (mq.addEventListener) mq.addEventListener('change', onChange); else mq.addListener(onChange);
+    return () => { if (mq.removeEventListener) mq.removeEventListener('change', onChange); else mq.removeListener(onChange); };
+  }, [query]);
+  return compact;
+};
 
-/* ============================================
-   DONUT CHART COMPONENT
-   ============================================ */
-function DonutChart({ data }) {
-  const total = data.reduce((sum, d) => sum + d.value, 0);
-  const radius = 70;
-  const strokeWidth = 18;
-  const circumference = 2 * Math.PI * radius;
+/* ---------------- Date range picker ---------------- */
 
-  // Handle zero-data case — show empty grey ring
-  if (total === 0) {
-    return (
-      <div className="donut-chart-wrapper">
-        <div className="donut-chart-svg-container">
-          <svg className="donut-chart-svg" viewBox="0 0 180 180">
-            <circle
-              cx="90"
-              cy="90"
-              r={radius}
-              fill="none"
-              stroke="var(--border-color)"
-              strokeWidth={strokeWidth}
-            />
-          </svg>
-          <div className="donut-center-label">
-            <div className="donut-center-value">
-              0<span className="donut-center-suffix">%</span>
-            </div>
-          </div>
-        </div>
-        <div className="donut-legend">
-          {data.map((d, i) => (
-            <div className="donut-legend-item" key={i}>
-              <div className="donut-legend-dot" style={{ backgroundColor: d.color }} />
-              <span className="donut-legend-label">{d.label}</span>
-              <span className="donut-legend-value">0%</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+function DatePicker({ range, today, onApply, onClose }) {
+  const initialStart = range.startDate || addDays(today, -29);
+  const initialEnd = range.endDate || today;
+  const [start, setStart] = useState(initialStart);
+  const [end, setEnd] = useState(initialEnd);
+  const [picking, setPicking] = useState('start');
+  const startParts = parseDateOnly(initialStart);
+  const [view, setView] = useState({ year: startParts.year, month: startParts.month });
+  const ref = useRef(null);
 
-  let offset = 0;
-  const segments = data.map((d) => {
-    const pct = d.value / total;
-    const dashArray = pct * circumference;
-    const dashOffset = -offset;
-    offset += dashArray;
-    return { ...d, dashArray, dashOffset, pct };
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    const onDown = (event) => {
+      if (ref.current && !ref.current.contains(event.target) && !event.target.closest('[data-dates-toggle]')) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('mousedown', onDown); };
+  }, [onClose]);
+
+  const firstWeekday = new Date(view.year, view.month, 1).getDay();
+  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i += 1) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d += 1) cells.push(toDateOnly(new Date(view.year, view.month, d)));
+
+  const pick = (value) => {
+    if (value > today) return;
+    if (picking === 'start' || value < start) {
+      setStart(value);
+      setEnd(value);
+      setPicking('end');
+    } else {
+      setEnd(value);
+      setPicking('start');
+    }
+  };
+
+  const moveMonth = (delta) => setView((v) => {
+    const d = new Date(v.year, v.month + delta, 1);
+    return { year: d.getFullYear(), month: d.getMonth() };
   });
+  const atCurrentMonth = (() => {
+    const t = parseDateOnly(today);
+    return view.year > t.year || (view.year === t.year && view.month >= t.month);
+  })();
+
+  const totalDays = daysBetween(start, end) + 1;
 
   return (
-    <div className="donut-chart-wrapper">
-      <div className="donut-chart-svg-container">
-        <svg className="donut-chart-svg" viewBox="0 0 180 180">
-          {segments.map((seg, i) => (
-            <circle
-              key={i}
-              cx="90"
-              cy="90"
-              r={radius}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={`${seg.dashArray} ${circumference - seg.dashArray}`}
-              strokeDashoffset={seg.dashOffset}
-              style={{ transition: 'all 0.6s ease' }}
-            />
-          ))}
-        </svg>
-        <div className="donut-center-label">
-          <div className="donut-center-value">
-            {data[0]?.value}<span className="donut-center-suffix">%</span>
-          </div>
-        </div>
+    <div className="ig-db-dates" role="dialog" aria-modal="false" aria-labelledby="ig-db-dates-title" ref={ref}>
+      <span className="ig-db-dates-caret" aria-hidden="true" />
+      <div className="ig-db-dates-head">
+        <strong id="ig-db-dates-title">Choose dates</strong>
+        <button type="button" className="ig-db-round-btn is-sm" aria-label="Close" onClick={onClose}>{DashIcon.close}</button>
       </div>
-      <div className="donut-legend">
-        {data.map((d, i) => (
-          <div className="donut-legend-item" key={i}>
-            <div className="donut-legend-dot" style={{ backgroundColor: d.color }} />
-            <span className="donut-legend-label">{d.label}</span>
-            <span className="donut-legend-value">{d.value}%</span>
-          </div>
-        ))}
+      <div className="ig-db-dates-fields">
+        <button type="button" className={picking === 'start' ? 'is-on' : ''} onClick={() => setPicking('start')}>
+          <span>Start date</span><strong>{fullDate(start)}</strong>
+        </button>
+        <button type="button" className={picking === 'end' ? 'is-on' : ''} onClick={() => setPicking('end')}>
+          <span>End date</span><strong>{fullDate(end)}</strong>
+        </button>
+      </div>
+      <div className="ig-db-dates-month">
+        <button type="button" className="ig-db-round-btn is-sm is-line" aria-label="Previous month" onClick={() => moveMonth(-1)}>{DashIcon.chevronLeft}</button>
+        <strong aria-live="polite">{monthTitle(view.year, view.month)}</strong>
+        <button type="button" className="ig-db-round-btn is-sm is-line" aria-label="Next month" onClick={() => moveMonth(1)} disabled={atCurrentMonth}>{DashIcon.chevronRight}</button>
+      </div>
+      <div className="ig-db-cal" role="grid" aria-label={monthTitle(view.year, view.month)}>
+        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => <span key={`w${i}`} className="ig-db-cal-wd" aria-hidden="true">{w}</span>)}
+        {cells.map((value, i) => {
+          if (!value) return <span key={`e${i}`} className="ig-db-cal-cell" />;
+          const col = i % 7;
+          const inRange = value >= start && value <= end;
+          const isStart = value === start;
+          const isEnd = value === end;
+          const future = value > today;
+          const rowStart = col === 0 || Number(value.slice(8)) === 1;
+          const rowEnd = col === 6 || Number(value.slice(8)) === daysInMonth;
+          const cls = [
+            'ig-db-cal-cell',
+            inRange ? 'in-range' : '',
+            isStart ? 'is-start' : '',
+            isEnd ? 'is-end' : '',
+            inRange && rowStart ? 'row-start' : '',
+            inRange && rowEnd ? 'row-end' : ''
+          ].filter(Boolean).join(' ');
+          return (
+            <span key={value} className={cls}>
+              <button
+                type="button"
+                onClick={() => pick(value)}
+                disabled={future}
+                aria-pressed={isStart || isEnd}
+                aria-label={fullDate(value)}
+              >{Number(value.slice(8))}</button>
+            </span>
+          );
+        })}
+      </div>
+      <span className="ig-db-dates-sum">From {shortDate(start)} to {shortDate(end)}, {totalDays} {totalDays === 1 ? 'day' : 'days'}</span>
+      <div className="ig-db-dates-actions">
+        <button type="button" className="ig-db-btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="ig-db-btn-primary" onClick={() => onApply({ key: 'custom', startDate: start, endDate: end })}>Apply</button>
       </div>
     </div>
   );
 }
 
-/* ============================================
-   SPARKLINE COMPONENT — Data-driven
-   Shows actual attendance trend over time.
-   Green = uptrend, Red = downtrend, Grey = flat/no data.
-   ============================================ */
-function Sparkline({ data = [] }) {
-  const W = 80, H = 40, PAD = 4;
+/* ---------------- Charts ---------------- */
 
-  // Extract attendance values
-  const values = data.map(d => d.attendance || 0);
-
-  // Need at least 2 points to draw a line
-  if (values.length < 2 || values.every(v => v === 0)) {
-    // Flat placeholder line when no data
-    return (
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-        <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="var(--text-tertiary)" strokeWidth="1.5" strokeDasharray="4 3" opacity="0.4" />
-      </svg>
-    );
+const niceMax = (value) => {
+  if (value <= 0) return 4;
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const steps = [1, 2, 2.5, 4, 5, 8, 10];
+  for (const s of steps) {
+    if (s * magnitude >= value) return s * magnitude;
   }
+  return 10 * magnitude;
+};
 
-  // Determine trend: compare first half avg vs second half avg
-  const mid = Math.floor(values.length / 2);
-  const firstHalf = values.slice(0, mid);
-  const secondHalf = values.slice(mid);
-  const avgFirst = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
-  const avgSecond = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+function AttendanceChart({ events, rangeText, compact, liveId }) {
+  const perPage = compact ? 6 : 10;
+  const pages = Math.max(1, Math.ceil(events.length / perPage));
+  const [page, setPage] = useState(pages - 1);
+  const [hovered, setHovered] = useState(null);
+  const [pinned, setPinned] = useState(null);
+  const chartRef = useRef(null);
+  useEffect(() => { setPage(Math.max(0, Math.ceil(events.length / perPage) - 1)); }, [events, perPage]);
+  useEffect(() => { setHovered(null); setPinned(null); }, [page, events]);
 
-  let trendColor = '#6B7280'; // grey — flat
-  if (avgSecond > avgFirst) trendColor = '#10B981'; // green — uptrend
-  else if (avgSecond < avgFirst) trendColor = '#EF4444'; // red — downtrend
+  // A tapped bar stays selected until the next tap elsewhere or Escape.
+  useEffect(() => {
+    if (pinned === null) return undefined;
+    const onDown = (event) => { if (chartRef.current && !chartRef.current.contains(event.target)) setPinned(null); };
+    const onKey = (event) => { if (event.key === 'Escape') setPinned(null); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [pinned]);
 
-  // Scale values to SVG coordinates
-  const minVal = Math.min(...values);
-  const maxVal = Math.max(...values);
-  const range = maxVal - minVal || 1; // avoid division by zero
-  const plotW = W - PAD * 2;
-  const plotH = H - PAD * 2;
-
-  const points = values.map((v, i) => {
-    const x = PAD + (i / (values.length - 1)) * plotW;
-    const y = PAD + plotH - ((v - minVal) / range) * plotH;
-    return { x, y };
-  });
-
-  // Build SVG path
-  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-  // Fill path (closes to bottom)
-  const fillPath = linePath + ` L${points[points.length - 1].x.toFixed(1)} ${H} L${points[0].x.toFixed(1)} ${H}Z`;
-
-  // Unique gradient ID to prevent collisions
-  const gradId = `sparkGrad_${trendColor.replace('#', '')}`;
+  const end = events.length - (pages - 1 - page) * perPage;
+  const shown = events.slice(Math.max(0, end - perPage), end);
+  const top = niceMax(Math.max(...shown.map((e) => e.attendance), 1));
+  const activeId = hovered !== null ? hovered : pinned;
+  const best = shown.reduce((max, e) => (e.attendance > max ? e.attendance : max), 0);
+  const liveShown = liveId && shown.some((e) => e.id === liveId);
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none">
-      <defs>
-        <linearGradient id={gradId} x1="40" y1="0" x2="40" y2={H} gradientUnits="userSpaceOnUse">
-          <stop stopColor={trendColor} />
-          <stop offset="1" stopColor={trendColor} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={fillPath} fill={`url(#${gradId})`} opacity="0.15" />
-      <path
-        d={linePath}
-        stroke={trendColor}
-        strokeWidth="2"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <section className="ig-db-card ig-db-chart" aria-label="Attendance over time">
+      <div className="ig-db-card-head">
+        <span className="ig-db-card-title"><strong>Attendance Over Time</strong><span>Check-ins per event, {rangeText}</span></span>
+        {pages > 1 && (
+          <span className="ig-db-chart-nav">
+            <button type="button" className="ig-db-round-btn is-xs is-line" aria-label="Earlier events" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>{DashIcon.chevronLeft}</button>
+            <button type="button" className="ig-db-round-btn is-xs is-line" aria-label="Later events" onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} disabled={page >= pages - 1}>{DashIcon.chevronRight}</button>
+          </span>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <div className="ig-db-empty-chart">
+          <strong>No check-ins in this period</strong>
+          <span>Pick a longer range, or check back after your next event.</span>
+        </div>
+      ) : (
+        <div ref={chartRef} className="ig-db-chart-body">
+          <div className="ig-db-bars" onMouseLeave={() => setHovered(null)}>
+            <div className="ig-db-grid" aria-hidden="true">
+              <span><em>{formatNumber(top)}</em><i /></span>
+              <span><em>{formatNumber(top / 2)}</em><i /></span>
+              <span><em>0</em><i /></span>
+            </div>
+            {shown.map((e, i) => {
+              const height = Math.max(e.attendance > 0 ? 3 : 0, Math.round((e.attendance / top) * 100));
+              const isOn = activeId === e.id;
+              const isLive = e.id === liveId;
+              const edge = i === 0 ? ' is-first' : i === shown.length - 1 ? ' is-last' : '';
+              return (
+                <div className={`ig-db-bar-col${isOn ? ' is-on' : ''}`} key={e.id}>
+                  <span className={`ig-db-bar-val${activeId === null && (isLive || (best > 0 && e.attendance === best)) ? ' is-shown' : ''}`} aria-hidden="true">{formatNumber(e.attendance)}</span>
+                  <button
+                    type="button"
+                    className={`ig-db-bar${isLive ? ' is-live' : ''}`}
+                    style={{ height: `${height}%` }}
+                    aria-label={`${e.title}, ${weekdayShortDate(e.date)}: ${formatNumber(e.attendance)} check-ins${isLive ? ', still counting' : ''}`}
+                    aria-pressed={pinned === e.id}
+                    onMouseEnter={() => setHovered(e.id)}
+                    onFocus={() => setHovered(e.id)}
+                    onBlur={() => setHovered(null)}
+                    onClick={() => setPinned((current) => (current === e.id ? null : e.id))}
+                  />
+                  {isOn && (
+                    <span className={`ig-db-tip${edge}`} role="status" style={{ bottom: `calc(${height}% + 10px)` }}>
+                      <strong>{formatNumber(e.attendance)}</strong>
+                      <span>{weekdayShortDate(e.date).replace(',', '')} — Total Attendance</span>
+                      <em>{e.title}{isLive ? ' · still counting' : ''}</em>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="ig-db-bar-labels" aria-hidden="true">
+            {shown.map((e) => <span key={e.id} className={activeId === e.id ? 'is-on' : ''}>{shortDate(e.date)}</span>)}
+          </div>
+          {liveShown && (
+            <div className="ig-db-legend">
+              <span><i className="is-live" />Live, still counting</span>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WhoCame({ checkins }) {
+  const withGender = checkins.female + checkins.male;
+  const femalePct = withGender > 0 ? Math.round((checkins.female / withGender) * 100) : 0;
+  const malePct = withGender > 0 ? 100 - femalePct : 0;
+  const firstPct = checkins.total > 0 ? Math.round((checkins.firstTimers / checkins.total) * 100) : 0;
+
+  return (
+    <section className="ig-db-card ig-db-who" aria-label="Who came">
+      <span className="ig-db-card-title"><strong>Who Came</strong><span>From guests who filled the check-in form</span></span>
+
+      {withGender === 0 ? (
+        <div className="ig-db-who-empty">
+          <strong>No gender answers yet</strong>
+          <span>Turn on data collection with a gender question to see this split.</span>
+        </div>
+      ) : (
+        <div className="ig-db-who-block">
+          <div className="ig-db-who-row">
+            <span><i className="is-female" aria-hidden="true" />Female <strong>{femalePct}%</strong></span>
+            <span><strong>{malePct}%</strong> Male<i className="is-male" aria-hidden="true" /></span>
+          </div>
+          <div className="ig-db-split" role="img" aria-label={`${femalePct} percent female, ${malePct} percent male, from ${formatNumber(withGender)} guests`}>
+            {femalePct > 0 && <span className={`is-female${malePct === 0 ? ' is-full' : ''}`} style={{ width: `${femalePct}%` }} />}
+            {malePct > 0 && <span className={`is-male${femalePct === 0 ? ' is-full' : ''}`} />}
+          </div>
+        </div>
+      )}
+
+      <div className="ig-db-who-rule" aria-hidden="true" />
+
+      <div className="ig-db-who-block">
+        <div className="ig-db-who-row"><span>First-timers</span><strong>{firstPct}%</strong></div>
+        <div className="ig-db-meter" role="img" aria-label={`${firstPct} percent first-timers`}>
+          <span style={{ width: `${firstPct}%` }} />
+        </div>
+        <span className="ig-db-who-note">
+          {checkins.firstTimers > 0
+            ? `${formatNumber(checkins.firstTimers)} ${checkins.firstTimers === 1 ? 'person' : 'people'} came to one of your events for the first time.`
+            : 'No first-time guests recorded in this period.'}
+        </span>
+      </div>
+
+      <Link to="/programs" className="ig-db-link">See full event reports{DashIcon.chevronRight}</Link>
+    </section>
+  );
+}
+
+function Sparkline({ values }) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => [2 + (i * 92) / (values.length - 1), 30 - ((v - min) / span) * 26]);
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  return (
+    <svg className="ig-db-spark" width="88" height="30" viewBox="0 0 96 34" fill="none" aria-hidden="true">
+      <path d={d} stroke="#E8590C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="3" fill="#E8590C" />
     </svg>
   );
 }
 
-/* ============================================
-   CUSTOM ATTENDANCE BAR CHART (Dynamic Y-Axis)
-   Grey bar = always full height (max capacity)
-   Orange bar = overlaid from same baseline
-   ============================================ */
-function AttendanceBarChart({ data }) {
-  const containerRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+/* ---------------- Page ---------------- */
 
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.offsetWidth);
-      }
-    };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  // — Dynamic max value & Y-ticks based on data —
-  const rawMax = data.length > 0
-    ? Math.max(...data.map(d => d.attendance || 0))
-    : 0;
-
-  // Compute a "nice" ceiling: round up to next multiple of a readable step
-  const getNiceMax = (val) => {
-    if (val === 0) return 100;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(val)));
-    const step = magnitude >= 10 ? magnitude / 2 : magnitude;
-    return Math.ceil(val / step) * step;
-  };
-
-  const maxValue = getNiceMax(rawMax);
-  const tickCount = 4;
-  const tickStep = maxValue / tickCount;
-  const yTicks = Array.from({ length: tickCount }, (_, i) => tickStep * (i + 1));
-
-  // Chart geometry
-  const paddingLeft = 50;
-  const paddingRight = 20;
-  const paddingTop = 16;
-  const paddingBottom = 36;
-  const chartHeight = 280;
-  const plotHeight = chartHeight - paddingTop - paddingBottom;
-  const plotWidth = containerWidth - paddingLeft - paddingRight;
-  const barWidth = Math.min(42, plotWidth / (data.length || 1) - 12);
-  const colCount = data.length;
-  const colSpacing = colCount > 0 ? plotWidth / colCount : 0;
-  const barRadius = 6;
-
-  const getY = (val) => {
-    return paddingTop + plotHeight - (val / maxValue) * plotHeight;
-  };
-
-  const roundedTopRect = (x, y, w, h, r) => {
-    if (h <= 0) return '';
-    const cr = Math.min(r, w / 2, h);
-    const bottom = y + h;
-    return `M${x},${bottom} L${x},${y + cr} Q${x},${y} ${x + cr},${y} L${x + w - cr},${y} Q${x + w},${y} ${x + w},${y + cr} L${x + w},${bottom} Z`;
-  };
-
-  // Empty state
-  if (!data || data.length === 0) {
-    return (
-      <div ref={containerRef} className="custom-bar-chart">
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          height: chartHeight, color: 'var(--text-tertiary)', fontSize: '14px'
-        }}>
-          No attendance data for this period
-        </div>
-      </div>
-    );
-  }
-
-  // Tooltip position calculation
-  const getTooltipPos = (index) => {
-    const colCenter = paddingLeft + colSpacing * index + colSpacing / 2;
-    const val = data[index]?.attendance || 0;
-    const barTopY = getY(Math.min(val, maxValue));
-    return { x: colCenter, y: barTopY - 12 };
-  };
-
-  return (
-    <div ref={containerRef} className="custom-bar-chart" style={{ position: 'relative' }}>
-      {containerWidth > 0 && (
-        <>
-          <svg
-            width={containerWidth}
-            height={chartHeight}
-            viewBox={`0 0 ${containerWidth} ${chartHeight}`}
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-            {/* Horizontal grid lines */}
-            {yTicks.map((tick) => (
-              <line
-                key={tick}
-                x1={paddingLeft}
-                y1={getY(tick)}
-                x2={containerWidth - paddingRight}
-                y2={getY(tick)}
-                stroke="var(--border-color)"
-                strokeDasharray="3 3"
-                strokeWidth="1"
-              />
-            ))}
-            {/* Baseline */}
-            <line
-              x1={paddingLeft}
-              y1={getY(0)}
-              x2={containerWidth - paddingRight}
-              y2={getY(0)}
-              stroke="var(--border-color)"
-              strokeWidth="1"
-            />
-
-            {/* Y-axis labels */}
-            {yTicks.map((tick) => (
-              <text
-                key={tick}
-                x={paddingLeft - 12}
-                y={getY(tick) + 4}
-                textAnchor="end"
-                fontSize="12"
-                fill="var(--text-tertiary)"
-                fontFamily="Inter, sans-serif"
-              >
-                {tick >= 1000 ? `${(tick / 1000).toFixed(tick % 1000 === 0 ? 0 : 1)}k` : tick}
-              </text>
-            ))}
-
-            {/* Bars */}
-            {data.map((d, i) => {
-              const colCenter = paddingLeft + colSpacing * i + colSpacing / 2;
-              const barX = colCenter - barWidth / 2;
-              const baseline = getY(0);
-              const isHovered = hoveredIndex === i;
-
-              // Grey bar: always full height to maxValue
-              const greyBarHeight = (maxValue / maxValue) * plotHeight;
-              const greyBarY = baseline - greyBarHeight;
-
-              // Orange bar: from baseline up to actual value
-              const orangeBarHeight = (Math.min(d.attendance, maxValue) / maxValue) * plotHeight;
-              const orangeBarY = baseline - orangeBarHeight;
-
-              return (
-                <g key={i}>
-                  {/* Grey background bar (full capacity) */}
-                  <path
-                    d={roundedTopRect(barX, greyBarY, barWidth, greyBarHeight, barRadius)}
-                    fill="var(--chart-bar-bg)"
-                    opacity={isHovered ? 0.7 : 1}
-                  />
-                  {/* Orange foreground bar (attendance value) */}
-                  {orangeBarHeight > 0 && (
-                    <path
-                      d={roundedTopRect(barX, orangeBarY, barWidth, orangeBarHeight, barRadius)}
-                      fill="var(--chart-bar-active)"
-                      opacity={isHovered ? 1 : 0.85}
-                      style={{ transition: 'all 0.3s ease' }}
-                    />
-                  )}
-                  {/* Invisible hit-area for hover detection */}
-                  <rect
-                    x={colCenter - colSpacing / 2}
-                    y={paddingTop}
-                    width={colSpacing}
-                    height={plotHeight + paddingBottom}
-                    fill="transparent"
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredIndex(i)}
-                    onMouseLeave={() => setHoveredIndex(null)}
-                  />
-                </g>
-              );
-            })}
-
-            {/* X-axis labels */}
-            {data.map((d, i) => {
-              const colCenter = paddingLeft + colSpacing * i + colSpacing / 2;
-              return (
-                <text
-                  key={i}
-                  x={colCenter}
-                  y={chartHeight - 8}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill={hoveredIndex === i ? 'var(--text-primary)' : 'var(--text-tertiary)'}
-                  fontWeight={hoveredIndex === i ? '600' : '400'}
-                  fontFamily="Inter, sans-serif"
-                  style={{ transition: 'all 0.2s ease' }}
-                >
-                  {d.name}
-                </text>
-              );
-            })}
-          </svg>
-
-          {/* Floating tooltip */}
-          {hoveredIndex !== null && data[hoveredIndex] && (() => {
-            const pos = getTooltipPos(hoveredIndex);
-            const d = data[hoveredIndex];
-            return (
-              <div
-                className="chart-tooltip"
-                style={{
-                  position: 'absolute',
-                  left: pos.x,
-                  top: pos.y,
-                  transform: 'translate(-50%, -100%)',
-                  background: 'var(--tooltip-bg, #1a1a2e)',
-                  color: 'var(--tooltip-text, #fff)',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: '500',
-                  whiteSpace: 'nowrap',
-                  pointerEvents: 'none',
-                  zIndex: 10,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-                  transition: 'opacity 0.15s ease, top 0.15s ease, left 0.15s ease',
-                  opacity: 1,
-                }}
-              >
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#FF8C42' }}>
-                  {d.attendance.toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
-                  {d.name} — Total Attendance
-                </div>
-                {/* Tooltip arrow */}
-                <div style={{
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: '-6px',
-                  transform: 'translateX(-50%)',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid var(--tooltip-bg, #1a1a2e)',
-                }} />
-              </div>
-            );
-          })()}
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ============================================
-   MAIN DASHBOARD COMPONENT
-   ============================================ */
 function Dashboard() {
-  const [programs, setPrograms] = useState([]);
-  const [churchData, setChurchData] = useState({
-    name: '',
-    branch: '',
-    email: '',
-    logo: null,
-    organizationType: ''
-  });
-  const [loading, setLoading] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('ingather-theme') === 'dark';
-  });
   const toast = useToast();
+  const navigate = useNavigate();
+  const [statInfo, setStatInfo] = useState(null);
   const { template, setTemplateKey } = useEventTemplate();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const profileMenuRef = useRef(null);
+  // Stable handle: changing the wording must not trigger another data load.
+  const setTemplateRef = useRef(setTemplateKey);
+  setTemplateRef.current = setTemplateKey;
+  const compact = useIsCompact();
+  const today = useMemo(() => localToday(), []);
 
-  // ---- Date-range filtering state ----
-  const getDefaultDateRange = () => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(end.getDate() - 30);
-    return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0]
-    };
-  };
+  const [range, setRange] = useState(() => presetRange('30', localToday()));
+  const [datesOpen, setDatesOpen] = useState(false);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [tab, setTab] = useState('all');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const firstLoad = useRef(true);
 
-  const [dateRange, setDateRange] = useState(getDefaultDateRange);
-  const [presetLabel, setPresetLabel] = useState('30');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showPresetDropdown, setShowPresetDropdown] = useState(false);
-  const [customStartDate, setCustomStartDate] = useState(dateRange.startDate);
-  const [customEndDate, setCustomEndDate] = useState(dateRange.endDate);
-
-  // Dashboard stats from API
-  const [totalPrograms, setTotalPrograms] = useState(0);
-  const [totalAttendance, setTotalAttendance] = useState(0);
-  const [upcomingPrograms, setUpcomingPrograms] = useState(0);
-  const [chartData, setChartData] = useState([]);
-  const [dashboardChartPage, setDashboardChartPage] = useState(0);
-  const [donutData, setDonutData] = useState([
-    { label: 'Female Attendance', value: 0, color: '#7C3AED' },
-    { label: 'Male Attendance', value: 0, color: '#10B981' },
-    { label: 'First Timer Attendance', value: 0, color: '#F59E0B' },
-  ]);
-
-  // Refs for click-outside detection
-  const datePickerRef = useRef(null);
-  const presetDropdownRef = useRef(null);
-
-  // Close dropdowns on outside click
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(e.target)) {
-        setShowDatePicker(false);
-      }
-      if (presetDropdownRef.current && !presetDropdownRef.current.contains(e.target)) {
-        setShowPresetDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Theme effect
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
+    if (!localStorage.getItem('token')) {
+      navigate('/login', { replace: true });
+      return undefined;
     }
-    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
-
-  // Cleanup theme on unmount (so other pages aren't affected)
-  useEffect(() => {
-    return () => {
-      // Preserve theme across pages
-    };
-  }, []);
-
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
+    let alive = true;
+    const load = async () => {
+      if (firstLoad.current) setLoading(true); else setRefreshing(true);
+      setLoadError('');
+      try {
+        // Always fresh here: this is where organizers watch their live numbers.
+        const res = await getDashboardBootstrap(range.startDate, range.endDate, today, { fresh: true });
+        if (!alive) return;
+        setData(res);
+        const orgType = res.church?.organizationType || '';
+        if (orgType) {
+          setTemplateRef.current(orgType);
+          setShowOnboarding(false);
+        } else {
+          setShowOnboarding(true);
+        }
+      } catch (error) {
+        if (!alive) return;
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login', { replace: true });
+          return;
+        }
+        setLoadError(error.response?.data?.error || 'We could not load your dashboard. Check your connection and try again.');
+      } finally {
+        if (alive) {
+          setLoading(false);
+          setRefreshing(false);
+          firstLoad.current = false;
+        }
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
-    };
-    const previousOverflow = document.body.style.overflow;
-
-    document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isMobileMenuOpen]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  useEffect(() => {
-    setDashboardChartPage(0);
-  }, [dateRange, chartData.length]);
-
-  const getProgramStatus = (program) => {
-    if (program.status) return program.status;
-    if (!program.isActive) return 'completed';
-    const today = new Date().toISOString().split('T')[0];
-    const programDate = typeof program.date === 'string'
-      ? program.date.slice(0, 10)
-      : new Date(program.date).toISOString().split('T')[0];
-    return programDate > today ? 'upcoming' : 'active';
-  };
-
-  const applyChurchData = (church) => {
-    const organizationType = church.organizationType || '';
-
-    setChurchData({
-      name: church.churchName,
-      branch: church.branchName,
-      email: church.email || '',
-      logo: church.logoUrl,
-      organizationType
-    });
-
-    if (organizationType) {
-      setTemplateKey(organizationType);
-      setShowOnboarding(false);
-    } else {
-      setTemplateKey('general');
-      setShowOnboarding(true);
-    }
-  };
-
-  const updateStoredChurch = (organizationType) => {
-    try {
-      const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
-      localStorage.setItem('church', JSON.stringify({
-        ...storedChurch,
-        organizationType
-      }));
-    } catch (error) {
-      localStorage.setItem('church', JSON.stringify({ organizationType }));
-    }
-  };
+    load();
+    return () => { alive = false; };
+  }, [range, today, reloadKey, navigate]);
 
   const handleOnboardingSelect = async (organizationType) => {
     const response = await updateOrganizationType(organizationType);
     const savedType = response.church?.organizationType || organizationType;
-
     setTemplateKey(savedType);
-    updateStoredChurch(savedType);
-    setChurchData(prev => ({
-      ...prev,
-      organizationType: savedType
-    }));
+    try {
+      const stored = JSON.parse(localStorage.getItem('church') || '{}');
+      localStorage.setItem('church', JSON.stringify({ ...stored, organizationType: savedType }));
+    } catch (error) { /* storage blocked */ }
     setShowOnboarding(false);
     toast.success('Workspace personalized successfully!');
   };
 
-  const applyDashboardStats = (stats) => {
-    setTotalPrograms(stats.totalPrograms);
-    setTotalAttendance(stats.totalAttendance);
-    setUpcomingPrograms(stats.upcomingPrograms);
+  const closeDates = useCallback(() => setDatesOpen(false), []);
 
-    const formattedPrograms = stats.recentPrograms.map(p => ({
-      id: p.id,
-      title: p.title,
-      date: p.date,
-      startTime: p.startTime,
-      endTime: p.endTime,
-      totalScans: p.totalScans,
-      isActive: p.isActive,
-      status: getProgramStatus(p),
-      dataCollection: p.trackingMode === 'collect-data'
-    }));
-    setPrograms(formattedPrograms);
+  const stats = data?.stats;
+  const church = data?.church ? {
+    name: data.church.churchName,
+    email: data.church.email,
+    logoUrl: data.church.logoUrl
+  } : null;
+  const live = stats?.live || null;
+  const events = useMemo(() => (stats?.recentPrograms || []).map((p) => ({ ...p, status: p.status || 'completed' })), [stats]);
+  const statusCounts = useMemo(() => events.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {}), [events]);
 
-    setChartData(stats.attendanceOvertime && stats.attendanceOvertime.length > 0
-      ? stats.attendanceOvertime
-      : []);
+  const visibleEvents = useMemo(() => {
+    let list = tab === 'all' ? events : events.filter((e) => e.status === tab);
+    if (tab === 'all') {
+      const rank = { active: 0, upcoming: 1, completed: 2 };
+      list = [...list].sort((a, b) => (rank[a.status] - rank[b.status])
+        || (a.status === 'upcoming' ? `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`) : `${b.date}${b.startTime}`.localeCompare(`${a.date}${a.startTime}`)));
+    } else if (tab === 'upcoming') {
+      list = [...list].sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`));
+    }
+    return list.slice(0, RECENT_LIMIT);
+  }, [events, tab]);
 
-    const gb = stats.genderBreakdown;
-    if (gb && (gb.femalePercent > 0 || gb.malePercent > 0 || gb.firstTimerPercent > 0)) {
-      setDonutData([
-        { label: 'Female Attendance', value: gb.femalePercent, color: '#7C3AED' },
-        { label: 'Male Attendance', value: gb.malePercent, color: '#10B981' },
-        { label: 'First Timer Attendance', value: gb.firstTimerPercent, color: '#F59E0B' },
-      ]);
-    } else {
-      setDonutData([
-        { label: 'Female Attendance', value: 0, color: '#7C3AED' },
-        { label: 'Male Attendance', value: 0, color: '#10B981' },
-        { label: 'First Timer Attendance', value: 0, color: '#F59E0B' },
-      ]);
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      await deleteProgram(deleting.id);
+      toast.success(template.dashboard?.deleteSuccess || 'Event deleted.');
+      setDeleting(null);
+      setReloadKey((k) => k + 1);
+    } catch (error) {
+      toast.error(error.response?.data?.error || template.dashboard?.deleteFailure || 'Could not delete this event.');
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
-  // Fetch dashboard bootstrap data whenever dateRange changes
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          window.location.href = '/login';
-          return;
-        }
+  const plural = template?.event?.plural || 'Events';
+  const singular = template?.event?.singular || 'Event';
+  const rangeText = range.key === 'custom'
+    ? `${shortDate(range.startDate)} to ${shortDate(range.endDate)}`
+    : RANGE_TEXT[range.key];
+  const rangeButton = range.startDate ? `${shortDate(range.startDate)} to ${shortDate(range.endDate)}` : 'All time';
 
-        if (!initialLoadDone) setLoading(true);
-        const bootstrap = await getDashboardBootstrap(dateRange.startDate, dateRange.endDate);
-        applyChurchData(bootstrap.church);
-        setUnreadCount(bootstrap.unreadCount || 0);
-        applyDashboardStats(bootstrap.stats);
+  const shell = (content) => (
+    <IgDashShell
+      active="dashboard"
+      crumb="Dashboard"
+      church={church}
+      counts={{ preEvents: stats?.preEventCount || 0, events: stats?.totalProgramsAllTime || 0 }}
+      unreadCount={data?.unreadCount || 0}
+      live={live}
+      template={template}
+    >
+      {content}
+      {showOnboarding && <OnboardingModal onSelect={handleOnboardingSelect} />}
+    </IgDashShell>
+  );
 
-        setLoading(false);
-        setInitialLoadDone(true);
-      } catch (error) {
-        console.error('Error fetching dashboard bootstrap:', error);
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-          return;
-        }
-
-        try {
-          const token = localStorage.getItem('token');
-          const church = await getCurrentChurch();
-          applyChurchData(church);
-
-          try {
-            const axios = (await import('axios')).default;
-            const countRes = await axios.get(
-              `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
-              { headers: { 'Authorization': `Bearer ${token}` } }
-            );
-            setUnreadCount(countRes.data.unreadCount || 0);
-          } catch (countError) {
-            console.error('Error fetching unread count:', countError);
-          }
-
-          const stats = await getDashboardStats(dateRange.startDate, dateRange.endDate);
-          applyDashboardStats(stats);
-        } catch (fallbackError) {
-          console.error('Error fetching dashboard fallback data:', fallbackError);
-          if (fallbackError.response?.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '/login';
-          }
-        }
-
-        setLoading(false);
-        setInitialLoadDone(true);
-      }
-    };
-    fetchDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange]);
-
-  // ---- Preset dropdown handler ----
-  const handlePresetSelect = (days) => {
-    setPresetLabel(days);
-    setShowPresetDropdown(false);
-
-    if (days === 'all') {
-      setDateRange({ startDate: null, endDate: null });
-      setCustomStartDate('');
-      setCustomEndDate('');
-    } else {
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - parseInt(days));
-      const newRange = {
-        startDate: start.toISOString().split('T')[0],
-        endDate: end.toISOString().split('T')[0]
-      };
-      setDateRange(newRange);
-      setCustomStartDate(newRange.startDate);
-      setCustomEndDate(newRange.endDate);
-    }
-  };
-
-  // ---- Custom date range handler ----
-  const handleApplyCustomRange = () => {
-    if (customStartDate && customEndDate) {
-      setDateRange({ startDate: customStartDate, endDate: customEndDate });
-      setPresetLabel('custom');
-      setShowDatePicker(false);
-    }
-  };
-
-  const handleLogout = () => {
-    toast.confirm('Are you sure you want to logout?', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('church');
-      window.location.href = '/';
-    });
-  };
-
-  const handleDeleteProgram = (program) => {
-    toast.confirm(
-      template.dashboard.deleteConfirm.replace('{title}', program.title),
-      async () => {
-        try {
-          await deleteProgram(program.id);
-          setPrograms(prev => prev.filter(p => p.id !== program.id));
-          // Refresh stats after delete
-          setDateRange(prev => ({ ...prev }));
-          toast.success(template.dashboard.deleteSuccess);
-        } catch (error) {
-          toast.error(error.response?.data?.error || template.dashboard.deleteFailure);
-        }
-      }
-    );
-  };
-
-  const getStatusBadge = (status) => {
-    const statusColors = {
-      active: 'status-active',
-      upcoming: 'status-upcoming',
-      completed: 'status-completed'
-    };
-    return statusColors[status] || '';
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const toggleTheme = () => {
-    setDarkMode(prev => !prev);
-  };
-
-  // Filtered programs (by status tab — applied on top of date-filtered results)
-  const filteredPrograms = programs
-    .filter(p => {
-      if (activeFilter === 'all') return true;
-      return p.status === activeFilter;
-    })
-    .sort((a, b) => {
-      if (activeFilter !== 'upcoming') return 0;
-      return `${a.date}T${a.startTime || '00:00'}`.localeCompare(`${b.date}T${b.startTime || '00:00'}`);
-    });
-
-  // Formatted date range text for the date picker button
-  const formatFilterDate = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
-
-  const dateRangeText = dateRange.startDate && dateRange.endDate
-    ? `${formatFilterDate(dateRange.startDate)} - ${formatFilterDate(dateRange.endDate)}`
-    : 'All Time';
-
-  const presetLabelMap = {
-    '7': 'Last 7 days',
-    '14': 'Last 14 days',
-    '21': 'Last 21 days',
-    '30': 'Last 30 days',
-    'all': 'All',
-    'custom': 'Custom'
-  };
-  const presetButtonText = presetLabelMap[presetLabel] || 'Last 30 days';
-  const dashboardChartTotalPages = Math.max(1, Math.ceil(chartData.length / DASHBOARD_BARS_PER_PAGE));
-  const safeDashboardChartPage = Math.min(dashboardChartPage, dashboardChartTotalPages - 1);
-  const dashboardChartStartIndex = safeDashboardChartPage * DASHBOARD_BARS_PER_PAGE;
-  const dashboardChartData = chartData.slice(dashboardChartStartIndex, dashboardChartStartIndex + DASHBOARD_BARS_PER_PAGE);
-  const showDashboardChartPagination = chartData.length > DASHBOARD_BARS_PER_PAGE;
-  const isDashboardChartLastPage = dashboardChartStartIndex + DASHBOARD_BARS_PER_PAGE >= chartData.length;
-
-  // Church initials for avatar fallback
-  const churchInitials = churchData.name
-    ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'IN';
-
-  /* ============================================
-     LOADING STATE
-     ============================================ */
   if (loading) {
-    return (
-      <div className="dashboard">
-        <aside className="sidebar">
-          <div className="sidebar-logo">
-            <a href="/dashboard" className="sidebar-logo-link">
-              <span className="sidebar-logo-icon">{Icons.logo}</span>
-              <span className="sidebar-logo-text">Ingather</span>
-            </a>
-          </div>
-        </aside>
-        <main className="dashboard-main">
-          <div className="dashboard-loading">
-            <div className="spinner"></div>
-            <p>Loading dashboard...</p>
-          </div>
-        </main>
+    return shell(
+      <div className="ig-db-page" aria-busy="true" aria-label="Loading dashboard">
+        <div className="ig-db-skel is-head" />
+        <div className="ig-db-skel is-live" />
+        <div className="ig-db-stats">{[0, 1, 2, 3].map((i) => <div key={i} className="ig-db-skel is-stat" />)}</div>
+        <div className="ig-db-charts"><div className="ig-db-skel is-chart" /><div className="ig-db-skel is-chart is-narrow" /></div>
       </div>
     );
   }
 
-  /* ============================================
-     MAIN RENDER
-     ============================================ */
-  return (
-    <div className="dashboard">
-      {/* ====== SIDEBAR ====== */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <a href="/dashboard" className="sidebar-logo-link">
-            <span className="sidebar-logo-icon">{Icons.logo}</span>
-            <span className="sidebar-logo-text">Ingather</span>
-          </a>
-          <button className="sidebar-collapse-btn" title="Toggle sidebar">
-            {Icons.collapse}
-          </button>
+  if (!stats) {
+    return shell(
+      <div className="ig-db-page">
+        <div className="ig-db-card ig-db-error" role="alert">
+          <strong>Your dashboard didn't load</strong>
+          <span>{loadError || 'Something went wrong.'}</span>
+          <button type="button" className="ig-db-btn-ink" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
         </div>
+      </div>
+    );
+  }
 
-        {/* Navigation */}
-        <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item active" id="nav-dashboard" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.dashboard}</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/pre-events" className="nav-item" id="nav-pre-events" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>Pre-Events</span>
-          </a>
-          <a href="/create-program" className="nav-item" id="nav-create-program" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.createProgram}</span>
-            <span>{template.event.create}</span>
-          </a>
-          <a href="/programs" className="nav-item" id="nav-all-programs" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>{template.event.all}</span>
-          </a>
-          <a href="/settings" className="nav-item" id="nav-settings" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.settings}</span>
-            <span>Settings</span>
-          </a>
-        </nav>
+  const checkins = stats.checkins || { total: 0, female: 0, male: 0, firstTimers: 0 };
+  const firstPct = checkins.total > 0 ? Math.round((checkins.firstTimers / checkins.total) * 100) : 0;
+  const change = stats.attendanceChange;
+  const byEvent = stats.attendanceByEvent || [];
+  const now = new Date();
 
-        {/* Footer */}
-        <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" id="nav-notifications" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.notification}</span>
-            <span>Notification</span>
-            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-          </a>
-          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }} id="btn-logout">
-            <span className="nav-icon">{Icons.logout}</span>
-            <span>Log out</span>
-          </button>
+  return shell(
+    <div className={`ig-db-page${refreshing ? ' is-refreshing' : ''}`}>
+      {loadError && (
+        <div className="ig-db-inline-error" role="alert">
+          {loadError}
+          <button type="button" onClick={() => setReloadKey((k) => k + 1)}>Try again</button>
         </div>
-
-        {/* Workspace Profile */}
-        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
-          <div className="sidebar-profile-avatar">
-            {churchData.logo ? (
-              <img src={churchData.logo} alt={churchData.name} />
-            ) : (
-              <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>
-            )}
-          </div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{churchData.name}</div>
-            <div className="sidebar-profile-email">{churchData.email || `${churchData.name?.toLowerCase().replace(/\s+/g, '')}@gmail.com`}</div>
-          </div>
-          <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
-        </div>
-      </aside>
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-backdrop"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-        />
       )}
 
-      {/* ====== MAIN CONTENT ====== */}
-      <main className="dashboard-main">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div className="navbar-left">
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              aria-label="Open navigation menu"
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-            <span className="navbar-church-name">{churchData.name || 'Ingather Workspace'}</span>
+      <div className="ig-db-hello">
+        <div className="ig-db-hello-text">
+          <span>{greetingDate(now)} <i aria-hidden="true">·</i> {greetingWord(now)}</span>
+          <h1 className="ig-db-overview">Overview</h1>
+        </div>
+        <div className="ig-db-range">
+          <div className="ig-db-seg" role="group" aria-label="Date range">
+            {RANGES.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={range.key === key}
+                className={range.key === key ? 'is-on' : ''}
+                onClick={() => { setDatesOpen(false); setRange(presetRange(key, today)); }}
+              >{label}</button>
+            ))}
           </div>
-          <div className="navbar-right">
-            {/* Day/Night Mode Toggle */}
-            <button className="theme-toggle" onClick={toggleTheme} id="theme-toggle" title="Toggle theme">
-              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
-              <span className="theme-toggle-icon">
-                {darkMode ? Icons.moon : Icons.sun}
+          <button
+            type="button"
+            data-dates-toggle
+            className={`ig-db-range-btn${datesOpen ? ' is-open' : ''}${range.key === 'custom' ? ' is-custom' : ''}`}
+            aria-haspopup="dialog"
+            aria-expanded={datesOpen}
+            aria-label={compact ? `Choose custom dates. Showing ${rangeButton}` : undefined}
+            onClick={() => setDatesOpen((v) => !v)}
+          >
+            {DashIcon.calendar}<span>{rangeButton}</span>
+          </button>
+          {datesOpen && (
+            <DatePicker
+              range={range}
+              today={today}
+              onClose={closeDates}
+              onApply={(next) => { setDatesOpen(false); setRange(next); }}
+            />
+          )}
+        </div>
+      </div>
+
+      {live && (
+        <section className="ig-db-live" aria-label="Live event">
+          {isSafeImageUrl(live.flyerUrl) && <img src={live.flyerUrl} alt="" className="ig-db-live-img" />}
+          <div className="ig-db-live-shade" aria-hidden="true" />
+          <div className="ig-db-live-inner">
+            <div className="ig-db-live-text">
+              <span className="ig-db-live-pill"><span aria-hidden="true" />Live now</span>
+              <strong>{live.title}</strong>
+              <span>
+                Started {formatTime(live.startTime)}.
+                {live.endTime ? ` Check-in open until ${formatTime(live.endTime)}.` : ''}
               </span>
-            </button>
-
-            {/* Create New Event CTA */}
-            <button
-              className="navbar-cta"
-              onClick={() => window.location.href = '/create-program'}
-              id="btn-create-program"
-            >
-              <span>{template.event.createNew}</span>
-              {Icons.plus}
-            </button>
-
-            {/* Notification Bell */}
-            <button className="navbar-icon-btn" title="Notifications" id="btn-navbar-notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
-              {Icons.notification}
-              {unreadCount > 0 && <span className="icon-badge"></span>}
-            </button>
-
-            {/* Settings Gear */}
-            <button
-              className="navbar-icon-btn"
-              title="Settings"
-              onClick={() => window.location.href = '/settings'}
-              id="btn-navbar-settings"
-            >
-              {Icons.gear}
-            </button>
-
-            {/* Avatar */}
-            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
-              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
-                {churchData.logo ? (
-                  <img src={churchData.logo} alt={churchData.name} />
-                ) : (
-                  <div className="navbar-avatar-fallback">{churchInitials}</div>
-                )}
-              </div>
-              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
-                {Icons.chevronDown}
-              </span>
-              {showProfileMenu && (
-                <div className="profile-dropdown-menu">
-                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
-                    View Profile
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
-                    Log out
-                  </button>
-                </div>
-              )}
+            </div>
+            <div className="ig-db-live-stats">
+              <div><strong>{formatNumber(live.checkedIn)}</strong><span>checked in</span></div>
+              <i aria-hidden="true" />
+              <div><strong>+{formatNumber(live.lastTenMinutes)}</strong><span>last 10 min</span></div>
+            </div>
+            <div className="ig-db-live-actions">
+              <Link to={`/program/${live.id}`} className="ig-db-live-btn">Live headcount</Link>
             </div>
           </div>
-        </header>
+        </section>
+      )}
 
-        {/* Dashboard Content */}
-        <div className="dashboard-content">
-          {/* Overview Header */}
-          <div className="overview-header">
-            <h2 className="overview-title">Overview</h2>
-            <div className="overview-filters">
-              {/* Custom Date Range Picker */}
-              <div className="filter-dropdown-wrapper" ref={datePickerRef}>
-                <button
-                  className="filter-date-range"
-                  id="filter-date-range"
-                  onClick={() => { setShowDatePicker(!showDatePicker); setShowPresetDropdown(false); }}
-                >
-                  <span>{dateRangeText}</span>
-                  {Icons.calendar}
-                </button>
-                {showDatePicker && (
-                  <div className="datepicker-dropdown">
-                    <div className="datepicker-field">
-                      <label htmlFor="custom-start-date">Start Date</label>
-                      <input
-                        type="date"
-                        id="custom-start-date"
-                        value={customStartDate}
-                        onChange={(e) => setCustomStartDate(e.target.value)}
-                      />
-                    </div>
-                    <div className="datepicker-field">
-                      <label htmlFor="custom-end-date">End Date</label>
-                      <input
-                        type="date"
-                        id="custom-end-date"
-                        value={customEndDate}
-                        onChange={(e) => setCustomEndDate(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      className="datepicker-apply-btn"
-                      onClick={handleApplyCustomRange}
-                      disabled={!customStartDate || !customEndDate}
-                      id="btn-apply-date-range"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                )}
-              </div>
+      <div className="ig-db-stats">
+        <div className="ig-db-stat">
+          <div className="ig-db-stat-head"><span>Total {plural}</span><InfoTip id="total" title={`Total ${plural}`} text={`Every ${singular.toLowerCase()} created in this workspace, including ones that have ended. It doesn't change with the date filter.`} openId={statInfo} setOpenId={setStatInfo} /></div>
+          <strong>{formatNumber(stats.totalProgramsAllTime)}</strong>
+          <span className="ig-db-stat-sub">All time</span>
+        </div>
+        <div className="ig-db-stat">
+          <div className="ig-db-stat-head"><span>Total Attendance</span></div>
+          <span className="ig-db-stat-row"><strong>{formatNumber(stats.totalAttendance)}</strong>{!compact && <Sparkline values={byEvent.slice(-9).map((e) => e.attendance)} />}</span>
+          <span className="ig-db-stat-sub">
+            {change ? (
+              <>
+                <span className={`ig-db-chip${change.percent < 0 ? ' is-down' : ''}`}>{change.percent > 0 ? '+' : ''}{change.percent}%</span>
+                <span className="ig-db-ellipsis">vs last period</span>
+              </>
+            ) : <span className="ig-db-ellipsis">{range.key === 'all' ? 'All time' : `In the ${rangeText}`}</span>}
+          </span>
+        </div>
+        <div className="ig-db-stat">
+          <div className="ig-db-stat-head"><span>Upcoming {plural}</span><InfoTip id="upcoming" title={`Upcoming ${plural}`} text={`${plural} scheduled for a future date. The next one is shown underneath.`} openId={statInfo} setOpenId={setStatInfo} /></div>
+          <strong>{formatNumber(stats.upcomingPrograms)}</strong>
+          <span className="ig-db-stat-sub">{stats.nextUpcoming ? `Next: ${weekdayShortDate(stats.nextUpcoming.date)}` : 'Nothing scheduled yet'}</span>
+        </div>
+        <div className="ig-db-stat">
+          <div className="ig-db-stat-head"><span>First-timers</span></div>
+          <strong>{firstPct}%</strong>
+          <span className="ig-db-stat-sub">{formatNumber(checkins.firstTimers)} of {formatNumber(checkins.total)} guests</span>
+        </div>
+      </div>
 
-              {/* Preset Date Range Dropdown */}
-              <div className="filter-dropdown-wrapper" ref={presetDropdownRef}>
-                <button
-                  className="filter-dropdown"
-                  id="filter-last-30"
-                  onClick={() => { setShowPresetDropdown(!showPresetDropdown); setShowDatePicker(false); }}
-                >
-                  <span>{presetButtonText}</span>
-                  {Icons.calendar}
-                </button>
-                {showPresetDropdown && (
-                  <div className="preset-dropdown">
-                    {['7', '14', '21', '30', 'all'].map((val) => (
-                      <button
-                        key={val}
-                        className={`preset-dropdown-item ${presetLabel === val ? 'active' : ''}`}
-                        onClick={() => handlePresetSelect(val)}
-                        id={`preset-${val}`}
-                      >
-                        {val === 'all' ? 'All' : `${val} days`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="ig-db-charts">
+        <AttendanceChart events={byEvent} rangeText={rangeText} compact={compact} liveId={live?.id} />
+        <WhoCame checkins={checkins} />
+      </div>
 
-          {/* Stat Cards */}
-          <div className="stats-grid">
-            {/* Total Events */}
-            <div className="stat-card" id="stat-total-programs">
-              <div className="stat-icon">
-                {Icons.totalPrograms}
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">{template.dashboard.totalTitle}</span>
-                <h2 className="stat-value">{totalPrograms}</h2>
-              </div>
-              <InfoTooltip
-                className="stat-card-info"
-                label={`${template.dashboard.totalTitle} metric information`}
-                content={`Total ${template.event.plural.toLowerCase()} created in this workspace.`}
-              />
-            </div>
-
-            {/* Total Attendance */}
-            <div className="stat-card" id="stat-total-attendance">
-              <div className="stat-icon">
-                {Icons.totalAttendance}
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Total Attendance</span>
-                <h2 className="stat-value">{totalAttendance.toLocaleString()}</h2>
-              </div>
-              <div className="stat-sparkline">
-                <Sparkline data={chartData} />
-              </div>
-            </div>
-
-            {/* Upcoming Events */}
-            <div className="stat-card" id="stat-upcoming-programs">
-              <div className="stat-icon">
-                {Icons.upcomingPrograms}
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">{template.dashboard.upcomingTitle}</span>
-                <h2 className="stat-value">{upcomingPrograms}</h2>
-              </div>
-              <InfoTooltip
-                className="stat-card-info"
-                label={`${template.dashboard.upcomingTitle} metric information`}
-                content={`${template.event.plural} scheduled for a future date.`}
-              />
-            </div>
-          </div>
-
-          {/* Charts Row */}
-          <div className="charts-row">
-            {/* Attendance Over Time - Bar Chart */}
-            <div className="chart-card" id="chart-attendance-overtime">
-              <div className="chart-header">
-                <h3 className="chart-title">Attendance Over Time</h3>
-                <span className="chart-filter-label">{presetButtonText}</span>
-              </div>
-              <div className="bar-chart-container">
-                <AttendanceBarChart data={dashboardChartData} />
-              </div>
-              {showDashboardChartPagination && (
-                <div className="dashboard-chart-pagination">
-                  <button
-                    type="button"
-                    title="Previous"
-                    disabled={safeDashboardChartPage === 0}
-                    onClick={() => setDashboardChartPage(page => Math.max(0, page - 1))}
-                  >
-                    {Icons.arrowLeftSmall}
-                  </button>
-                  <button
-                    type="button"
-                    title="Next"
-                    disabled={isDashboardChartLastPage}
-                    onClick={() => setDashboardChartPage(page => Math.min(dashboardChartTotalPages - 1, page + 1))}
-                  >
-                    {Icons.arrowRight}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Donut Chart - Attendance Breakdown */}
-            <div className="chart-card" id="chart-attendance-breakdown">
-              <DonutChart data={donutData} />
-            </div>
-          </div>
-
-          {/* Recent Events */}
-          <div className="programs-section" id="recent-programs">
-            <div className="section-header">
-              <h2>{template.event.recent}</h2>
-              <div className="filter-tabs">
-                <button
-                  className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('all')}
-                  id="tab-all"
-                >
-                  All
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'active' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('active')}
-                  id="tab-active"
-                >
-                  Active
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'upcoming' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('upcoming')}
-                  id="tab-upcoming"
-                >
-                  Upcoming
-                  {upcomingPrograms > 0 && (
-                    <span className="filter-tab-badge">{upcomingPrograms}</span>
-                  )}
-                </button>
-                <button
-                  className={`filter-tab ${activeFilter === 'completed' ? 'active' : ''}`}
-                  onClick={() => setActiveFilter('completed')}
-                  id="tab-completed"
-                >
-                  Completed
-                </button>
-              </div>
-            </div>
-
-            <div className="programs-table-container">
-              <table className="programs-table" id="programs-table">
-                <thead>
-                  <tr>
-                    <th>{template.event.titleLabel}</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Status</th>
-                    <th>Attendance</th>
-                    <th>Data Collection</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPrograms.length === 0 ? (
-                    <tr>
-                      <td colSpan="7">
-                        <div className="empty-state">
-                          <p>{template.dashboard.emptyState}</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPrograms.map(program => (
-                      <tr key={program.id}>
-                        <td className="program-title-cell" data-label={template.event.singular}>
-                          {program.title}
-                        </td>
-                        <td data-label="Date">{formatDate(program.date)}</td>
-                        <td data-label="Time">{program.startTime} - {program.endTime}</td>
-                        <td data-label="Status">
-                          <span className={`status-badge ${getStatusBadge(program.status)}`}>
-                            {program.status.charAt(0).toUpperCase() + program.status.slice(1)}
-                          </span>
-                        </td>
-                        <td data-label="Attendance">
-                          <strong>{program.totalScans.toLocaleString()}</strong>
-                        </td>
-                        <td data-label="Data Collection">
-                          <span className={program.dataCollection ? 'badge-yes' : 'badge-no'}>
-                            {program.dataCollection ? 'Yes' : 'No'}
-                          </span>
-                        </td>
-                        <td data-label="Actions">
-                          <div className="action-buttons">
-                            <button
-                              className="btn-action btn-view"
-                              onClick={() => window.location.href = `/program/${program.id}`}
-                              id={`btn-view-${program.id}`}
-                            >
-                              View
-                            </button>
-                            <button
-                              className="btn-action btn-delete"
-                              onClick={() => handleDeleteProgram(program)}
-                              title={`Delete ${template.event.singular.toLowerCase()}`}
-                              id={`btn-delete-${program.id}`}
-                            >
-                              {Icons.trash}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <section className="ig-db-card ig-db-recent" aria-label={template?.event?.recent || 'Recent events'}>
+        <div className="ig-db-recent-head">
+          <strong>{template?.event?.recent || 'Recent Events'}</strong>
+          <div className="ig-db-tabs" role="tablist" aria-label={`Filter ${plural.toLowerCase()}`}>
+            {TABS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                className={tab === key ? 'is-on' : ''}
+                onClick={() => setTab(key)}
+              >
+                {label}
+                {key === 'upcoming' && statusCounts.upcoming > 0 && <span className="ig-db-tab-badge">{statusCounts.upcoming}</span>}
+              </button>
+            ))}
           </div>
         </div>
-      </main>
-      {showOnboarding && <OnboardingModal onSelect={handleOnboardingSelect} />}
+
+        {visibleEvents.length === 0 ? (
+          <div className="ig-db-empty">
+            {events.length === 0 ? (
+              <>
+                <strong>No {plural.toLowerCase()} in this period</strong>
+                <span>Create your first {singular.toLowerCase()} to start checking guests in.</span>
+                <Link to="/create-program" className="ig-db-btn-primary is-inline">{DashIcon.plus}{template?.event?.create || 'Create Event'}</Link>
+              </>
+            ) : <span>No {plural.toLowerCase()} match this filter.</span>}
+          </div>
+        ) : compact ? (
+          <div className="ig-db-cards">
+            {visibleEvents.map((e) => (
+              <Link key={e.id} to={`/program/${e.id}`} className="ig-db-ev-card">
+                <span className="ig-db-ev-card-top">
+                  <DateTile date={e.date} highlight={e.status === 'active'} large />
+                  <span className="ig-db-ev-card-text">
+                    <strong>{e.title}</strong>
+                    <span>{DashIcon.clock}{formatTimeRange(e.startTime, e.endTime)}</span>
+                  </span>
+                  <span className="ig-db-ev-card-count"><strong>{e.status === 'upcoming' ? '-' : formatNumber(e.totalScans)}</strong><span>attended</span></span>
+                </span>
+                <span className="ig-db-ev-card-foot">
+                  <StatusPill status={e.status} />
+                  <span className="ig-db-ev-card-view">View{DashIcon.chevronRight}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="ig-db-table" role="table" aria-label={plural}>
+            <div className="ig-db-tr is-head" role="row">
+              <span role="columnheader">{singular}</span><span role="columnheader">Time</span><span role="columnheader">Status</span>
+              <span role="columnheader">Attendance</span><span role="columnheader">Data collection</span><span role="columnheader" className="is-right">Actions</span>
+            </div>
+            {visibleEvents.map((e) => {
+              const badge = dateBadge(e.date);
+              const collecting = e.trackingMode === 'collect-data';
+              const canDelete = e.status === 'completed';
+              return (
+                <div className="ig-db-tr" role="row" key={e.id}>
+                  <span role="cell" className="ig-db-ev">
+                    <DateTile date={e.date} highlight={e.status === 'active'} />
+                    <span className="ig-db-ev-text"><strong>{e.title}</strong><span>{badge.weekday}</span></span>
+                  </span>
+                  <span role="cell" className="ig-db-muted-cell">{formatTimeRange(e.startTime, e.endTime)}</span>
+                  <span role="cell"><StatusPill status={e.status} /></span>
+                  <span role="cell" className="ig-db-num-cell">{e.status === 'upcoming' ? '-' : formatNumber(e.totalScans)}</span>
+                  <span role="cell" className={collecting ? 'ig-db-data-cell' : 'ig-db-data-cell is-muted'}>{collecting ? 'Collecting' : 'Count only'}</span>
+                  <span role="cell" className="ig-db-actions">
+                    <Link to={`/program/${e.id}`} className="ig-db-view">View</Link>
+                    <button
+                      type="button"
+                      className="ig-db-trash"
+                      aria-label={canDelete ? `Delete ${e.title}` : `Stop ${e.title} before deleting it`}
+                      title={canDelete ? 'Delete' : `Stop this ${singular.toLowerCase()} before deleting it`}
+                      disabled={!canDelete}
+                      onClick={() => setDeleting(e)}
+                    >{DashIcon.trash}</button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {events.length > 0 && <Link to="/programs" className="ig-db-link is-center">View all {plural.toLowerCase()}</Link>}
+      </section>
+
+      {deleting && (
+        <DashDialog
+          tone="danger"
+          icon={DashIcon.trash}
+          title={`Delete "${deleting.title}"?`}
+          cancelLabel={`Keep ${singular.toLowerCase()}`}
+          confirmLabel={`Delete ${singular.toLowerCase()}`}
+          busy={deleteBusy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={confirmDelete}
+        >
+          This permanently removes the {singular.toLowerCase()}
+          {deleting.totalScans > 0 ? `, its ${formatNumber(deleting.totalScans)} check-ins and its report` : ' and its report'}. You can't undo this.
+        </DashDialog>
+      )}
     </div>
   );
 }

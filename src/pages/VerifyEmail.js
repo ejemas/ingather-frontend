@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { verifyOtp, resendOtp } from '../api/authService';
-import '../styles/Auth.css';
+import { AccountLayout, CodeInput, MailIcon, Notice } from '../components/AccountLayout';
 
 const OTP_LENGTH = 6;
+
+const formatCooldown = (seconds) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 function VerifyEmail() {
   const location = useLocation();
@@ -15,7 +17,6 @@ function VerifyEmail() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-  const inputRefs = useRef([]);
 
   useEffect(() => {
     if (!email) {
@@ -28,44 +29,17 @@ function VerifyEmail() {
       const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [resendCooldown]);
 
-  const handleChange = (index, value) => {
-    if (value && !/^\d$/.test(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    setError('');
-
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim().slice(0, OTP_LENGTH);
-
-    if (/^\d{1,6}$/.test(pastedData)) {
-      const newOtp = Array(OTP_LENGTH).fill('');
-      pastedData.split('').forEach((char, i) => {
-        newOtp[i] = char;
-      });
-      setOtp(newOtp);
-      const focusIndex = Math.min(pastedData.length, OTP_LENGTH - 1);
-      inputRefs.current[focusIndex]?.focus();
-    }
+  const handleOtpChange = (next) => {
+    setOtp(next);
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     const otpCode = otp.join('');
 
     if (otpCode.length !== OTP_LENGTH) {
@@ -96,6 +70,7 @@ function VerifyEmail() {
       await resendOtp(email);
       setResendCooldown(60);
       setError('');
+      setOtp(Array(OTP_LENGTH).fill(''));
       setSuccess('A new code has been sent to your email.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -104,93 +79,52 @@ function VerifyEmail() {
   };
 
   return (
-    <div className="auth-modern-page auth-recovery-page">
-      <div className="auth-modern-shell auth-recovery-shell">
-        <aside
-          className="auth-modern-panel auth-recovery-panel"
-          style={{
-            '--auth-panel-image': "url('/ingather-landing-hero.png')",
-            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
-          }}
-        >
-          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
-            <img src="/ingather-logo.png" alt="" />
-          </button>
+    <AccountLayout
+      pillTag="Verify email"
+      pillText="One last step"
+      titleStart="Check your"
+      titleBox="inbox"
+      lead="Enter the 6-digit code we sent to confirm this workspace belongs to you."
+      photo="/landing/seg-boot.jpg"
+      photoAlt="A team working together on laptops"
+      chip="Protecting your organization data"
+      panelTitle="Confirm the workspace belongs to you."
+      panelText="One quick code protects your organization before your account is activated."
+    >
+      <form className="ig-wl-card ig-wl-form" onSubmit={handleSubmit} noValidate>
+        <div className="ig-acct-row">
+          <span className="ig-acct-row-icon"><MailIcon /></span>
+          <span className="ig-acct-row-text">Code sent to<strong>{email}</strong></span>
+        </div>
 
-          <div className="auth-panel-content">
-            <span className="auth-panel-pill">Email verification</span>
-            <h1>Confirm the workspace belongs to you.</h1>
-            <p>
-              One quick code protects your organization data before your account is
-              activated.
-            </p>
-          </div>
+        <div>
+          <CodeInput digits={otp} onChange={handleOtpChange} invalid={Boolean(error)} disabled={loading} />
+          <p className="ig-acct-code-note" style={{ marginTop: 8 }}>The code expires in 10 minutes. Check your spam folder if you can't find it.</p>
+        </div>
 
-          <div className="auth-code-preview" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span><span></span>
-          </div>
-        </aside>
+        {error && <Notice tone="error">{error}</Notice>}
+        {success && <Notice tone="success">{success}</Notice>}
 
-        <main className="auth-modern-card">
-          <div className="auth-modern-header">
-            <p className="auth-modern-kicker">Verify email</p>
-            <h2>Enter your code</h2>
-            <span>We sent a six-digit verification code to your inbox.</span>
-          </div>
+        <button type="submit" className="ig-wl-submit" disabled={loading} aria-busy={loading}>
+          {loading ? (
+            <>
+              <span className="ig-wl-spinner" aria-hidden="true" />
+              Verifying...
+            </>
+          ) : 'Verify email'}
+        </button>
 
-          <div className="auth-modern-note">
-            <span>Code sent to</span>
-            <strong>{email}</strong>
-          </div>
-
-          <form className="auth-modern-form" onSubmit={handleSubmit}>
-            <div className="auth-modern-field">
-              <label>Verification code</label>
-              <div className="otp-container otp-container-modern">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(element) => { inputRefs.current[index] = element; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength="1"
-                    className="otp-input"
-                    value={digit}
-                    onChange={(e) => handleChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={index === 0 ? handlePaste : undefined}
-                    autoFocus={index === 0}
-                    aria-label={`Digit ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {error && <div className="auth-message auth-message-error">{error}</div>}
-            {success && <div className="auth-message auth-message-success">{success}</div>}
-
-            <button type="submit" className="auth-modern-submit" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify email'}
+        <div className="ig-acct-links">
+          <span>
+            Didn't get it?{' '}
+            <button type="button" className="ig-acct-linkbtn" onClick={handleResend} disabled={resendCooldown > 0}>
+              {resendCooldown > 0 ? `Resend in ${formatCooldown(resendCooldown)}` : 'Resend code'}
             </button>
-
-            <p className="auth-modern-switch">
-              Didn't receive the code?{' '}
-              {resendCooldown > 0 ? (
-                <span className="resend-timer">Resend in {resendCooldown}s</span>
-              ) : (
-                <button type="button" className="resend-link" onClick={handleResend}>
-                  Resend code
-                </button>
-              )}
-            </p>
-
-            <p className="auth-modern-switch auth-modern-switch-muted">
-              <a href="/login">Back to login</a>
-            </p>
-          </form>
-        </main>
-      </div>
-    </div>
+          </span>
+          <Link to="/login">Back to log in</Link>
+        </div>
+      </form>
+    </AccountLayout>
   );
 }
 

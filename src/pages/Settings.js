@@ -1,691 +1,667 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getCurrentChurch, updateOrganizationType } from '../api/authService';
-import { useToast } from '../components/Toast';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getDashboardBootstrap } from '../api/programService';
+import { updateOrganizationType } from '../api/authService';
+import {
+  changePassword,
+  getNotifications,
+  markNotificationsRead,
+  removeWorkspaceLogo,
+  updateWorkspace,
+  uploadWorkspaceLogo
+} from '../api/settingsService';
+import IgDashShell, { DashIcon, DashDialog, WorkspaceMark } from '../components/IgDashShell';
+import { evaluatePassword, passwordProblem } from '../components/AccountLayout';
 import { useEventTemplate } from '../context/EventTemplateContext';
-import '../styles/Dashboard.css';
-import '../styles/Settings.css';
+import { getEventTemplate } from '../config/eventTemplates';
+import { localToday } from '../utils/dashboardFormat';
 
-/* ============================================
-   SVG ICONS
-   ============================================ */
-const Icons = {
-  logo: (
-    <img src="/ingather-logo.png" alt="Ingather" className="sidebar-logo-img" />
-  ),
-  collapse: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="14" height="14" rx="2" /><line x1="9" y1="3" x2="9" y2="17" /></svg>),
-  dashboard: (<svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1" fill="currentColor" /><rect x="11" y="3" width="6" height="6" rx="1" fill="currentColor" /><rect x="3" y="11" width="6" height="6" rx="1" fill="currentColor" /><rect x="11" y="11" width="6" height="6" rx="1" fill="currentColor" /></svg>),
-  createProgram: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7" /><line x1="10" y1="7" x2="10" y2="13" /><line x1="7" y1="10" x2="13" y2="10" /></svg>),
-  allPrograms: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="14" height="12" rx="2" /><line x1="3" y1="8" x2="17" y2="8" /><line x1="7" y1="4" x2="7" y2="8" /><line x1="13" y1="4" x2="13" y2="8" /></svg>),
-  settings: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" /><circle cx="12" cy="12" r="3" /></svg>),
-  notification: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" /><path d="M8.5 17a1.5 1.5 0 003 0" /></svg>),
-  logout: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>),
-  chevronRight: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,4 10,8 6,12" /></svg>),
-  chevronDown: (<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,5 7,9 11,5" /></svg>),
-  sun: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="3.5" /><line x1="10" y1="2" x2="10" y2="4" /><line x1="10" y1="16" x2="10" y2="18" /><line x1="2" y1="10" x2="4" y2="10" /><line x1="16" y1="10" x2="18" y2="10" /><line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="14.4" y1="14.4" x2="15.8" y2="15.8" /><line x1="4.2" y1="15.8" x2="5.6" y2="14.4" /><line x1="14.4" y1="5.6" x2="15.8" y2="4.2" /></svg>),
-  moon: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" /></svg>),
-  gear: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" /><circle cx="12" cy="12" r="3" /></svg>),
-  // Sub-nav icons
-  user: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="4" /><path d="M3 19v-1a5 5 0 015-5h4a5 5 0 015 5v1" /></svg>),
-  lock: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="9" width="12" height="8" rx="2" /><path d="M7 9V6a3 3 0 016 0v3" /></svg>),
-  bell: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" /><path d="M8.5 17a1.5 1.5 0 003 0" /></svg>),
-  pencil: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" /></svg>),
-  gearSmall: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" /><circle cx="12" cy="12" r="3" /></svg>),
-  avatarPlaceholder: (<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round"><circle cx="24" cy="24" r="23" strokeDasharray="4 3" /><circle cx="24" cy="19" r="7" /><path d="M8 42c0-8 7-14 16-14s16 6 16 14" /></svg>),
+const TABS = [['workspace', 'Workspace'], ['password', 'Password'], ['notifications', 'Notifications']];
+
+const TYPES = [
+  ['general', 'General event'],
+  ['techMeetup', 'Tech meetup'],
+  ['conference', 'Conference'],
+  ['seminar', 'Seminar'],
+  ['bootcamp', 'Bootcamp'],
+  ['corporateEvent', 'Corporate event'],
+  ['communityGathering', 'Community gathering'],
+  ['church', 'Church']
+];
+
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+const LOGO_SIZE = 400;
+
+const typeWords = (key) => {
+  const t = getEventTemplate(key);
+  const people = key === 'seminar' ? 'Facilitator' : key === 'bootcamp' ? 'Instructor' : key === 'church' ? 'Visitors' : 'Guests';
+  return `${t.event.plural} · ${people}`;
 };
 
-/* ============================================
-   RELATIVE TIME UTILITY
-   ============================================ */
-function getRelativeTime(dateString) {
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now - date;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHr / 24);
-  const diffWeek = Math.floor(diffDay / 7);
+const timeAgo = (value) => {
+  const then = new Date(value).getTime();
+  if (!then) return '';
+  const minutes = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 5) return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+  return new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
-  if (diffSec < 60) return 'just now';
-  if (diffMin < 60) return `${diffMin}m`;
-  if (diffHr < 24) return `${diffHr}h`;
-  if (diffDay < 7) return `${diffDay}d`;
-  if (diffWeek < 4) return `${diffWeek}w`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+// Square crop + resize in the browser so only a small image is uploaded.
+const prepareLogo = (file) => new Promise((resolve, reject) => {
+  if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+    reject(new Error('Use a PNG, JPG or WebP image.'));
+    return;
+  }
+  if (file.size > MAX_LOGO_BYTES) {
+    reject(new Error('That file is too big. Use an image under 5 MB.'));
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const size = Math.min(LOGO_SIZE, side);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+    URL.revokeObjectURL(url);
+    const keepAlpha = /png|webp/i.test(file.type);
+    resolve(canvas.toDataURL(keepAlpha ? 'image/png' : 'image/jpeg', 0.9));
+  };
+  img.onerror = () => {
+    URL.revokeObjectURL(url);
+    reject(new Error('We could not read that image. Try a PNG or JPG.'));
+  };
+  img.src = url;
+});
+
+const EyeIcon = ({ open }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" />
+    {!open && <path d="M4 4l16 16" />}
+  </svg>
+);
+const ErrorIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.5v.5" /></svg>
+);
+const CheckIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
+);
+const PencilIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>
+);
+
+function Field({ id, label, error, children }) {
+  return (
+    <div className={`ig-st-field${error ? ' has-error' : ''}`}>
+      <label htmlFor={id}>{label}</label>
+      {children}
+      {error && <span className="ig-st-error" id={`${id}-error`}><ErrorIcon />{error}</span>}
+    </div>
+  );
 }
 
-/* ============================================
-   MAIN SETTINGS COMPONENT
-   ============================================ */
-function Settings() {
-  // Read ?tab query parameter from URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialTab = urlParams.get('tab') === 'notifications' ? 'notifications' : 'church';
-  const [activeTab, setActiveTab] = useState(initialTab);
-  const [churchData, setChurchData] = useState({ churchName: '', branchName: '', email: '', location: '', logoUrl: '', organizationType: '' });
-  const [formData, setFormData] = useState({ churchName: '', branchName: '', location: '' });
-  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', repeatPassword: '' });
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [templateSaving, setTemplateSaving] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
-  const toast = useToast();
-  const { template, templateKey, templateOptions, setTemplateKey } = useEventTemplate();
-  const logoInputRef = React.useRef(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const profileMenuRef = useRef(null);
-  // Theme
-  useEffect(() => {
-    if (darkMode) document.documentElement.setAttribute('data-theme', 'dark');
-    else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
-
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') setIsMobileMenuOpen(false);
-    };
-    const previousOverflow = document.body.style.overflow;
-
-    document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen) document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isMobileMenuOpen]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  // Fetch workspace data
-  useEffect(() => {
-    fetchChurchData();
-  }, []);
-
-  const fetchChurchData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) { window.location.href = '/login'; return; }
-      const church = await getCurrentChurch();
-      setChurchData({
-        churchName: church.churchName,
-        branchName: church.branchName,
-        email: church.email,
-        location: church.location,
-        logoUrl: church.logoUrl,
-        organizationType: church.organizationType || ''
-      });
-      if (church.organizationType) {
-        setTemplateKey(church.organizationType);
-      } else {
-        setTemplateKey('general');
-      }
-      setFormData({
-        churchName: church.churchName,
-        branchName: church.branchName,
-        location: church.location
-      });
-      // Fetch notifications
-      fetchNotifications();
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching workspace data:', error);
-      if (error.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
-      setLoading(false);
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const axios = (await import('axios')).default;
-      const token = localStorage.getItem('token');
-      const [notifRes, countRes] = await Promise.all([
-        axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        ),
-        axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        )
-      ]);
-      setNotifications(notifRes.data.notifications || []);
-      setUnreadCount(countRes.data.unreadCount || 0);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-    }
-  };
-
-  const handleFormChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handlePasswordChange = (e) => {
-    setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
-  };
-
-  const handleTemplateChange = async (e) => {
-    const nextTemplateKey = e.target.value;
-    const previousTemplateKey = templateKey;
-
-    setTemplateSaving(true);
-    setTemplateKey(nextTemplateKey);
-
-    try {
-      const response = await updateOrganizationType(nextTemplateKey);
-      const savedType = response.church?.organizationType || nextTemplateKey;
-
-      setTemplateKey(savedType);
-      setChurchData(prev => ({ ...prev, organizationType: savedType }));
-
-      try {
-        const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
-        localStorage.setItem('church', JSON.stringify({
-          ...storedChurch,
-          organizationType: savedType
-        }));
-      } catch (storageError) {
-        localStorage.setItem('church', JSON.stringify({ organizationType: savedType }));
-      }
-
-      toast.success('Event template updated successfully!');
-    } catch (error) {
-      setTemplateKey(previousTemplateKey);
-      const errorMessage = error.response?.data?.error || 'Failed to update event template.';
-      toast.error(errorMessage);
-    } finally {
-      setTemplateSaving(false);
-    }
-  };
-
-  /* ---- Logo upload: resize to 200x200, convert to base64 ---- */
-  const handleLogoSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file.');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB.');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize to 200x200 using canvas
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-
-        // Crop to center square
-        const size = Math.min(img.width, img.height);
-        const offsetX = (img.width - size) / 2;
-        const offsetY = (img.height - size) / 2;
-        ctx.drawImage(img, offsetX, offsetY, size, size, 0, 0, 200, 200);
-
-        const base64 = canvas.toDataURL('image/jpeg', 0.85);
-        setLogoPreview(base64);
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-    // Reset file input so the same file can be re-selected
-    e.target.value = '';
-  };
-
-  /* ---- Save Workspace Info ---- */
-  const handleSaveChurch = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setMessage({ text: '', type: '' });
-    try {
-      const axios = (await import('axios')).default;
-      const token = localStorage.getItem('token');
-      const payload = { churchName: formData.churchName, branchName: formData.branchName, location: formData.location };
-      // Include logo if user selected a new one
-      if (logoPreview) {
-        payload.logoUrl = logoPreview;
-      }
-      const response = await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/update`,
-        payload,
-        { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
-      );
-      setChurchData({
-        ...churchData,
-        churchName: response.data.church.churchName,
-        branchName: response.data.church.branchName,
-        location: response.data.church.location,
-        logoUrl: response.data.church.logoUrl,
-        organizationType: response.data.church.organizationType || churchData.organizationType
-      });
-      setLogoPreview(null); // Clear preview since it's now the real logo
-      const storedChurch = JSON.parse(localStorage.getItem('church') || '{}');
-      localStorage.setItem('church', JSON.stringify({
-        ...storedChurch,
-        churchName: response.data.church.churchName,
-        branchName: response.data.church.branchName,
-        location: response.data.church.location,
-        logoUrl: response.data.church.logoUrl,
-        organizationType: response.data.church.organizationType || churchData.organizationType
-      }));
-      toast.success('Workspace settings updated successfully!');
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to update settings.';
-      toast.error(errorMessage);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  /* ---- Change Password ---- */
-  const handleChangePassword = async (e) => {
-    e.preventDefault();
-    if (passwordData.newPassword !== passwordData.repeatPassword) {
-      toast.error('New passwords do not match.');
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters.');
-      return;
-    }
-    setChangingPassword(true);
-    try {
-      const axios = (await import('axios')).default;
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/auth/change-password`,
-        { currentPassword: passwordData.currentPassword, newPassword: passwordData.newPassword },
-        { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
-      );
-      toast.success('Password changed successfully!');
-      setPasswordData({ currentPassword: '', newPassword: '', repeatPassword: '' });
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to change password.';
-      toast.error(errorMessage);
-    } finally {
-      setChangingPassword(false);
-    }
-  };
-
-  const handleCancelPassword = () => {
-    setPasswordData({ currentPassword: '', newPassword: '', repeatPassword: '' });
-  };
-
-  /* ---- Mark notifications as read ---- */
-  const handleMarkAllRead = async () => {
-    try {
-      const axios = (await import('axios')).default;
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/mark-read`,
-        {},
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    } catch (error) {
-      console.error('Error marking notifications read:', error);
-      toast.error('Failed to mark notifications as read.');
-    }
-  };
-
-  const handleLogout = () => {
-    toast.confirm('Are you sure you want to logout?', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('church');
-      window.location.href = '/';
-    });
-  };
-
-  const toggleTheme = () => setDarkMode(prev => !prev);
-
-  const churchInitials = churchData.churchName
-    ? churchData.churchName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'IN';
-
-  /* ===== LOADING ===== */
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <aside className="sidebar">
-          <div className="sidebar-logo"><a href="/dashboard" className="sidebar-logo-link"><span className="sidebar-logo-icon">{Icons.logo}</span><span className="sidebar-logo-text">Ingather</span></a></div>
-        </aside>
-        <main className="dashboard-main">
-          <div className="dashboard-loading"><div className="spinner"></div><p>Loading settings...</p></div>
-        </main>
-      </div>
-    );
-  }
-
-  /* ===== SUB-NAV TABS ===== */
-  const tabs = [
-    { key: 'church', label: 'Workspace Information', icon: Icons.user },
-    { key: 'password', label: 'Password', icon: Icons.lock },
-    { key: 'notifications', label: 'Notification', icon: Icons.bell },
-  ];
-
-  /* ===== RENDER ===== */
+function SecretInput({ id, value, onChange, placeholder, autoComplete, invalid, describedBy }) {
+  const [shown, setShown] = useState(false);
   return (
-    <div className="dashboard">
-      {/* ====== SIDEBAR ====== */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
-        <div className="sidebar-logo">
-          <a href="/dashboard" className="sidebar-logo-link">
-            <span className="sidebar-logo-icon">{Icons.logo}</span>
-            <span className="sidebar-logo-text">Ingather</span>
-          </a>
-          <button className="sidebar-collapse-btn" title="Toggle sidebar">{Icons.collapse}</button>
+    <span className={`ig-st-secret${invalid ? ' is-invalid' : ''}`}>
+      <input
+        id={id}
+        type={shown ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        maxLength={128}
+      />
+      <button type="button" onClick={() => setShown((v) => !v)} aria-label={shown ? 'Hide password' : 'Show password'} aria-pressed={shown}>
+        <EyeIcon open={!shown} />
+      </button>
+    </span>
+  );
+}
+
+function StrengthPanel({ password, error }) {
+  const result = evaluatePassword(password);
+  const toneClass = error ? 'tone-bad' : `tone-${result.tone}`;
+  return (
+    <div className={`ig-st-strength ${toneClass}`} aria-live="polite">
+      <div className="ig-st-strength-top">
+        <span className="ig-st-meter" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => <span key={i} className={i < result.level ? 'is-on' : ''} />)}
+        </span>
+        <span className="ig-st-strength-label">{result.label}</span>
+      </div>
+      {result.rules.map((rule) => (
+        <span key={rule.key} className={`ig-st-rule is-${rule.state}`}>
+          <span aria-hidden="true">{rule.state === 'ok' ? <CheckIcon /> : rule.state === 'bad' ? '!' : ''}</span>
+          {rule.key === 'common' && rule.state !== 'bad' ? 'Not a common or leaked password' : rule.text}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Settings() {
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const { templateKey, setTemplateKey } = useEventTemplate();
+  // Stable handle: changing the wording must not trigger another data load.
+  const setTemplateRef = useRef(setTemplateKey);
+  setTemplateRef.current = setTemplateKey;
+  const today = useMemo(() => localToday(), []);
+  const tab = TABS.some(([k]) => k === params.get('tab')) ? params.get('tab') : 'workspace';
+
+  const [boot, setBoot] = useState(null);
+  const [church, setChurch] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [toast, setToast] = useState('');
+  const toastTimer = useRef(null);
+
+  // Workspace form
+  const [form, setForm] = useState({ churchName: '', branchName: '', location: '' });
+  const [formErrors, setFormErrors] = useState({});
+  const [formMessage, setFormMessage] = useState('');
+  const [savingWork, setSavingWork] = useState(false);
+  const [logoState, setLogoState] = useState('idle');
+  const [logoError, setLogoError] = useState('');
+  const [logoPreview, setLogoPreview] = useState('');
+  const fileRef = useRef(null);
+
+  // Organisation type
+  const [pendingType, setPendingType] = useState(null);
+  const [savingType, setSavingType] = useState(false);
+
+  // Password
+  const [pw, setPw] = useState({ current: '', next: '', repeat: '' });
+  const [pwErrors, setPwErrors] = useState({});
+  const [savingPw, setSavingPw] = useState(false);
+
+  // Notifications
+  const [notes, setNotes] = useState(null);
+  const [notesError, setNotesError] = useState('');
+  const [marking, setMarking] = useState(false);
+  const [unread, setUnread] = useState(0);
+
+  const showToast = useCallback((text) => {
+    setToast(text);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 3200);
+  }, []);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+
+  const applyChurch = (c) => {
+    setChurch(c);
+    setForm({ churchName: c.churchName || '', branchName: c.branchName || '', location: c.location || '' });
+    try {
+      const stored = JSON.parse(localStorage.getItem('church') || '{}');
+      localStorage.setItem('church', JSON.stringify({ ...stored, churchName: c.churchName, branchName: c.branchName, location: c.location, logoUrl: c.logoUrl, organizationType: c.organizationType }));
+    } catch (error) { /* storage blocked */ }
+  };
+
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      navigate('/login', { replace: true });
+      return undefined;
+    }
+    let alive = true;
+    (async () => {
+      setLoadError('');
+      try {
+        const res = await getDashboardBootstrap(today, today, today);
+        if (!alive) return;
+        setBoot(res);
+        applyChurch(res.church);
+        setUnread(res.unreadCount || 0);
+        if (res.church?.organizationType) setTemplateRef.current(res.church.organizationType);
+      } catch (error) {
+        if (!alive) return;
+        if (error.response?.status === 401) {
+          localStorage.removeItem('token');
+          navigate('/login', { replace: true });
+          return;
+        }
+        setLoadError(error.response?.data?.error || 'We could not load your settings. Check your connection and try again.');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [today, reloadKey, navigate]);
+
+  const loadNotes = useCallback(async () => {
+    setNotesError('');
+    try {
+      const res = await getNotifications();
+      setNotes(res.notifications || []);
+      setUnread((res.notifications || []).filter((n) => !n.isRead).length);
+    } catch (error) {
+      setNotesError(error.response?.data?.error || 'We could not load notifications.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'notifications' && notes === null && !loading) loadNotes();
+  }, [tab, notes, loading, loadNotes]);
+
+  const selectTab = (key) => {
+    const next = new URLSearchParams(params);
+    if (key === 'workspace') next.delete('tab'); else next.set('tab', key);
+    setParams(next, { replace: true });
+  };
+
+  const template = getEventTemplate(templateKey);
+  const shellChurch = church ? { name: church.churchName, email: church.email, logoUrl: logoPreview || church.logoUrl } : null;
+  const stats = boot?.stats;
+
+  /* ---------- Workspace ---------- */
+  const updateForm = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setFormErrors((e) => ({ ...e, [key]: '' }));
+    setFormMessage('');
+  };
+
+  const saveWorkspace = async (event) => {
+    event.preventDefault();
+    const errs = {};
+    if (!form.churchName.trim()) errs.churchName = 'Add your organisation name';
+    if (!form.branchName.trim()) errs.branchName = 'Add a branch or location';
+    setFormErrors(errs);
+    const count = Object.keys(errs).length;
+    if (count) {
+      setFormMessage(`Fill in the ${count === 1 ? 'field' : `${count} fields`} marked in red to save.`);
+      document.getElementById(errs.churchName ? 'st-name' : 'st-branch')?.focus();
+      return;
+    }
+    setSavingWork(true);
+    setFormMessage('');
+    try {
+      const res = await updateWorkspace(form);
+      applyChurch(res.church);
+      showToast('Workspace saved');
+    } catch (error) {
+      if (error.response?.data?.fieldErrors) {
+        const fe = error.response.data.fieldErrors;
+        setFormErrors({ churchName: fe.churchName || '', branchName: fe.branchName || '' });
+      }
+      setFormMessage(error.response?.data?.error || 'We could not save your workspace. Try again.');
+    } finally {
+      setSavingWork(false);
+    }
+  };
+
+  const onLogoFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setLogoError('');
+    let dataUrl;
+    try {
+      dataUrl = await prepareLogo(file);
+    } catch (error) {
+      setLogoState('error');
+      setLogoError(error.message);
+      return;
+    }
+    setLogoPreview(dataUrl);
+    setLogoState('uploading');
+    try {
+      const res = await uploadWorkspaceLogo(dataUrl);
+      applyChurch(res.church);
+      setLogoPreview('');
+      setLogoState('idle');
+      showToast('Logo updated');
+    } catch (error) {
+      setLogoPreview('');
+      setLogoState('error');
+      setLogoError(error.response?.data?.error || 'We could not upload that logo. Try again.');
+    }
+  };
+
+  const removeLogo = async () => {
+    setLogoState('uploading');
+    setLogoError('');
+    try {
+      const res = await removeWorkspaceLogo();
+      applyChurch(res.church);
+      setLogoState('idle');
+      showToast('Logo removed');
+    } catch (error) {
+      setLogoState('error');
+      setLogoError(error.response?.data?.error || 'We could not remove the logo. Try again.');
+    }
+  };
+
+  const confirmType = async () => {
+    if (!pendingType) return;
+    setSavingType(true);
+    try {
+      const res = await updateOrganizationType(pendingType);
+      const saved = res.church?.organizationType || pendingType;
+      setTemplateKey(saved);
+      setChurch((c) => ({ ...c, organizationType: saved }));
+      try {
+        const stored = JSON.parse(localStorage.getItem('church') || '{}');
+        localStorage.setItem('church', JSON.stringify({ ...stored, organizationType: saved }));
+      } catch (error) { /* storage blocked */ }
+      setPendingType(null);
+      showToast('Wording updated across your dashboard');
+    } catch (error) {
+      setPendingType(null);
+      showToast(error.response?.data?.error || 'We could not change the wording. Try again.');
+    } finally {
+      setSavingType(false);
+    }
+  };
+
+  /* ---------- Password ---------- */
+  const updatePw = (key, value) => {
+    setPw((p) => ({ ...p, [key]: value }));
+    setPwErrors((e) => ({ ...e, [key]: '', form: '' }));
+  };
+  const resetPw = () => { setPw({ current: '', next: '', repeat: '' }); setPwErrors({}); };
+
+  const savePassword = async (event) => {
+    event.preventDefault();
+    const errs = {};
+    if (!pw.current) errs.current = 'Enter your current password.';
+    const problem = passwordProblem(pw.next);
+    if (problem) errs.next = problem.endsWith('.') ? problem : `${problem}.`;
+    if (!errs.next && pw.next === pw.current) errs.next = 'Pick a new password that is different from your current one.';
+    if (!errs.next && pw.repeat !== pw.next) errs.repeat = 'The two new passwords do not match.';
+    setPwErrors(errs);
+    if (Object.keys(errs).length) {
+      document.getElementById(errs.current ? 'st-pw-current' : errs.next ? 'st-pw-new' : 'st-pw-repeat')?.focus();
+      return;
+    }
+    setSavingPw(true);
+    try {
+      const result = await changePassword(pw.current, pw.next);
+      // Other devices are now signed out. Keep this one signed in with its fresh sign-in.
+      if (result?.token) {
+        try { localStorage.setItem('token', result.token); } catch (storageError) { /* storage blocked */ }
+      }
+      resetPw();
+      showToast(result?.otherDevicesSignedOut ? 'Password changed. Other devices were signed out.' : 'Password changed');
+    } catch (error) {
+      const data = error.response?.data || {};
+      if (data.code === 'WRONG_CURRENT_PASSWORD') {
+        setPwErrors({ current: data.error });
+        document.getElementById('st-pw-current')?.focus();
+      } else if (data.code === 'SAME_PASSWORD') {
+        setPwErrors({ next: data.error });
+      } else if (error.response?.status === 429) {
+        setPwErrors({ form: 'Too many tries. Wait a few minutes and try again.' });
+      } else {
+        setPwErrors({ form: data.error || 'We could not change your password. Try again.' });
+      }
+    } finally {
+      setSavingPw(false);
+    }
+  };
+
+  /* ---------- Notifications ---------- */
+  const markAll = async () => {
+    setMarking(true);
+    try {
+      await markNotificationsRead();
+      setNotes((list) => (list || []).map((n) => ({ ...n, isRead: true })));
+      setUnread(0);
+    } catch (error) {
+      showToast(error.response?.data?.error || 'We could not mark notifications as read.');
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  /* ---------- Render ---------- */
+  const tabBadge = (key) => (key === 'notifications' && unread > 0 ? <span className="ig-st-tab-badge">{unread > 99 ? '99+' : unread}</span> : null);
+  const logoUrl = logoPreview || church?.logoUrl || '';
+  const hasLogo = Boolean(logoUrl);
+
+  const workspacePanel = church && (
+    <>
+      <form className="ig-db-card ig-st-card" onSubmit={saveWorkspace} noValidate>
+        <div className="ig-st-head">
+          <h2>Your workspace</h2>
+          <p>Shown on your check-in pages, flyers and emails.</p>
         </div>
-        <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/pre-events" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>Pre-Events</span></a>
-          <a href="/create-program" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>{template.event.create}</span></a>
-          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>{template.event.all}</span></a>
-          <a href="/settings" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
-        </nav>
-        <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
-          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
-        </div>
-        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); setActiveTab('church'); }}>
-          <div className="sidebar-profile-avatar">
-            {(logoPreview || churchData.logoUrl) ? <img src={logoPreview || churchData.logoUrl} alt={churchData.churchName} /> : <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>}
+        <div className="ig-st-logo">
+          <button type="button" className={`ig-st-logo-mark${logoState === 'uploading' ? ' is-busy' : ''}`} onClick={() => fileRef.current?.click()} aria-label={hasLogo ? 'Change logo' : 'Upload logo'} disabled={logoState === 'uploading'}>
+            <WorkspaceMark church={{ name: church.churchName, logoUrl }} size="xl" />
+            {logoState === 'uploading' && <span className="ig-st-spinner" aria-hidden="true" />}
+            <span className="ig-st-logo-pen" aria-hidden="true"><PencilIcon /></span>
+          </button>
+          <div className="ig-st-logo-text">
+            <strong>Logo</strong>
+            {logoState === 'error'
+              ? <span className="ig-st-logo-error" role="alert">{logoError}</span>
+              : <span>{logoState === 'uploading' ? 'Uploading and resizing…' : 'Square image works best. Under 5 MB.'}</span>}
+            <span className="ig-st-logo-actions">
+              <button type="button" className="ig-st-pill" onClick={() => fileRef.current?.click()} disabled={logoState === 'uploading'}>{hasLogo ? 'Change logo' : 'Upload logo'}</button>
+              {hasLogo && logoState !== 'uploading' && <button type="button" className="ig-st-text-danger" onClick={removeLogo}>Remove</button>}
+            </span>
           </div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{churchData.churchName}</div>
-            <div className="sidebar-profile-email">{churchData.email}</div>
-          </div>
-          <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="ig-st-file" onChange={onLogoFile} tabIndex={-1} aria-hidden="true" />
         </div>
-      </aside>
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-backdrop"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-        />
+
+        <Field id="st-name" label={template.organization?.nameLabel || 'Organization name'} error={formErrors.churchName}>
+          <input id="st-name" value={form.churchName} onChange={(e) => updateForm('churchName', e.target.value)} placeholder="Enter your name" maxLength={120} autoComplete="organization" aria-invalid={Boolean(formErrors.churchName) || undefined} aria-describedby={formErrors.churchName ? 'st-name-error' : undefined} />
+        </Field>
+        <div className="ig-st-row">
+          <Field id="st-branch" label={template.organization?.branchLabel || 'Team, branch, or location'} error={formErrors.branchName}>
+            <input id="st-branch" value={form.branchName} onChange={(e) => updateForm('branchName', e.target.value)} placeholder="Enter team, branch, or location" maxLength={120} aria-invalid={Boolean(formErrors.branchName) || undefined} aria-describedby={formErrors.branchName ? 'st-branch-error' : undefined} />
+          </Field>
+          <Field id="st-location" label="Location or address">
+            <input id="st-location" value={form.location} onChange={(e) => updateForm('location', e.target.value)} placeholder="Street, area, city" maxLength={200} autoComplete="street-address" />
+          </Field>
+        </div>
+        <div className="ig-st-actions">
+          {formMessage && <span className="ig-st-form-error" role="alert">{formMessage}</span>}
+          <button type="submit" className="ig-db-btn-primary ig-st-save" disabled={savingWork}>
+            {savingWork ? <><span className="ig-st-spinner is-inline" aria-hidden="true" />Saving…</> : 'Save changes'}
+          </button>
+        </div>
+      </form>
+
+      <section className="ig-db-card ig-st-card" aria-labelledby="st-type-title">
+        <div className="ig-st-head">
+          <h2 id="st-type-title">Organisation type</h2>
+          <p>Changes the words across your dashboard and guest screens, like Event or Program. Nothing else changes.</p>
+        </div>
+        <div className="ig-st-types" role="radiogroup" aria-labelledby="st-type-title">
+          {TYPES.map(([key, name]) => {
+            const on = key === (church.organizationType || templateKey);
+            return (
+              <button key={key} type="button" role="radio" aria-checked={on} className={`ig-st-type${on ? ' is-on' : ''}`} onClick={() => { if (!on) setPendingType(key); }}>
+                <span className="ig-st-type-text"><strong>{name}</strong><span>{typeWords(key)}</span></span>
+                <span className="ig-st-radio" aria-hidden="true" />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </>
+  );
+
+  const pwEval = evaluatePassword(pw.next);
+  const passwordPanel = (
+    <>
+      <form className="ig-db-card ig-st-card" onSubmit={savePassword} noValidate>
+        <div className="ig-st-head">
+          <h2>Change your password</h2>
+          <p>You stay signed in on this device.</p>
+        </div>
+        <Field id="st-pw-current" label="Current password" error={pwErrors.current}>
+          <SecretInput id="st-pw-current" value={pw.current} onChange={(e) => updatePw('current', e.target.value)} placeholder="Enter current password" autoComplete="current-password" invalid={Boolean(pwErrors.current)} describedBy={pwErrors.current ? 'st-pw-current-error' : undefined} />
+        </Field>
+        <Field id="st-pw-new" label="New password" error={pwErrors.next}>
+          <SecretInput id="st-pw-new" value={pw.next} onChange={(e) => updatePw('next', e.target.value)} placeholder="Enter new password" autoComplete="new-password" invalid={Boolean(pwErrors.next)} describedBy="st-pw-strength" />
+        </Field>
+        <div id="st-pw-strength" className="ig-st-strength-wrap"><StrengthPanel password={pw.next} error={Boolean(pwErrors.next) && !pwEval.acceptable} /></div>
+        <Field id="st-pw-repeat" label="Repeat new password" error={pwErrors.repeat}>
+          <SecretInput id="st-pw-repeat" value={pw.repeat} onChange={(e) => updatePw('repeat', e.target.value)} placeholder="Repeat new password" autoComplete="new-password" invalid={Boolean(pwErrors.repeat)} describedBy={pwErrors.repeat ? 'st-pw-repeat-error' : undefined} />
+        </Field>
+        <div className="ig-st-actions">
+          {pwErrors.form && <span className="ig-st-form-error" role="alert">{pwErrors.form}</span>}
+          <button type="button" className="ig-db-btn-ghost" onClick={resetPw} disabled={savingPw}>Cancel</button>
+          <button type="submit" className="ig-db-btn-primary ig-st-save" disabled={savingPw}>
+            {savingPw ? <><span className="ig-st-spinner is-inline" aria-hidden="true" />Saving…</> : 'Set new password'}
+          </button>
+        </div>
+      </form>
+      <p className="ig-st-foot-note">Changing your password signs you out on every other phone and computer. Forgot your current password? Sign out and use "Forgot password" on the sign-in page.</p>
+    </>
+  );
+
+  const notificationsPanel = (
+    <section className="ig-db-card ig-st-card" aria-labelledby="st-notes-title">
+      <div className="ig-st-head is-row">
+        <span>
+          <h2 id="st-notes-title">Notifications</h2>
+          <p>Updates and tips from the Ingather team.</p>
+        </span>
+        {notes && notes.some((n) => !n.isRead) && (
+          <button type="button" className="ig-st-pill" onClick={markAll} disabled={marking}>{marking ? 'Marking…' : 'Mark all as read'}</button>
+        )}
+      </div>
+      {notesError ? (
+        <div className="ig-db-inline-error" role="alert">{notesError}<button type="button" onClick={loadNotes}>Try again</button></div>
+      ) : notes === null ? (
+        <div className="ig-st-notes">{[0, 1, 2].map((i) => <div key={i} className="ig-db-skel is-row" />)}</div>
+      ) : notes.length === 0 ? (
+        <div className="ig-st-caught">
+          <span className="ig-st-caught-icon">{DashIcon.bell}</span>
+          <strong>You are all caught up</strong>
+          <span>News and tips from Ingather will show up here.</span>
+        </div>
+      ) : (
+        <ul className="ig-st-notes">
+          {notes.map((n) => (
+            <li key={n.id} className={`ig-st-note${n.isRead ? '' : ' is-unread'}`}>
+              <span className="ig-st-note-icon" aria-hidden="true"><img src="/ingather-logo.png" alt="Ingather" /></span>
+              <span className="ig-st-note-text">
+                <span className="ig-st-note-top">
+                  <strong>{n.title}</strong>
+                  <span className="ig-st-note-time">{timeAgo(n.createdAt)}{!n.isRead && <><i aria-hidden="true" /><span className="ig-st-sr">, unread</span></>}</span>
+                </span>
+                <span>{n.message}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
+  const pendingTemplate = pendingType ? getEventTemplate(pendingType) : null;
+  const currentTemplate = getEventTemplate(church?.organizationType || templateKey);
+  const currentName = (TYPES.find(([k]) => k === (church?.organizationType || templateKey)) || TYPES[0])[1];
+  const pendingName = pendingType ? (TYPES.find(([k]) => k === pendingType) || TYPES[0])[1] : '';
+  const wordRows = pendingTemplate ? [
+    [currentTemplate.event.singular, pendingTemplate.event.singular],
+    [currentTemplate.event.all, pendingTemplate.event.all],
+    [currentTemplate.event.create, pendingTemplate.event.create],
+    [currentTemplate.attendee?.guest || currentTemplate.attendee?.singular, pendingTemplate.attendee?.guest || pendingTemplate.attendee?.singular],
+    [currentTemplate.host?.singular, pendingTemplate.host?.singular],
+    [currentTemplate.organization?.nameLabel, pendingTemplate.organization?.nameLabel]
+  ].filter(([from, to]) => from && to) : [];
+
+  return (
+    <IgDashShell
+      active="settings"
+      crumb="Settings"
+      church={shellChurch}
+      counts={{ preEvents: stats?.preEventCount || 0, events: stats?.totalProgramsAllTime || 0 }}
+      unreadCount={unread}
+      live={stats?.live || null}
+      template={template}
+    >
+      <div className="ig-db-page ig-st-page">
+        <div className="ig-st-title">
+          <h1>Settings</h1>
+          <p>Your workspace, your password and news from Ingather.</p>
+        </div>
+
+        {loading ? (
+          <div className="ig-st-layout">
+            <div className="ig-db-skel ig-st-skel-nav" />
+            <div className="ig-db-skel ig-st-skel-card" />
+          </div>
+        ) : !church ? (
+          <div className="ig-db-card ig-db-error" role="alert">
+            <strong>Your settings didn't load</strong>
+            <span>{loadError}</span>
+            <button type="button" className="ig-db-btn-ink" onClick={() => { setLoading(true); setReloadKey((k) => k + 1); }}>Try again</button>
+          </div>
+        ) : (
+          <div className="ig-st-layout">
+            <nav className="ig-st-nav" aria-label="Settings sections">
+              <div role="tablist" aria-label="Settings sections">
+                {TABS.map(([key, label]) => (
+                  <button key={key} type="button" role="tab" id={`st-tab-${key}`} aria-selected={tab === key} aria-controls={`st-panel-${key}`} className={tab === key ? 'is-on' : ''} onClick={() => selectTab(key)}>
+                    {label}{tabBadge(key)}
+                  </button>
+                ))}
+              </div>
+            </nav>
+            <div className="ig-st-panels" role="tabpanel" id={`st-panel-${tab}`} aria-labelledby={`st-tab-${tab}`}>
+              {tab === 'workspace' && workspacePanel}
+              {tab === 'password' && passwordPanel}
+              {tab === 'notifications' && notificationsPanel}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {pendingType && (
+        <DashDialog
+          tone="primary"
+          icon={DashIcon.settings}
+          title={`Switch to ${pendingName}?`}
+          cancelLabel={`Keep ${currentName}`}
+          confirmLabel="Switch"
+          busy={savingType}
+          onCancel={() => setPendingType(null)}
+          onConfirm={confirmType}
+        >
+          <span className="ig-st-modal-intro">These words change everywhere in your dashboard and on guest screens.</span>
+          <span className="ig-st-words" role="table" aria-label="Word changes">
+            {wordRows.map(([from, to]) => (
+              <span key={`${from}-${to}`} className="ig-st-word" role="row">
+                <span role="cell">{from}</span>
+                <span aria-hidden="true">→</span>
+                <strong role="cell">{to}</strong>
+              </span>
+            ))}
+          </span>
+          <span className="ig-st-modal-note">Your events, guests and data stay exactly as they are. You can switch back any time.</span>
+        </DashDialog>
       )}
 
-      {/* ====== MAIN ====== */}
-      <main className="dashboard-main">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div className="navbar-left">
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              aria-label="Open navigation menu"
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-            <h2 className="navbar-church-name">Settings</h2>
-          </div>
-          <div className="navbar-right">
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
-              <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
-            </button>
-            <button className="navbar-icon-btn" title="Notifications" onClick={() => setActiveTab('notifications')}>{Icons.notification}{unreadCount > 0 && <span className="icon-badge"></span>}</button>
-            <button className="navbar-icon-btn" title="Settings">{Icons.gear}</button>
-            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
-              <div className="navbar-avatar" onClick={() => setActiveTab('church')} title="View Profile">
-                {(logoPreview || churchData.logoUrl) ? <img src={logoPreview || churchData.logoUrl} alt={churchData.churchName} /> : <div className="navbar-avatar-fallback">{churchInitials}</div>}
-              </div>
-              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
-                {Icons.chevronDown}
-              </span>
-              {showProfileMenu && (
-                <div className="profile-dropdown-menu">
-                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); setActiveTab('church'); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
-                    View Profile
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <div className="dashboard-content">
-          <div className="settings-grid">
-            {/* Sub-Navigation */}
-            <div className="settings-subnav">
-              {tabs.map(tab => (
-                <button
-                  key={tab.key}
-                  className={`settings-subnav-item ${activeTab === tab.key ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  <span className="subnav-icon">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Dynamic Content */}
-            <div className="settings-content">
-
-              {/* ===== WORKSPACE INFORMATION ===== */}
-              {activeTab === 'church' && (
-                <>
-                  <h2 className="settings-content-title">Manage your Workspace Information</h2>
-                  <div className="settings-card">
-                    <form onSubmit={handleSaveChurch}>
-                      {/* Avatar */}
-                      <div className="settings-avatar-section">
-                        <div className="settings-avatar-wrapper" onClick={() => logoInputRef.current?.click()} style={{ cursor: 'pointer' }}>
-                          {(logoPreview || churchData.logoUrl) ? (
-                            <img src={logoPreview || churchData.logoUrl} alt={churchData.churchName} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
-                          ) : (
-                            <span className="settings-avatar-placeholder">{Icons.avatarPlaceholder}</span>
-                          )}
-                          <span className="settings-avatar-edit">{Icons.pencil}</span>
-                        </div>
-                        <input
-                          type="file"
-                          ref={logoInputRef}
-                          accept="image/*"
-                          onChange={handleLogoSelect}
-                          style={{ display: 'none' }}
-                        />
-                      </div>
-
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="eventTemplate">Event template</label>
-                        <select
-                          className="settings-field-input"
-                          id="eventTemplate"
-                          value={templateKey}
-                          onChange={handleTemplateChange}
-                          disabled={templateSaving}
-                        >
-                          {templateOptions.map(option => (
-                            <option key={option.id} value={option.id}>{option.name}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Fields */}
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="churchName">{template.organization.nameLabel}</label>
-                        <input
-                          className="settings-field-input"
-                          type="text"
-                          id="churchName"
-                          name="churchName"
-                          value={formData.churchName}
-                          onChange={handleFormChange}
-                          placeholder="Enter organization name"
-                          required
-                        />
-                      </div>
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="branchName">{template.organization.branchLabel}</label>
-                        <input
-                          className="settings-field-input"
-                          type="text"
-                          id="branchName"
-                          name="branchName"
-                          value={formData.branchName}
-                          onChange={handleFormChange}
-                          placeholder="Enter team, branch, or location"
-                          required
-                        />
-                      </div>
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="location">Location/Address</label>
-                        <input
-                          className="settings-field-input"
-                          type="text"
-                          id="location"
-                          name="location"
-                          value={formData.location}
-                          onChange={handleFormChange}
-                          placeholder="Enter location"
-                          required
-                        />
-                      </div>
-
-                      <button type="submit" className="settings-btn-save" disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Changes'}
-                      </button>
-                    </form>
-                  </div>
-                </>
-              )}
-
-              {/* ===== PASSWORD ===== */}
-              {activeTab === 'password' && (
-                <>
-                  <h2 className="settings-content-title">Change your password</h2>
-                  <div className="settings-card">
-                    <form onSubmit={handleChangePassword}>
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="currentPassword">Current Password</label>
-                        <input
-                          className="settings-field-input"
-                          type="password"
-                          id="currentPassword"
-                          name="currentPassword"
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Enter current password"
-                          required
-                        />
-                      </div>
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="newPassword">New Password</label>
-                        <input
-                          className="settings-field-input"
-                          type="password"
-                          id="newPassword"
-                          name="newPassword"
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Enter new password"
-                          required
-                        />
-                      </div>
-                      <div className="settings-field">
-                        <label className="settings-field-label" htmlFor="repeatPassword">Repeat New Password</label>
-                        <input
-                          className="settings-field-input"
-                          type="password"
-                          id="repeatPassword"
-                          name="repeatPassword"
-                          value={passwordData.repeatPassword}
-                          onChange={handlePasswordChange}
-                          placeholder="Repeat new password"
-                          required
-                        />
-                      </div>
-
-                      <div className="settings-password-actions">
-                        <button type="button" className="settings-btn-cancel" onClick={handleCancelPassword}>Cancel</button>
-                        <button type="submit" className="settings-btn-primary" disabled={changingPassword}>
-                          {changingPassword ? 'Changing...' : 'Set New Password'}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </>
-              )}
-
-              {/* ===== NOTIFICATIONS ===== */}
-              {activeTab === 'notifications' && (
-                <div className="settings-card">
-                  <div className="settings-notif-header">
-                    <h2 className="settings-notif-title">Notifications</h2>
-                    {notifications.some(n => !n.isRead) && (
-                      <button className="settings-mark-read" onClick={handleMarkAllRead}>Mark as read</button>
-                    )}
-                  </div>
-                  <div className="settings-notif-list">
-                    {notifications.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-tertiary)' }}>
-                        <p style={{ fontSize: '14px' }}>No notifications yet</p>
-                      </div>
-                    ) : (
-                      notifications.map(notif => (
-                        <div key={notif.id} className={`settings-notif-item ${!notif.isRead ? 'unread' : ''}`}>
-                          <div className="settings-notif-icon"><img src="/ingather-logo.png" alt="Ingather" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
-                          <div className="settings-notif-body">
-                            <p className="settings-notif-item-title">{notif.title}</p>
-                            <p className="settings-notif-item-desc">{notif.message}</p>
-                          </div>
-                          <div className="settings-notif-meta">
-                            <span className="settings-notif-time">{getRelativeTime(notif.createdAt)}</span>
-                            {!notif.isRead && <span className="settings-notif-dot"></span>}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          </div>
+      {toast && (
+        <div className="ig-st-toast" role="status">
+          <span className="ig-st-toast-icon" aria-hidden="true"><CheckIcon /></span>
+          {toast}
+          <button type="button" aria-label="Dismiss" onClick={() => setToast('')}>{DashIcon.close}</button>
         </div>
-      </main>
-    </div>
+      )}
+
+    </IgDashShell>
   );
 }
 

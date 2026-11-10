@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { forgotPassword } from '../api/authService';
-import '../styles/Auth.css';
+import { AccountLayout, MailIcon } from '../components/AccountLayout';
 
 function ForgotPassword() {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ function ForgotPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError('');
 
     if (!email.trim()) {
@@ -36,73 +37,49 @@ function ForgotPassword() {
   };
 
   return (
-    <div className="auth-modern-page auth-recovery-page">
-      <div className="auth-modern-shell auth-recovery-shell">
-        <aside
-          className="auth-modern-panel auth-recovery-panel"
-          style={{
-            '--auth-panel-image': "url('/ingather-landing-hero.png')",
-            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
-          }}
-        >
-          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
-            <img src="/ingather-logo.png" alt="" />
-            <span>Ingather</span>
-          </button>
+    <AccountLayout
+      pillTag="Password reset"
+      pillText="Takes about a minute"
+      titleStart="Forgot your"
+      titleBox="password?"
+      lead="Enter the email you use for Ingather and we will send you a code to set a new password."
+      photo="/landing/account.jpg"
+      photoAlt="Developers with laptops listening at a tech session"
+      chip="Your data stays protected"
+      panelTitle="Get back to your event workspace quickly."
+      panelText="A short code confirms it is you, then you are back to managing events."
+    >
+      <form className="ig-wl-card ig-wl-form" onSubmit={handleSubmit} noValidate>
+        <div className={`ig-wl-field ${error ? 'has-error' : ''}`}>
+          <label htmlFor="email">Email address</label>
+          <input
+            type="email"
+            id="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(''); }}
+            placeholder="admin@organization.com"
+            autoComplete="email"
+            autoFocus
+          />
+          {error && <small>{error}</small>}
+        </div>
 
-          <div className="auth-panel-content">
-            <span className="auth-panel-pill">Secure recovery</span>
-            <h1>Get back to your event workspace quickly.</h1>
-            <p>
-              Receive a short verification code, confirm ownership, and return
-              to managing events without disrupting your team.
-            </p>
-          </div>
+        <span className="ig-acct-hint">
+          <MailIcon />
+          If this email has an Ingather account, we'll send a 6-digit code to it. The code expires in 10 minutes.
+        </span>
 
-          <div className="auth-recovery-proof" aria-hidden="true">
-            <div>
-              <span>Reset code</span>
-              <strong>10 min</strong>
-            </div>
-            <div>
-              <span>Account check</span>
-              <strong>Email</strong>
-            </div>
-          </div>
-        </aside>
-
-        <main className="auth-modern-card">
-          <div className="auth-modern-header">
-            <p className="auth-modern-kicker">Password reset</p>
-            <h2>Recover your account</h2>
-            <span>Enter the email connected to your Ingather workspace.</span>
-          </div>
-
-          <form className="auth-modern-form" onSubmit={handleSubmit}>
-            <div className="auth-modern-field">
-              <label htmlFor="email">Email address</label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                placeholder="admin@organization.com"
-              />
-              {error && <span className="error">{error}</span>}
-            </div>
-
-            <button type="submit" className="auth-modern-submit" disabled={loading}>
-              {loading ? 'Sending code...' : 'Send reset code'}
-            </button>
-
-            <p className="auth-modern-switch">
-              Remember your password?
-              <a href="/login"> Back to login</a>
-            </p>
-          </form>
-        </main>
-      </div>
-    </div>
+        <button type="submit" className="ig-wl-submit" disabled={loading} aria-busy={loading}>
+          {loading ? (
+            <>
+              <span className="ig-wl-spinner" aria-hidden="true" />
+              Sending code...
+            </>
+          ) : 'Send reset code'}
+        </button>
+        <p className="ig-acct-center">Remembered it? <Link to="/login">Back to log in</Link></p>
+      </form>
+    </AccountLayout>
   );
 }
 

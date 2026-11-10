@@ -7,15 +7,25 @@ export const register = async (data) => {
     email: data.email,
     password: data.password,
     location: data.location,
-    logoUrl: data.logoUrl,
+    logoDataUrl: data.logoDataUrl,
     organizationType: data.organizationType,
     inviteToken: data.inviteToken
   });
   return response.data;
 };
 
-export const login = async (email, password) => {
-  const response = await API.post('/auth/login', { email, password });
+export const login = async (email, password, { deviceId, remember } = {}) => {
+  const response = await API.post('/auth/login', { email, password, deviceId, remember: Boolean(remember) });
+  return response.data;
+};
+
+export const verifyDevice = async ({ challengeId, code, deviceId, rememberDevice }) => {
+  const response = await API.post('/auth/verify-device', { challengeId, code, deviceId, rememberDevice: Boolean(rememberDevice) });
+  return response.data;
+};
+
+export const resendDeviceCode = async ({ challengeId, deviceId }) => {
+  const response = await API.post('/auth/resend-device-code', { challengeId, deviceId });
   return response.data;
 };
 

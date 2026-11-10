@@ -5,6 +5,7 @@ import { EventTemplateProvider } from './context/EventTemplateContext';
 import './styles/globals.css';
 
 const Settings = lazy(() => import('./pages/Settings'));
+const Help = lazy(() => import('./pages/Help'));
 const AllPrograms = lazy(() => import('./pages/AllPrograms'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
@@ -25,6 +26,9 @@ const AdminWaitlistPage = lazy(() => import('./pages/AdminWaitlistPage'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const ConfirmDevice = lazy(() => import('./pages/ConfirmDevice'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 function RouteFallback() {
   return (
@@ -43,6 +47,8 @@ function App() {
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/help" element={<Help />} />
+                <Route path="/help/:number" element={<Help />} />
                 <Route path="/programs" element={<AllPrograms />} />
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/discover" element={<DiscoverPage />} />
@@ -54,6 +60,7 @@ function App() {
                 <Route path="/pre-events/:id" element={<PreEventDetail />} />
                 <Route path="/create-program" element={<CreateProgram />} />
                 <Route path="/program/:id" element={<ProgramDetail />} />
+                <Route path="/program/:id/edit" element={<CreateProgram />} />
                 <Route path="/scan/:programId" element={<ScanPage />} />
                 <Route path="/rsvp/:slug" element={<RsvpPage />} />
                 <Route path="/rsvp-checkin/:token" element={<RsvpCheckinPage />} />
@@ -63,6 +70,11 @@ function App() {
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/confirm-device" element={<ConfirmDevice />} />
+                <Route path="/privacy" element={<LegalPage doc="privacy" />} />
+                <Route path="/terms" element={<LegalPage doc="terms" />} />
+                <Route path="/contact" element={<LegalPage doc="contact" />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </div>

@@ -1,4 +1,5 @@
 import API from './axios';
+import { rememberDashboard } from './dashboardCache';
 
 export const createProgram = async (data) => {
   const response = await API.post('/programs', data);
@@ -10,13 +11,18 @@ export const getPrograms = async () => {
   return response.data;
 };
 
-export const getDashboardBootstrap = async (startDate, endDate) => {
-  const params = {};
-  if (startDate) params.startDate = startDate;
-  if (endDate) params.endDate = endDate;
-  const response = await API.get('/programs/dashboard-bootstrap', { params });
-  return response.data;
-};
+// Pages pass { fresh: true } when they must show the latest numbers (the main Dashboard).
+// Other pages reuse an answer from the last 30 seconds, so switching pages is instant.
+export const getDashboardBootstrap = async (startDate, endDate, today, { fresh = false } = {}) => (
+  rememberDashboard([startDate || '', endDate || '', today || ''], async () => {
+    const params = {};
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
+    if (today) params.today = today;
+    const response = await API.get('/programs/dashboard-bootstrap', { params });
+    return response.data;
+  }, { fresh })
+);
 
 export const getDashboardStats = async (startDate, endDate) => {
   const params = {};
@@ -28,6 +34,18 @@ export const getDashboardStats = async (startDate, endDate) => {
 
 export const getProgramById = async (id) => {
   const response = await API.get(`/programs/${id}`);
+  return response.data;
+};
+
+// Everything the Edit Event page needs, including sponsors and how many guests have checked in.
+export const getProgramForEdit = async (id) => {
+  const response = await API.get(`/programs/${id}/edit`);
+  return response.data;
+};
+
+// Saves changes to an event. Its QR code and check-in links stay the same.
+export const updateProgram = async (id, data) => {
+  const response = await API.put(`/programs/${id}`, data);
   return response.data;
 };
 

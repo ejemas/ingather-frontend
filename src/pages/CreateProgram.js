@@ -1,1905 +1,1274 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { createProgram } from '../api/programService';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createProgram, getDashboardBootstrap, getProgramForEdit, updateProgram } from '../api/programService';
+import IgDashShell, { DashIcon, DashDialog } from '../components/IgDashShell';
+import IgQuestionModal from '../components/IgQuestionModal';
+import IgCheckinPreview from '../components/IgCheckinPreview';
 import { useToast } from '../components/Toast';
-import CustomFieldBuilderModal from '../components/CustomFieldBuilderModal';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { compressFlyerImage, fileToDataUrl, formatFileSize } from '../utils/flyerCompression';
 import { MAX_CUSTOM_FIELDS } from '../utils/customFields';
-import '../styles/Dashboard.css';
-import '../styles/CreateProgram.css';
+import { localToday } from '../utils/dashboardFormat';
 
-/* ============================================
-   SVG ICON COMPONENTS (shared sidebar icons)
-   ============================================ */
-const Icons = {
-  logo: (
-    <img src="/ingather-logo.png" alt="Ingather" className="sidebar-logo-img" />
-  ),
-  collapse: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <rect x="3" y="3" width="14" height="14" rx="2" />
-      <line x1="9" y1="3" x2="9" y2="17" />
-    </svg>
-  ),
-  dashboard: (
-    <svg viewBox="0 0 20 20" fill="none">
-      <rect x="3" y="3" width="6" height="6" rx="1" fill="currentColor" />
-      <rect x="11" y="3" width="6" height="6" rx="1" fill="currentColor" />
-      <rect x="3" y="11" width="6" height="6" rx="1" fill="currentColor" />
-      <rect x="11" y="11" width="6" height="6" rx="1" fill="currentColor" />
-    </svg>
-  ),
-  createProgram: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="7" />
-      <line x1="10" y1="7" x2="10" y2="13" />
-      <line x1="7" y1="10" x2="13" y2="10" />
-    </svg>
-  ),
-  allPrograms: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="14" height="12" rx="2" />
-      <line x1="3" y1="8" x2="17" y2="8" />
-      <line x1="7" y1="4" x2="7" y2="8" />
-      <line x1="13" y1="4" x2="13" y2="8" />
-    </svg>
-  ),
-  settings: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  notification: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" />
-      <path d="M8.5 17a1.5 1.5 0 003 0" />
-    </svg>
-  ),
-  logout: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" />
-      <polyline points="11,14 17,10 11,6" />
-      <line x1="17" y1="10" x2="7" y2="10" />
-    </svg>
-  ),
-  chevronRight: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="6,4 10,8 6,12" />
-    </svg>
-  ),
-  sun: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="10" r="3.5" />
-      <line x1="10" y1="2" x2="10" y2="4" /><line x1="10" y1="16" x2="10" y2="18" />
-      <line x1="2" y1="10" x2="4" y2="10" /><line x1="16" y1="10" x2="18" y2="10" />
-      <line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="14.4" y1="14.4" x2="15.8" y2="15.8" />
-      <line x1="4.2" y1="15.8" x2="5.6" y2="14.4" /><line x1="14.4" y1="5.6" x2="15.8" y2="4.2" />
-    </svg>
-  ),
-  moon: (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" />
-    </svg>
-  ),
-  gear: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
-  chevronDown: (
-    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3,5 7,9 11,5" />
-    </svg>
-  ),
-  calendar: (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="3" width="12" height="11" rx="1.5" />
-      <line x1="2" y1="7" x2="14" y2="7" />
-      <line x1="5.5" y1="1.5" x2="5.5" y2="4.5" />
-      <line x1="10.5" y1="1.5" x2="10.5" y2="4.5" />
-    </svg>
-  ),
-};
+const MAX_SPONSORS = 12;
+const MAX_WINNERS = 1000;
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const SPONSOR_TIERS = ['Headline', 'Gold', 'Partner'];
 
-/* ============================================
-   TIME OPTIONS
-   ============================================ */
-const generateTimeOptions = () => {
-  const times = [];
-  for (let h = 0; h < 24; h++) {
+// Fields guests can be asked for at check-in.
+const FIELD_TILES = [
+  ['fullName', 'Full Name', "Each guest's name."],
+  ['emailAddress', 'Email Address', 'To send the event report and follow-ups.'],
+  ['phoneNumber', 'Phone Number', 'Also used to spot first-timers.'],
+  ['fellowship', 'Group', 'Group, fellowship or community.'],
+  ['sex', 'Gender', 'For your gender breakdown.'],
+  ['firstTimer', 'First-Timer', 'Asks if this is their first time.'],
+  ['age', 'Age', 'For age-based events.'],
+  ['school', 'School', 'For campus and youth events.'],
+  ['department', 'Department', 'Department or unit.'],
+  ['address', 'Address', 'Where they are coming from.'],
+  ['link', 'Link', 'GitHub, portfolio or social link.'],
+  ['textarea', 'Longer question', 'A question with a paragraph answer.']
+];
+const NO_FIELDS = FIELD_TILES.reduce((acc, [key]) => ({ ...acc, [key]: false }), {});
+
+const AFTER_OPTIONS = [
+  ['eventFlyer', 'Event flyer', 'One image for everyone, like your event poster.'],
+  ['personalFlyer', 'Personalized flyer', "A card with each guest's first name they can save."],
+  ['sponsors', 'Sponsors', 'Sponsor cards with a button guests can tap. You see the clicks.']
+];
+
+const TIME_OPTIONS = (() => {
+  const out = [];
+  for (let h = 0; h < 24; h += 1) {
     for (let m = 0; m < 60; m += 30) {
-      const hh = h.toString().padStart(2, '0');
-      const mm = m.toString().padStart(2, '0');
-      times.push(`${hh}:${mm}`);
+      const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const label = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+      out.push([value, label]);
     }
   }
-  return times;
+  return out;
+})();
+
+// A saved time like 18:15 isn't on the half-hour list, so it's added rather than lost.
+const timeOptionsWith = (value) => {
+  if (!value || TIME_OPTIONS.some(([v]) => v === value)) return TIME_OPTIONS;
+  const [h, m] = value.split(':').map(Number);
+  const label = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  return [...TIME_OPTIONS, [value, label]].sort((a, b) => a[0].localeCompare(b[0]));
 };
 
-const timeOptions = generateTimeOptions();
+const EMPTY_IMAGE = { file: null, previewUrl: '', name: '', originalSize: 0, size: 0, processing: false, error: '', existing: false };
+// An image already saved on the event: shown from its URL, only re-uploaded if replaced.
+const savedImage = (url, name, fallback) => (url ? { ...EMPTY_IMAGE, previewUrl: url, name: name || fallback, existing: true } : EMPTY_IMAGE);
+const DEFAULT_MESSAGE = '[FirstName], you are deeply loved and created for purpose.';
 
-const parsePersonalizedMessages = (value) => (
-  String(value || '')
-    .split(/\r?\n/)
-    .map(message => message.trim())
-    .filter(Boolean)
-);
-
-const dataFieldLabels = {
-  fullName: 'Full Name',
-  emailAddress: 'Email Address',
-  school: 'School',
-  link: 'Link',
-  textarea: 'Textarea',
-  address: 'Address',
-  firstTimer: 'First-Timer',
-  phoneNumber: 'Phone Number',
-  department: 'Department',
-  fellowship: 'Group',
-  age: 'Age',
-  sex: 'Gender'
+const Icon = {
+  back: <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 4L6 8l4 4" /></svg>,
+  pencil: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>,
+  upload: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 14v5h14v-5" /></svg>,
+  image: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" /><circle cx="9" cy="10" r="1.8" /><path d="m21 16-5-5-9 9" /></svg>,
+  alert: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></svg>,
+  lock: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>,
+  group: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0" /><path d="M16 5.2a3 3 0 0 1 0 5.6M18 19a5 5 0 0 0-3-4.6" /></svg>,
+  phone: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
 };
 
-const createEmptySponsor = () => ({
-  clientId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  sponsorName: '',
-  ctaText: 'Learn More',
-  ctaLink: '',
-  boothText: '',
-  campaignTag: '',
-  tier: '',
-  distributionPercentage: '',
-  compressedFile: null,
-  previewUrl: '',
-  originalName: '',
-  originalSize: 0,
-  compressedSize: 0,
-  processing: false,
-  error: ''
-});
+const parseMessages = (value) => String(value || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+const isHttpUrl = (value) => /^https?:\/\/[^\s.]+\.[^\s]+/i.test(String(value || '').trim());
+const questionTypeLabel = (type) => (type === 'text' ? 'Short text' : type === 'radio' ? 'Pick one' : 'Pick many');
 
-function FingerprintWarningModal({ onCancel, onConfirm }) {
+function FieldError({ id, children }) {
+  if (!children) return null;
+  return <span className="ig-st-error" id={id}>{Icon.alert}{children}</span>;
+}
+
+function Switch({ id, checked, onChange, title, description }) {
   return (
-    <div className="fingerprint-warning-overlay" role="presentation" onMouseDown={onCancel}>
-      <div
-        className="fingerprint-warning-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="fingerprint-warning-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <span className="fingerprint-warning-kicker">Attendance accuracy</span>
-        <h3 id="fingerprint-warning-title">Disable Strict Fingerprinting?</h3>
-        <p>
-          Allowing multiple scans from the same device can help attendees with poor network connections,
-          but it risks skewing your total attendance metrics with duplicate entries.
-        </p>
-        <div className="fingerprint-warning-actions">
-          <button type="button" className="fingerprint-warning-cancel" onClick={onCancel}>Cancel</button>
-          <button type="button" className="fingerprint-warning-confirm" onClick={onConfirm}>Confirm</button>
-        </div>
+    <button type="button" role="switch" id={id} aria-checked={checked} className={`ig-pd-toggle${checked ? ' is-on' : ''}`} onClick={() => onChange(!checked)}>
+      <span><strong>{title}</strong><span>{description}</span></span>
+      <span className={`ig-db-switch${checked ? ' is-on' : ''}`}><span /></span>
+    </button>
+  );
+}
+
+function Step({ n, title, sub, children, labelledBy, locked = false }) {
+  return (
+    <section className={`ig-db-card ig-cp-step${locked ? ' is-locked' : ''}`} aria-labelledby={labelledBy}>
+      <div className="ig-cp-step-head">
+        <span className="ig-cp-step-num" aria-hidden="true">{n}</span>
+        <span className="ig-cp-step-title">
+          <strong id={labelledBy}>{title}</strong>
+          <span>{sub}</span>
+        </span>
+        {locked && <span className="ig-ce-locked">{Icon.lock}Locked</span>}
       </div>
+      {children}
+    </section>
+  );
+}
+
+// An optional image (background, logo): a dashed box until chosen, then a small row.
+function SmallUpload({ id, title, hint, image, onPick, onRemove }) {
+  const inputRef = useRef(null);
+  return (
+    <div className={`ig-ce-upload${image.file || image.existing ? ' has-file' : ''}`}>
+      <input ref={inputRef} type="file" accept={IMAGE_TYPES.join(',')} className="ig-cp-file" tabIndex={-1} aria-hidden="true" onChange={(e) => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
+      {image.previewUrl
+        ? <img src={image.previewUrl} alt="" className="ig-ce-upload-thumb" />
+        : <span className="ig-ce-upload-icon" aria-hidden="true">{image.processing ? <span className="ig-st-spinner is-inline ig-cp-dark-spin" /> : Icon.upload}</span>}
+      <span className="ig-ce-upload-text">
+        <strong>{title}</strong>
+        <span>{image.processing ? 'Compressing…' : image.file ? `${image.name} · ${formatFileSize(image.size)}` : image.existing ? image.name : hint}</span>
+        {image.error && <span className="ig-ce-upload-err">{image.error}</span>}
+      </span>
+      <span className="ig-ce-upload-actions">
+        <button type="button" id={id} className="ig-st-pill ig-ce-pill-sm" onClick={() => inputRef.current?.click()} disabled={image.processing}>{image.file || image.existing ? 'Change' : 'Choose'}</button>
+        {(image.file || image.existing) && <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label={`Remove ${title.toLowerCase()}`} onClick={onRemove}>{DashIcon.trash}</button>}
+      </span>
     </div>
   );
 }
 
-/* ============================================
-   MAIN COMPONENT
-   ============================================ */
+/* ---------------- Sponsor popup ---------------- */
+function SponsorModal({ sponsor, split, onClose, onSave }) {
+  const [draft, setDraft] = useState(() => ({
+    clientId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    sponsorName: '',
+    ctaText: 'Learn More',
+    ctaLink: '',
+    boothText: '',
+    campaignTag: '',
+    tier: '',
+    distributionPercentage: '',
+    image: EMPTY_IMAGE,
+    ...(sponsor || {})
+  }));
+  const [errors, setErrors] = useState({});
+  const nameRef = useRef(null);
+  const fileRef = useRef(null);
+  const createdUrlRef = useRef('');
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    nameRef.current?.focus();
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  // A preview made here but never saved is released when the popup closes.
+  useEffect(() => () => {
+    if (!savedRef.current && createdUrlRef.current) URL.revokeObjectURL(createdUrlRef.current);
+  }, []);
+
+  const update = (key, value) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: '' }));
+  };
+
+  const pickImage = async (file) => {
+    if (!file) return;
+    if (!IMAGE_TYPES.includes(file.type)) {
+      setErrors((e) => ({ ...e, image: 'Choose a JPEG, PNG or WebP image.' }));
+      return;
+    }
+    setDraft((d) => ({ ...d, image: { ...d.image, processing: true, error: '' } }));
+    setErrors((e) => ({ ...e, image: '' }));
+    try {
+      const compressed = await compressFlyerImage(file);
+      if (createdUrlRef.current) URL.revokeObjectURL(createdUrlRef.current);
+      const previewUrl = URL.createObjectURL(compressed);
+      createdUrlRef.current = previewUrl;
+      setDraft((d) => ({ ...d, image: { file: compressed, previewUrl, name: file.name, originalSize: file.size, size: compressed.size, processing: false, error: '' } }));
+    } catch (error) {
+      setDraft((d) => ({ ...d, image: { ...d.image, processing: false } }));
+      setErrors((e) => ({ ...e, image: String(error.message || 'We could not use that image.').replace(/flyer/gi, 'image') }));
+    }
+  };
+
+  const submit = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (draft.image.processing) return;
+    const next = {};
+    if (!draft.sponsorName.trim()) next.sponsorName = 'Add the sponsor name.';
+    if (!draft.image.file && !draft.image.existing) next.image = 'Add the sponsor flyer guests will see.';
+    if (!draft.ctaText.trim()) next.ctaText = 'Add the button text.';
+    if (!isHttpUrl(draft.ctaLink)) next.ctaLink = 'Add a button link that starts with https://';
+    if (split) {
+      const pct = Number(draft.distributionPercentage);
+      if (!Number.isInteger(pct) || pct < 1 || pct > 100) next.distributionPercentage = 'Enter a whole number from 1 to 100.';
+    }
+    if (Object.keys(next).length) {
+      setErrors(next);
+      return;
+    }
+    savedRef.current = true;
+    onSave({
+      ...draft,
+      sponsorName: draft.sponsorName.trim(),
+      ctaText: draft.ctaText.trim(),
+      ctaLink: draft.ctaLink.trim(),
+      boothText: draft.boothText.trim(),
+      campaignTag: draft.campaignTag.trim()
+    });
+  };
+
+  return (
+    <div className="ig-db-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <form className="ig-db-dialog ig-pd-modal ig-ce-sponsor-modal" role="dialog" aria-modal="true" aria-labelledby="ig-sp-title" onSubmit={submit} noValidate>
+        <div className="ig-pd-modal-head">
+          <span>
+            <h2 id="ig-sp-title">{sponsor ? 'Edit sponsor' : 'Add a sponsor'}</h2>
+            <p>Guests see this card after they check in.</p>
+          </span>
+          <button type="button" className="ig-db-round-btn is-sm" aria-label="Close" onClick={onClose}>{DashIcon.close}</button>
+        </div>
+
+        <div className={`ig-st-field${errors.sponsorName ? ' has-error' : ''}`}>
+          <label htmlFor="ig-sp-name">Sponsor name</label>
+          <input id="ig-sp-name" ref={nameRef} value={draft.sponsorName} onChange={(e) => update('sponsorName', e.target.value)} maxLength={120} placeholder="e.g. Paystack" aria-invalid={Boolean(errors.sponsorName) || undefined} />
+          <FieldError>{errors.sponsorName}</FieldError>
+        </div>
+
+        <div className="ig-st-field">
+          <span className="ig-ce-label">Sponsor flyer</span>
+          <input ref={fileRef} type="file" accept={IMAGE_TYPES.join(',')} className="ig-cp-file" tabIndex={-1} aria-hidden="true" onChange={(e) => { pickImage(e.target.files?.[0]); e.target.value = ''; }} />
+          <div className={`ig-ce-upload${draft.image.file || draft.image.existing ? ' has-file' : ''}${errors.image ? ' has-error' : ''}`}>
+            {draft.image.previewUrl
+              ? <img src={draft.image.previewUrl} alt="" className="ig-ce-upload-thumb" />
+              : <span className="ig-ce-upload-icon" aria-hidden="true">{draft.image.processing ? <span className="ig-st-spinner is-inline ig-cp-dark-spin" /> : Icon.upload}</span>}
+            <span className="ig-ce-upload-text">
+              <strong>{draft.image.processing ? 'Compressing…' : draft.image.file || draft.image.existing ? draft.image.name : 'Choose an image'}</strong>
+              <span>{draft.image.file ? formatFileSize(draft.image.size) : draft.image.existing ? 'Saved flyer. Choose another to replace it.' : 'JPEG, PNG or WebP. We compress it to about 200 KB.'}</span>
+            </span>
+            <span className="ig-ce-upload-actions">
+              <button type="button" className="ig-st-pill ig-ce-pill-sm" onClick={() => fileRef.current?.click()} disabled={draft.image.processing}>{draft.image.file || draft.image.existing ? 'Change' : 'Choose'}</button>
+            </span>
+          </div>
+          <FieldError>{errors.image}</FieldError>
+          {sponsor?.clickCount > 0 && <span className="ig-pd-hint ig-cp-hint">{sponsor.clickCount} {sponsor.clickCount === 1 ? 'click' : 'clicks'} so far. Editing keeps them.</span>}
+        </div>
+
+        <div className="ig-st-row ig-ce-modal-row">
+          <div className={`ig-st-field${errors.ctaText ? ' has-error' : ''}`}>
+            <label htmlFor="ig-sp-cta">Button text</label>
+            <input id="ig-sp-cta" value={draft.ctaText} onChange={(e) => update('ctaText', e.target.value)} maxLength={80} placeholder="Learn More" />
+            <FieldError>{errors.ctaText}</FieldError>
+          </div>
+          <div className={`ig-st-field${errors.ctaLink ? ' has-error' : ''}`}>
+            <label htmlFor="ig-sp-link">Button link</label>
+            <input id="ig-sp-link" type="url" inputMode="url" value={draft.ctaLink} onChange={(e) => update('ctaLink', e.target.value)} maxLength={1000} placeholder="https://" aria-invalid={Boolean(errors.ctaLink) || undefined} />
+            <FieldError>{errors.ctaLink}</FieldError>
+          </div>
+        </div>
+
+        <div className="ig-st-row ig-ce-modal-row">
+          <div className="ig-st-field">
+            <label htmlFor="ig-sp-booth">Booth or location <em>(optional)</em></label>
+            <input id="ig-sp-booth" value={draft.boothText} onChange={(e) => update('boothText', e.target.value)} maxLength={160} placeholder="e.g. Booth A12" />
+          </div>
+          {split ? (
+            <div className={`ig-st-field${errors.distributionPercentage ? ' has-error' : ''}`}>
+              <label htmlFor="ig-sp-pct">Share of guests (%)</label>
+              <input id="ig-sp-pct" type="number" inputMode="numeric" min="1" max="100" value={draft.distributionPercentage} onChange={(e) => update('distributionPercentage', e.target.value)} placeholder="e.g. 50" />
+              {errors.distributionPercentage
+                ? <FieldError>{errors.distributionPercentage}</FieldError>
+                : <span className="ig-pd-hint ig-cp-hint">Percent of guests who see this card.</span>}
+            </div>
+          ) : (
+            <div className="ig-st-field">
+              <label htmlFor="ig-sp-tier">Tier <em>(optional)</em></label>
+              <select id="ig-sp-tier" className="ig-pd-select" value={draft.tier} onChange={(e) => update('tier', e.target.value)}>
+                <option value="">No tier</option>
+                {SPONSOR_TIERS.map((tier) => <option key={tier} value={tier}>{tier}</option>)}
+                {draft.tier && !SPONSOR_TIERS.includes(draft.tier) && <option value={draft.tier}>{draft.tier}</option>}
+              </select>
+              <span className="ig-pd-hint ig-cp-hint">Headline sponsors show first.</span>
+            </div>
+          )}
+        </div>
+
+        <div className="ig-db-dialog-actions">
+          <button type="button" className="ig-db-btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="ig-db-btn-primary" disabled={draft.image.processing}>{sponsor ? 'Save sponsor' : 'Add sponsor'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ---------------- Page ---------------- */
 function CreateProgram() {
-  const [formData, setFormData] = useState({
+  const toast = useToast();
+  const navigate = useNavigate();
+  // /program/:id/edit opens this page in edit mode with the event's saved settings.
+  const { id: editId } = useParams();
+  const isEdit = Boolean(editId);
+  const { template, setTemplateKey } = useEventTemplate();
+  const setTemplateRef = useRef(setTemplateKey);
+  setTemplateRef.current = setTemplateKey;
+  const today = useMemo(() => localToday(), []);
+  const eventWord = (template?.event?.singular || 'Event').toLowerCase();
+
+  const [boot, setBoot] = useState(null);
+  const [editData, setEditData] = useState(null);
+  const [loadState, setLoadState] = useState(isEdit ? 'loading' : 'ready');
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [form, setForm] = useState({
     programTitle: '',
     date: '',
     startTime: '',
     endTime: '',
     trackingMode: 'count-only',
-    dataFields: {
-      fullName: false,
-      emailAddress: false,
-      school: false,
-      link: false,
-      textarea: false,
-      address: false,
-      firstTimer: false,
-      phoneNumber: false,
-      department: false,
-      fellowship: false,
-      age: false,
-      sex: false
-    },
-    dataFieldConfig: {
-      textareaLabel: 'Additional Response'
-    },
+    dataFields: NO_FIELDS,
+    textareaLabel: '',
     customFormSchema: [],
-    proxyCheckinEnabled: false,
     strictDeviceFingerprinting: true,
-    enableGifting: false,
-    numberOfWinners: 0,
-    flyerType: 'standard',
-    sponsorDisplayMode: 'carousel',
+    proxyCheckinEnabled: false,
+    after: 'eventFlyer',
+    messages: DEFAULT_MESSAGE,
+    brandColor: '#E8590C',
+    textColor: '#FFFFFF',
+    accentColor: '#FFB86B',
+    sponsorMode: 'carousel',
     sponsorExpectedAttendees: '',
-    personalizedFlyerConfig: {
-      template: '[FirstName], you are deeply loved and created for purpose.',
-      brandColor: '#E8590C',
-      textColor: '#FFFFFF',
-      accentColor: '#FFB86B'
-    }
+    enableGifting: false,
+    numberOfWinners: 1
   });
-
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [flyerProcessing, setFlyerProcessing] = useState(false);
-  const [flyerData, setFlyerData] = useState({
-    compressedFile: null,
-    previewUrl: '',
-    originalName: '',
-    originalSize: 0,
-    compressedSize: 0,
-    error: ''
-  });
+  const [flyer, setFlyer] = useState(EMPTY_IMAGE);
+  const [background, setBackground] = useState(EMPTY_IMAGE);
+  const [logo, setLogo] = useState(EMPTY_IMAGE);
   const [sponsors, setSponsors] = useState([]);
-  const [personalizedBackgroundData, setPersonalizedBackgroundData] = useState({
-    compressedFile: null,
-    previewUrl: '',
-    originalName: '',
-    originalSize: 0,
-    compressedSize: 0,
-    error: ''
-  });
-  const [personalizedLogoData, setPersonalizedLogoData] = useState({
-    compressedFile: null,
-    previewUrl: '',
-    originalName: '',
-    originalSize: 0,
-    compressedSize: 0,
-    error: ''
-  });
-  const [personalizedBackgroundProcessing, setPersonalizedBackgroundProcessing] = useState(false);
-  const [personalizedLogoProcessing, setPersonalizedLogoProcessing] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem('ingather-theme') === 'dark';
-  });
-  const toast = useToast();
-  const { template, setTemplateKey } = useEventTemplate();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showSponsorSetup, setShowSponsorSetup] = useState(false);
-  const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
-  const [customFieldModal, setCustomFieldModal] = useState(null);
-  const profileMenuRef = useRef(null);
+  const [errors, setErrors] = useState({});
+  const [dirty, setDirty] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [questionModal, setQuestionModal] = useState(null);
+  const [sponsorModal, setSponsorModal] = useState(null);
+  const [phoneRuleOpen, setPhoneRuleOpen] = useState(false);
+  // Live preview: which guest screen it shows, and the full-screen sheet on smaller screens.
+  const [previewTab, setPreviewTab] = useState('form');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // 'on' or 'off' while the "check in others" popup is open.
+  const [proxyConfirm, setProxyConfirm] = useState(null);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const flyerInputRef = useRef(null);
-  const sponsorsRef = useRef([]);
-  const sponsorPanelRef = useRef(null);
-  const sponsorEditorRefs = useRef({});
-  const pendingSponsorFocusRef = useRef(null);
-  const personalizedBackgroundInputRef = useRef(null);
-  const personalizedLogoInputRef = useRef(null);
+  const leavingRef = useRef(false);
+  const urlsRef = useRef(new Set());
 
-  // Theme effect
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
+  const collect = form.trackingMode === 'collect-data';
+  const personal = collect && form.after === 'personalFlyer';
+  const split = form.sponsorMode === 'distribution';
+  // Editing after guests have checked in: date, start time, check-in method and the form stay as they are.
+  const locked = isEdit && editData?.locked === true;
+  const checkinsCount = editData?.checkinsCount || 0;
+  const winnersFloor = isEdit ? Math.max(1, editData?.winnersSelected || 0) : 1;
+  const personalBlocked = locked && !editData?.dataFields?.fullName;
 
   useEffect(() => {
-    fetchChurchData();
+    if (!localStorage.getItem('token')) navigate('/login', { replace: true });
+  }, [navigate]);
+
+  useEffect(() => {
+    let alive = true;
+    getDashboardBootstrap(today, today, today)
+      .then((res) => {
+        if (!alive || !res) return;
+        setBoot(res);
+        if (res.church?.organizationType) setTemplateRef.current(res.church.organizationType);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [today]);
+
+  useEffect(() => {
+    if (!isEdit) return undefined;
+    let alive = true;
+    setLoadState('loading');
+    getProgramForEdit(editId)
+      .then(({ program }) => {
+        if (!alive) return;
+        const config = program.personalizedFlyerConfig || {};
+        const messages = Array.isArray(config.templates) && config.templates.length ? config.templates : (config.template ? [config.template] : []);
+        const textareaLabel = program.dataFieldConfig?.textareaLabel;
+        setEditData(program);
+        setForm({
+          programTitle: program.title || '',
+          date: program.date || '',
+          startTime: program.startTime || '',
+          endTime: program.endTime || '',
+          trackingMode: program.trackingMode === 'collect-data' ? 'collect-data' : 'count-only',
+          dataFields: { ...NO_FIELDS, ...(program.dataFields || {}) },
+          textareaLabel: textareaLabel && textareaLabel !== 'Additional Response' ? textareaLabel : '',
+          customFormSchema: program.customFormSchema || [],
+          strictDeviceFingerprinting: program.strictDeviceFingerprinting !== false,
+          proxyCheckinEnabled: program.proxyCheckinEnabled === true,
+          after: program.flyerType === 'personalized' ? 'personalFlyer' : ((program.sponsors || []).length && !program.flyerUrl ? 'sponsors' : 'eventFlyer'),
+          messages: messages.length ? messages.join('\n') : DEFAULT_MESSAGE,
+          brandColor: (config.brandColor || '#E8590C').toUpperCase(),
+          textColor: (config.textColor || '#FFFFFF').toUpperCase(),
+          accentColor: (config.accentColor || '#FFB86B').toUpperCase(),
+          sponsorMode: program.sponsorDisplayMode === 'distribution' ? 'distribution' : 'carousel',
+          sponsorExpectedAttendees: program.sponsorExpectedAttendees ? String(program.sponsorExpectedAttendees) : '',
+          enableGifting: program.giftingEnabled === true,
+          numberOfWinners: Math.max(1, program.totalWinners || 1, program.winnersSelected || 0)
+        });
+        setFlyer(savedImage(program.flyerUrl, program.flyerOriginalName, 'Current flyer'));
+        setBackground(savedImage(program.personalizedBackgroundUrl, program.personalizedBackgroundOriginalName, 'Current background'));
+        setLogo(savedImage(program.personalizedLogoUrl, program.personalizedLogoOriginalName, 'Current logo'));
+        setSponsors((program.sponsors || []).map((sponsor) => ({
+          clientId: sponsor.id,
+          id: sponsor.id,
+          sponsorName: sponsor.sponsorName,
+          ctaText: sponsor.ctaText || 'Learn More',
+          ctaLink: sponsor.ctaLink,
+          boothText: sponsor.boothText || '',
+          campaignTag: sponsor.campaignTag || '',
+          tier: sponsor.tier || '',
+          distributionPercentage: sponsor.distributionPercentage ? String(sponsor.distributionPercentage) : '',
+          clickCount: sponsor.clickCount || 0,
+          image: savedImage(sponsor.flyerUrl, sponsor.flyerOriginalName, 'Current flyer')
+        })));
+        setDirty(false);
+        setLoadState('ready');
+      })
+      .catch((error) => {
+        if (!alive) return;
+        setLoadState(error.response?.status === 404 ? 'notfound' : 'error');
+      });
+    return () => { alive = false; };
+  }, [isEdit, editId, loadAttempt]);
+
+  // Free every image preview when leaving the page.
+  useEffect(() => {
+    const urls = urlsRef.current;
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (flyerData.previewUrl) {
-        URL.revokeObjectURL(flyerData.previewUrl);
-      }
+    if (!dirty) return undefined;
+    const onBeforeUnload = (event) => {
+      if (leavingRef.current) return;
+      event.preventDefault();
+      event.returnValue = '';
     };
-  }, [flyerData.previewUrl]);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [dirty]);
 
-  useEffect(() => {
-    sponsorsRef.current = sponsors;
-  }, [sponsors]);
+  const clearError = (...keys) => setErrors((prev) => {
+    if (!keys.some((key) => prev[key])) return prev;
+    const next = { ...prev };
+    keys.forEach((key) => { delete next[key]; });
+    return next;
+  });
 
-  useEffect(() => {
-    return () => {
-      sponsorsRef.current.forEach(sponsor => {
-        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
-      });
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (personalizedBackgroundData.previewUrl) {
-        URL.revokeObjectURL(personalizedBackgroundData.previewUrl);
-      }
-    };
-  }, [personalizedBackgroundData.previewUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (personalizedLogoData.previewUrl) {
-        URL.revokeObjectURL(personalizedLogoData.previewUrl);
-      }
-    };
-  }, [personalizedLogoData.previewUrl]);
-
-  // Close profile dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        setIsMobileMenuOpen(false);
-        setShowFingerprintWarning(false);
-      }
-    };
-    const previousOverflow = document.body.style.overflow;
-
-    document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen || showFingerprintWarning) document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isMobileMenuOpen, showFingerprintWarning]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-  const fetchChurchData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-      const { getCurrentChurch } = await import('../api/authService');
-      const church = await getCurrentChurch();
-      setChurchData({
-        name: church.churchName,
-        branch: church.branchName,
-        email: church.email || '',
-        logo: church.logoUrl
-      });
-      setTemplateKey(church.organizationType || 'general');
-      // Fetch unread notification count
-      try {
-        const axios = (await import('axios')).default;
-        const countRes = await axios.get(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/notifications/unread-count`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        setUnreadCount(countRes.data.unreadCount || 0);
-      } catch (err) {
-        console.error('Error fetching unread count:', err);
-      }
-    } catch (error) {
-      console.error('Error fetching workspace data:', error);
-    }
+  const update = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    clearError(key);
+    setServerError('');
+    setDirty(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
-    }
-  };
-
-  const handleFlyerSelect = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setFlyerProcessing(true);
-    setFlyerData(prev => ({ ...prev, error: '' }));
-
-    try {
-      const compressedFile = await compressFlyerImage(file);
-      const previewUrl = URL.createObjectURL(compressedFile);
-
-      setFlyerData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile,
-          previewUrl,
-          originalName: file.name,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
-          error: ''
-        };
-      });
-
-      toast.success(`Flyer compressed to ${formatFileSize(compressedFile.size)}.`);
-    } catch (error) {
-      const message = error.message || 'Flyer compression failed. Please try another image.';
-      setFlyerData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile: null,
-          previewUrl: '',
-          originalName: '',
-          originalSize: 0,
-          compressedSize: 0,
-          error: message
-        };
-      });
-      toast.error(message);
-    } finally {
-      setFlyerProcessing(false);
-    }
-  };
-
-  const handleRemoveFlyer = () => {
-    setFlyerData(prev => {
-      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return {
-        compressedFile: null,
-        previewUrl: '',
-        originalName: '',
-        originalSize: 0,
-        compressedSize: 0,
-        error: ''
-      };
-    });
-  };
-
-  const handleSponsorDisplayModeChange = (mode) => {
-    setFormData(prev => ({
+  /* ---------- Check-in mode ---------- */
+  const setMode = (mode) => {
+    if (locked) return;
+    setForm((prev) => ({
       ...prev,
-      sponsorDisplayMode: mode,
-      sponsorExpectedAttendees: mode === 'distribution' ? prev.sponsorExpectedAttendees : ''
-    }));
-    setErrors(prev => ({ ...prev, sponsors: '', sponsorExpectedAttendees: '' }));
-  };
-
-  const scrollToSponsorPanel = () => {
-    setShowSponsorSetup(true);
-    window.setTimeout(() => {
-      sponsorPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      sponsorPanelRef.current?.focus({ preventScroll: true });
-    }, 80);
-  };
-
-  const handleAddSponsor = () => {
-    const sponsor = createEmptySponsor();
-    pendingSponsorFocusRef.current = sponsor.clientId;
-    setShowSponsorSetup(true);
-    setSponsors(prev => [...prev, sponsor]);
-  };
-
-  useEffect(() => {
-    const sponsorId = pendingSponsorFocusRef.current;
-    if (!sponsorId) return;
-
-    const timer = window.setTimeout(() => {
-      const editor = sponsorEditorRefs.current[sponsorId];
-      editor?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      editor?.querySelector('input')?.focus({ preventScroll: true });
-      pendingSponsorFocusRef.current = null;
-    }, 80);
-
-    return () => window.clearTimeout(timer);
-  }, [sponsors.length]);
-
-  const handleRemoveSponsor = (clientId) => {
-    setSponsors(prev => {
-      const sponsor = prev.find(item => item.clientId === clientId);
-      if (sponsor?.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
-      delete sponsorEditorRefs.current[clientId];
-      return prev.filter(item => item.clientId !== clientId);
-    });
-  };
-
-  const handleSponsorFieldChange = (clientId, field, value) => {
-    setSponsors(prev => prev.map(sponsor => (
-      sponsor.clientId === clientId ? { ...sponsor, [field]: value, error: '' } : sponsor
-    )));
-    if (errors.sponsors) {
-      setErrors(prev => ({ ...prev, sponsors: '' }));
-    }
-  };
-
-  const handleSponsorFlyerSelect = async (clientId, file) => {
-    if (!file) return;
-
-    setSponsors(prev => prev.map(sponsor => (
-      sponsor.clientId === clientId ? { ...sponsor, processing: true, error: '' } : sponsor
-    )));
-
-    try {
-      const compressedFile = await compressFlyerImage(file);
-      const previewUrl = URL.createObjectURL(compressedFile);
-
-      setSponsors(prev => prev.map(sponsor => {
-        if (sponsor.clientId !== clientId) return sponsor;
-        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
-        return {
-          ...sponsor,
-          compressedFile,
-          previewUrl,
-          originalName: file.name,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
-          processing: false,
-          error: ''
-        };
-      }));
-
-      toast.success(`Sponsor flyer compressed to ${formatFileSize(compressedFile.size)}.`);
-    } catch (error) {
-      const message = error.message || 'Sponsor flyer compression failed. Please try another image.';
-      setSponsors(prev => prev.map(sponsor => {
-        if (sponsor.clientId !== clientId) return sponsor;
-        if (sponsor.previewUrl) URL.revokeObjectURL(sponsor.previewUrl);
-        return {
-          ...sponsor,
-          compressedFile: null,
-          previewUrl: '',
-          originalName: '',
-          originalSize: 0,
-          compressedSize: 0,
-          processing: false,
-          error: message
-        };
-      }));
-      toast.error(message);
-    }
-  };
-
-  const handlePersonalizedBackgroundSelect = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setPersonalizedBackgroundProcessing(true);
-    setPersonalizedBackgroundData(prev => ({ ...prev, error: '' }));
-
-    try {
-      const compressedFile = await compressFlyerImage(file);
-      const previewUrl = URL.createObjectURL(compressedFile);
-
-      setPersonalizedBackgroundData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile,
-          previewUrl,
-          originalName: file.name,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
-          error: ''
-        };
-      });
-
-      toast.success(`Background compressed to ${formatFileSize(compressedFile.size)}.`);
-    } catch (error) {
-      const message = error.message || 'Background image compression failed. Please try another image.';
-      setPersonalizedBackgroundData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile: null,
-          previewUrl: '',
-          originalName: '',
-          originalSize: 0,
-          compressedSize: 0,
-          error: message
-        };
-      });
-      toast.error(message);
-    } finally {
-      setPersonalizedBackgroundProcessing(false);
-    }
-  };
-
-  const handleRemovePersonalizedBackground = () => {
-    setPersonalizedBackgroundData(prev => {
-      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return {
-        compressedFile: null,
-        previewUrl: '',
-        originalName: '',
-        originalSize: 0,
-        compressedSize: 0,
-        error: ''
-      };
-    });
-  };
-
-  const handlePersonalizedLogoSelect = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setPersonalizedLogoProcessing(true);
-    setPersonalizedLogoData(prev => ({ ...prev, error: '' }));
-
-    try {
-      const compressedFile = await compressFlyerImage(file);
-      const previewUrl = URL.createObjectURL(compressedFile);
-
-      setPersonalizedLogoData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile,
-          previewUrl,
-          originalName: file.name,
-          originalSize: file.size,
-          compressedSize: compressedFile.size,
-          error: ''
-        };
-      });
-
-      toast.success(`Logo compressed to ${formatFileSize(compressedFile.size)}.`);
-    } catch (error) {
-      const message = error.message || 'Logo compression failed. Please try another image.';
-      setPersonalizedLogoData(prev => {
-        if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-        return {
-          compressedFile: null,
-          previewUrl: '',
-          originalName: '',
-          originalSize: 0,
-          compressedSize: 0,
-          error: message
-        };
-      });
-      toast.error(message);
-    } finally {
-      setPersonalizedLogoProcessing(false);
-    }
-  };
-
-  const handleRemovePersonalizedLogo = () => {
-    setPersonalizedLogoData(prev => {
-      if (prev.previewUrl) URL.revokeObjectURL(prev.previewUrl);
-      return {
-        compressedFile: null,
-        previewUrl: '',
-        originalName: '',
-        originalSize: 0,
-        compressedSize: 0,
-        error: ''
-      };
-    });
-  };
-
-  const handleFlyerTypeChange = (type) => {
-    setShowSponsorSetup(false);
-
-    if (type === 'personalized') {
-      setFormData(prev => ({
-        ...prev,
-        flyerType: 'personalized',
-        trackingMode: 'collect-data',
-        dataFields: {
-          ...prev.dataFields,
-          fullName: true
-        }
-      }));
-      setErrors(prev => ({ ...prev, flyerType: '', dataFields: '', personalizedTemplate: '' }));
-      return;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      flyerType: 'standard'
-    }));
-  };
-
-  const handlePersonalizedConfigChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      personalizedFlyerConfig: {
-        ...prev.personalizedFlyerConfig,
-        [field]: value
-      }
-    }));
-
-    if (errors.personalizedTemplate) {
-      setErrors(prev => ({ ...prev, personalizedTemplate: '' }));
-    }
-  };
-
-  const handleTrackingModeChange = (mode) => {
-    if (formData.flyerType === 'personalized' && mode === 'count-only') {
-      toast.info('Personalized flyers require Collect Data and Full Name.');
-      return;
-    }
-
-    setFormData({
-      ...formData,
       trackingMode: mode,
-      dataFields: mode === 'count-only' ? {
-        fullName: false, emailAddress: false, school: false, link: false, textarea: false, address: false, firstTimer: false, phoneNumber: false,
-        department: false, fellowship: false, age: false, sex: false
-      } : formData.dataFields,
-      proxyCheckinEnabled: mode === 'count-only' ? false : formData.proxyCheckinEnabled,
-      strictDeviceFingerprinting: mode === 'count-only' ? true : formData.strictDeviceFingerprinting,
-      enableGifting: mode === 'count-only' ? false : formData.enableGifting
-    });
+      // Count only keeps no names, so the name-based flyer can't apply.
+      after: mode === 'count-only' && prev.after === 'personalFlyer' ? 'eventFlyer' : prev.after,
+      dataFields: mode === 'collect-data' && !Object.values(prev.dataFields).some(Boolean)
+        ? { ...prev.dataFields, fullName: true, phoneNumber: true }
+        : prev.dataFields
+    }));
+    clearError('dataFields');
+    setDirty(true);
   };
 
-  const handleStrictFingerprintingToggle = () => {
-    if (formData.strictDeviceFingerprinting) {
-      setShowFingerprintWarning(true);
+  const toggleField = (key) => {
+    if (locked) return;
+    if (personal && key === 'fullName') {
+      toast.info('Full Name stays on while you use the personalized flyer.');
       return;
     }
-
-    setFormData(prev => ({
-      ...prev,
-      strictDeviceFingerprinting: true
-    }));
+    setForm((prev) => ({ ...prev, dataFields: { ...prev.dataFields, [key]: !prev.dataFields[key] } }));
+    clearError('dataFields');
+    setDirty(true);
   };
 
-  const confirmDisableStrictFingerprinting = () => {
-    setFormData(prev => ({
+  const setAfter = (key) => {
+    if (key === 'personalFlyer' && personalBlocked) return;
+    setPreviewTab('after');
+    setForm((prev) => ({
       ...prev,
-      strictDeviceFingerprinting: false
+      after: key,
+      dataFields: key === 'personalFlyer' ? { ...prev.dataFields, fullName: true } : prev.dataFields
     }));
-    setShowFingerprintWarning(false);
+    setDirty(true);
   };
 
-  const handleDataFieldToggle = (field) => {
-    if (formData.flyerType === 'personalized' && field === 'fullName') {
-      toast.info('Full Name is required for personalized flyers.');
+  /* ---------- Questions ---------- */
+  const openQuestion = (field = null) => {
+    if (!field && form.customFormSchema.length >= MAX_CUSTOM_FIELDS) {
+      toast.error(`You can add up to ${MAX_CUSTOM_FIELDS} questions.`);
       return;
     }
-
-    setFormData({
-      ...formData,
-      dataFields: { ...formData.dataFields, [field]: !formData.dataFields[field] }
-    });
+    setQuestionModal(field || {});
   };
-
-  const handleDataFieldConfigChange = (field, value) => {
-    setFormData(prev => ({
+  const saveQuestion = (field) => {
+    setForm((prev) => ({
       ...prev,
-      dataFieldConfig: {
-        ...prev.dataFieldConfig,
-        [field]: value
-      }
+      customFormSchema: prev.customFormSchema.some((item) => item.id === field.id)
+        ? prev.customFormSchema.map((item) => (item.id === field.id ? field : item))
+        : [...prev.customFormSchema, field]
     }));
+    setQuestionModal(null);
+    setDirty(true);
+  };
+  const removeQuestion = (id) => {
+    setForm((prev) => ({ ...prev, customFormSchema: prev.customFormSchema.filter((field) => field.id !== id) }));
+    setDirty(true);
   };
 
-  const openCustomFieldModal = (field = null) => {
-    if (!field && formData.customFormSchema.length >= MAX_CUSTOM_FIELDS) {
-      toast.error(`You can add up to ${MAX_CUSTOM_FIELDS} custom fields.`);
+  /* ---------- Images ---------- */
+  const pickImage = async (file, current, setImage, errorKey) => {
+    if (!file) return;
+    if (!IMAGE_TYPES.includes(file.type)) {
+      setImage((prev) => ({ ...prev, error: 'Choose a JPEG, PNG or WebP image.' }));
       return;
     }
-    setCustomFieldModal(field || {});
-  };
-
-  const handleSaveCustomField = (field) => {
-    setFormData(prev => {
-      const exists = prev.customFormSchema.some(item => item.id === field.id);
-      return {
-        ...prev,
-        customFormSchema: exists
-          ? prev.customFormSchema.map(item => item.id === field.id ? field : item)
-          : [...prev.customFormSchema, field]
-      };
-    });
-    setCustomFieldModal(null);
-  };
-
-  const handleRemoveCustomField = (fieldId) => {
-    setFormData(prev => ({
-      ...prev,
-      customFormSchema: prev.customFormSchema.filter(field => field.id !== fieldId)
-    }));
-  };
-
-  const handleGiftingToggle = () => {
-    setFormData({
-      ...formData,
-      enableGifting: !formData.enableGifting,
-      numberOfWinners: !formData.enableGifting ? formData.numberOfWinners : 0
-    });
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.programTitle.trim()) newErrors.programTitle = `${template.event.titleLabel} is required`;
-    if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.startTime) newErrors.startTime = 'Start time is required';
-    if (!formData.endTime) newErrors.endTime = 'End time is required';
-    if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
-      newErrors.endTime = 'End time must be after start time';
+    setImage((prev) => ({ ...prev, processing: true, error: '' }));
+    try {
+      const compressed = await compressFlyerImage(file);
+      if (current.previewUrl) { URL.revokeObjectURL(current.previewUrl); urlsRef.current.delete(current.previewUrl); }
+      const previewUrl = URL.createObjectURL(compressed);
+      urlsRef.current.add(previewUrl);
+      setImage({ file: compressed, previewUrl, name: file.name, originalSize: file.size, size: compressed.size, processing: false, error: '' });
+      if (errorKey) clearError(errorKey);
+      setDirty(true);
+    } catch (error) {
+      setImage((prev) => ({ ...prev, processing: false, error: String(error.message || 'We could not use that image. Try a JPEG, PNG or WebP.').replace(/flyer/gi, 'image') }));
     }
-    if (formData.trackingMode === 'collect-data') {
-      const selectedFields = Object.values(formData.dataFields).filter(v => v).length;
-      if (selectedFields === 0) newErrors.dataFields = 'Please select at least one data field';
+  };
+  const removeImage = (current, setImage) => {
+    if (current.previewUrl) { URL.revokeObjectURL(current.previewUrl); urlsRef.current.delete(current.previewUrl); }
+    setImage(EMPTY_IMAGE);
+    setDirty(true);
+  };
+
+  /* ---------- Sponsors ---------- */
+  const openSponsor = (sponsor = null) => {
+    if (!sponsor && sponsors.length >= MAX_SPONSORS) {
+      toast.error(`You can add up to ${MAX_SPONSORS} sponsors.`);
+      return;
     }
-    if (formData.flyerType === 'personalized') {
-      if (formData.trackingMode !== 'collect-data') {
-        newErrors.flyerType = 'Personalized flyers require Collect Data mode';
-      }
-      if (!formData.dataFields.fullName) {
-        newErrors.dataFields = 'Full Name is required for personalized flyers';
-      }
-      if (parsePersonalizedMessages(formData.personalizedFlyerConfig.template).length === 0) {
-        newErrors.personalizedTemplate = 'Add at least one personalized flyer message';
-      }
+    setSponsorModal(sponsor || {});
+  };
+  const saveSponsor = (sponsor) => {
+    if (sponsor.image.previewUrl) urlsRef.current.add(sponsor.image.previewUrl);
+    setSponsors((prev) => (prev.some((item) => item.clientId === sponsor.clientId)
+      ? prev.map((item) => (item.clientId === sponsor.clientId ? sponsor : item))
+      : [...prev, sponsor]));
+    setSponsorModal(null);
+    clearError('sponsors', `sponsor-${sponsor.clientId}`);
+    setDirty(true);
+  };
+  const removeSponsor = (clientId) => {
+    setSponsors((prev) => prev.filter((item) => item.clientId !== clientId));
+    clearError('sponsors', `sponsor-${clientId}`);
+    setDirty(true);
+  };
+  const splitTotal = sponsors.reduce((sum, sponsor) => sum + (Number(sponsor.distributionPercentage) || 0), 0);
+
+  /* ---------- Validate + submit ---------- */
+  const validate = () => {
+    const next = {};
+    if (!form.programTitle.trim()) next.programTitle = `Give your ${eventWord} a name`;
+    if (!form.date) next.date = 'Pick the date';
+    if (!form.startTime) next.startTime = 'Pick a start time';
+    if (!form.endTime) next.endTime = 'Pick an end time';
+    else if (form.startTime && form.startTime >= form.endTime) next.endTime = 'Must be after the start time';
+    if (!locked && collect && !Object.values(form.dataFields).some(Boolean) && form.customFormSchema.length === 0) {
+      next.dataFields = 'Add at least one field, or switch to Count only';
     }
-    if (formData.enableGifting && (!formData.numberOfWinners || formData.numberOfWinners <= 0)) {
-      newErrors.numberOfWinners = 'Number of winners must be greater than 0';
+    if (personal && parseMessages(form.messages).length === 0) next.messages = 'Add at least one message for the personalized flyer';
+    if (collect && form.enableGifting && !(Number(form.numberOfWinners) >= 1)) next.numberOfWinners = 'Choose at least 1 winner';
+    else if (collect && form.enableGifting && Number(form.numberOfWinners) < winnersFloor) {
+      next.numberOfWinners = `${winnersFloor} ${winnersFloor === 1 ? 'winner has' : 'winners have'} already been drawn, so choose at least ${winnersFloor}`;
     }
     if (sponsors.length > 0) {
-      sponsors.forEach((sponsor, index) => {
-        const label = `Sponsor ${index + 1}`;
-        if (!sponsor.sponsorName.trim()) newErrors.sponsors = `${label} needs a sponsor name`;
-        else if (!sponsor.compressedFile) newErrors.sponsors = `${label} needs a compressed flyer image`;
-        else if (!sponsor.ctaText.trim()) newErrors.sponsors = `${label} needs CTA text`;
-        else if (!/^https?:\/\//i.test(sponsor.ctaLink.trim())) newErrors.sponsors = `${label} needs a valid CTA link starting with http:// or https://`;
-      });
-
-      if (formData.sponsorDisplayMode === 'distribution') {
-        const expectedAttendees = Number(formData.sponsorExpectedAttendees);
-        if (!Number.isInteger(expectedAttendees) || expectedAttendees < 1) {
-          newErrors.sponsorExpectedAttendees = 'Expected attendees is required for distribution mode';
+      sponsors.forEach((sponsor) => {
+        const label = sponsor.sponsorName || 'A sponsor';
+        if (!isHttpUrl(sponsor.ctaLink)) next[`sponsor-${sponsor.clientId}`] = `${label} needs a button link`;
+        else if (!sponsor.image.file && !sponsor.image.existing) next[`sponsor-${sponsor.clientId}`] = `${label} needs a flyer image`;
+        else if (split && !(Number.isInteger(Number(sponsor.distributionPercentage)) && Number(sponsor.distributionPercentage) >= 1 && Number(sponsor.distributionPercentage) <= 100)) {
+          next[`sponsor-${sponsor.clientId}`] = `${label} needs a share of guests from 1 to 100`;
         }
-
-        const totalPercentage = sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0);
-        const hasInvalidPercentage = sponsors.some(sponsor => {
-          const percentage = Number(sponsor.distributionPercentage);
-          return !Number.isInteger(percentage) || percentage < 1 || percentage > 100;
-        });
-
-        if (hasInvalidPercentage) {
-          newErrors.sponsors = 'Each sponsor needs a distribution percentage between 1 and 100';
-        } else if (totalPercentage !== 100) {
-          newErrors.sponsors = `Distribution percentages must add up to exactly 100%. Current total is ${totalPercentage}%.`;
+      });
+      if (split) {
+        const expected = Number(form.sponsorExpectedAttendees);
+        if (!Number.isInteger(expected) || expected < 1) next.sponsorExpectedAttendees = 'Enter how many guests you expect';
+        if (splitTotal !== 100 && !Object.keys(next).some((key) => key.startsWith('sponsor-'))) {
+          next.sponsors = `Sponsor shares must add up to 100%. They add up to ${splitTotal}% now`;
         }
       }
     }
-    return newErrors;
+    return next;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      if (newErrors.sponsors || newErrors.sponsorExpectedAttendees) {
-        setShowSponsorSetup(true);
-      }
+  // Where each problem lives on the page, in reading order.
+  const errorTarget = (key) => {
+    if (key.startsWith('sponsor-')) return `ig-ce-${key}`;
+    return {
+      programTitle: 'ig-ce-title', date: 'ig-ce-date', startTime: 'ig-ce-start', endTime: 'ig-ce-end', dataFields: 'ig-ce-fields',
+      messages: 'ig-ce-messages', sponsorExpectedAttendees: 'ig-ce-expected', sponsors: 'ig-ce-sponsors', numberOfWinners: 'ig-ce-winners',
+      flyer: 'ig-ce-flyer'
+    }[key];
+  };
+  const ERROR_ORDER = ['programTitle', 'date', 'startTime', 'endTime', 'dataFields', 'flyer', 'messages', 'sponsorExpectedAttendees', 'sponsors', 'numberOfWinners'];
+  const errorList = [
+    ...ERROR_ORDER.filter((key) => errors[key]),
+    ...Object.keys(errors).filter((key) => key.startsWith('sponsor-') && errors[key])
+  ].sort((a, b) => {
+    const rank = (key) => (key.startsWith('sponsor-') ? ERROR_ORDER.indexOf('sponsors') - 0.5 : ERROR_ORDER.indexOf(key));
+    return rank(a) - rank(b);
+  });
+
+  const goToError = (key) => {
+    // Sponsor problems live in the Sponsors tab.
+    if (key === 'sponsors' || key === 'sponsorExpectedAttendees' || key.startsWith('sponsor-')) setForm((prev) => ({ ...prev, after: 'sponsors' }));
+    if (key === 'messages') setForm((prev) => ({ ...prev, after: 'personalFlyer' }));
+    window.setTimeout(() => {
+      const el = document.getElementById(errorTarget(key));
+      if (!el) return;
+      if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.focus({ preventScroll: true });
+    }, 30);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (submitting) return;
+    setServerError('');
+    if (flyer.processing || background.processing || logo.processing) {
+      toast.info('One moment, an image is still compressing.');
       return;
     }
-    if (flyerProcessing) {
-      toast.info('Please wait for the flyer compression to finish.');
-      return;
-    }
-    if (personalizedBackgroundProcessing) {
-      toast.info('Please wait for the personalized background compression to finish.');
-      return;
-    }
-    if (personalizedLogoProcessing) {
-      toast.info('Please wait for the personalized logo compression to finish.');
-      return;
-    }
-    if (sponsors.some(sponsor => sponsor.processing)) {
-      toast.info('Please wait for sponsor flyer compression to finish.');
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      const eventFlyer = formData.flyerType === 'standard' && flyerData.compressedFile
-        ? {
-            dataUrl: await fileToDataUrl(flyerData.compressedFile),
-            originalName: flyerData.originalName,
-            size: flyerData.compressedSize
-          }
-        : null;
-      const personalizedBackground = formData.flyerType === 'personalized' && personalizedBackgroundData.compressedFile
-        ? {
-            dataUrl: await fileToDataUrl(personalizedBackgroundData.compressedFile),
-            originalName: personalizedBackgroundData.originalName,
-            size: personalizedBackgroundData.compressedSize
-          }
-        : null;
-      const personalizedLogo = formData.flyerType === 'personalized' && personalizedLogoData.compressedFile
-        ? {
-            dataUrl: await fileToDataUrl(personalizedLogoData.compressedFile),
-            originalName: personalizedLogoData.originalName,
-            size: personalizedLogoData.compressedSize
-          }
-        : null;
-      const sponsorPayloads = await Promise.all(sponsors.map(async sponsor => ({
-        sponsorName: sponsor.sponsorName.trim(),
-        ctaText: sponsor.ctaText.trim(),
-        ctaLink: sponsor.ctaLink.trim(),
-        boothText: sponsor.boothText.trim(),
-        campaignTag: sponsor.campaignTag.trim(),
-        tier: sponsor.tier.trim(),
-        distributionPercentage: formData.sponsorDisplayMode === 'distribution'
-          ? Number(sponsor.distributionPercentage)
-          : null,
-        flyer: {
-          dataUrl: await fileToDataUrl(sponsor.compressedFile),
-          originalName: sponsor.originalName,
-          size: sponsor.compressedSize
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length) {
+      window.setTimeout(() => {
+        const box = document.getElementById('ig-ce-errors');
+        if (box) {
+          if (typeof box.scrollIntoView === 'function') box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          box.focus({ preventScroll: true });
         }
+      }, 0);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const asPayload = async (image) => (image.file ? { dataUrl: await fileToDataUrl(image.file), originalName: image.name, size: image.size } : null);
+      const messages = parseMessages(form.messages);
+      const sponsorPayloads = await Promise.all(sponsors.map(async (sponsor) => ({
+        ...(sponsor.id ? { id: sponsor.id } : {}),
+        sponsorName: sponsor.sponsorName,
+        ctaText: sponsor.ctaText,
+        ctaLink: sponsor.ctaLink,
+        boothText: sponsor.boothText,
+        campaignTag: sponsor.campaignTag,
+        tier: split ? '' : sponsor.tier,
+        distributionPercentage: split ? Number(sponsor.distributionPercentage) : null,
+        flyer: await asPayload(sponsor.image)
       })));
 
-      const personalizedMessages = parsePersonalizedMessages(formData.personalizedFlyerConfig.template);
-      const personalizedFlyerConfig = {
-        ...formData.personalizedFlyerConfig,
-        template: personalizedMessages[0] || '',
-        templates: personalizedMessages
-      };
-
-      const response = await createProgram({
-        programTitle: formData.programTitle,
-        date: formData.date,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        trackingMode: formData.trackingMode,
-        dataFields: formData.dataFields,
-        dataFieldConfig: formData.dataFieldConfig,
-        customFormSchema: formData.customFormSchema,
-        proxyCheckinEnabled: formData.trackingMode === 'collect-data' && formData.proxyCheckinEnabled,
-        strictDeviceFingerprinting: formData.trackingMode === 'collect-data'
-          ? formData.strictDeviceFingerprinting
-          : true,
-        enableGifting: formData.enableGifting,
-        numberOfWinners: formData.numberOfWinners,
-        eventFlyer,
-        flyerType: formData.flyerType,
-        personalizedFlyerConfig,
-        personalizedBackground,
-        personalizedLogo,
-        sponsorDisplayMode: formData.sponsorDisplayMode,
-        sponsorExpectedAttendees: formData.sponsorDisplayMode === 'distribution'
-          ? Number(formData.sponsorExpectedAttendees)
-          : null,
+      const payload = {
+        programTitle: form.programTitle.trim(),
+        date: form.date,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        trackingMode: form.trackingMode,
+        dataFields: collect ? form.dataFields : NO_FIELDS,
+        dataFieldConfig: { textareaLabel: form.textareaLabel.trim() || 'Additional Response' },
+        customFormSchema: collect ? form.customFormSchema : [],
+        proxyCheckinEnabled: collect && form.proxyCheckinEnabled,
+        strictDeviceFingerprinting: collect ? form.strictDeviceFingerprinting : true,
+        enableGifting: collect && form.enableGifting,
+        numberOfWinners: collect && form.enableGifting ? Number(form.numberOfWinners) : 0,
+        flyerType: personal ? 'personalized' : 'standard',
+        eventFlyer: personal ? null : await asPayload(flyer),
+        personalizedFlyerConfig: {
+          template: messages[0] || '',
+          templates: messages,
+          brandColor: form.brandColor,
+          textColor: form.textColor,
+          accentColor: form.accentColor
+        },
+        personalizedBackground: personal ? await asPayload(background) : null,
+        personalizedLogo: personal ? await asPayload(logo) : null,
+        sponsorDisplayMode: form.sponsorMode,
+        sponsorExpectedAttendees: split && sponsors.length > 0 ? Number(form.sponsorExpectedAttendees) : null,
         sponsors: sponsorPayloads
-      });
-      toast.success(`${template.event.singular} created successfully!`);
-      setTimeout(() => {
-        window.location.href = `/program/${response.program.id}`;
-      }, 1500);
+      };
+      if (isEdit) {
+        // Saved images not shown any more are removed from the event.
+        payload.removeEventFlyer = Boolean(editData?.flyerUrl) && !flyer.previewUrl;
+        payload.removePersonalizedBackground = Boolean(editData?.personalizedBackgroundUrl) && !background.previewUrl;
+        payload.removePersonalizedLogo = Boolean(editData?.personalizedLogoUrl) && !logo.previewUrl;
+        await updateProgram(editId, payload);
+        leavingRef.current = true;
+        setDirty(false);
+        toast.success('Changes saved. Guests see them on their next scan.');
+        navigate(`/program/${editId}`);
+        return;
+      }
+      const response = await createProgram(payload);
+      leavingRef.current = true;
+      setDirty(false);
+      toast.success(`Your ${eventWord} is ready. Print or share the QR code.`);
+      navigate(`/program/${response.program.id}`);
     } catch (error) {
-      console.error('Create event error:', error);
-      toast.error(error.response?.data?.error || `Failed to create ${template.event.singular.toLowerCase()}. Please try again.`);
-      setIsSubmitting(false);
+      const data = error.response?.data || {};
+      const message = data.error || (isEdit
+        ? 'We could not save your changes. Check your connection and try again.'
+        : `We could not create the ${eventWord}. Check your connection and try again.`);
+      if (data.field && errorTarget(data.field)) {
+        setErrors({ [data.field]: message });
+        goToError(data.field);
+      } else {
+        setServerError(message);
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleLogout = () => {
-    toast.confirm('Are you sure you want to logout?', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('church');
-      window.location.href = '/';
-    });
+  const backTo = isEdit ? `/program/${editId}` : '/programs';
+  const cancel = () => {
+    if (dirty) setLeaveOpen(true);
+    else navigate(backTo);
+  };
+  const discard = () => {
+    leavingRef.current = true;
+    setDirty(false);
+    setLeaveOpen(false);
+    navigate(backTo);
   };
 
-  const toggleTheme = () => setDarkMode(prev => !prev);
+  const shellProps = {
+    active: 'events',
+    crumb: `${isEdit ? 'Edit' : 'New'} ${template?.event?.singular || 'Event'}`,
+    church: boot?.church ? { name: boot.church.churchName, email: boot.church.email, logoUrl: boot.church.logoUrl } : null,
+    counts: { preEvents: boot?.stats?.preEventCount || 0, events: boot?.stats?.totalProgramsAllTime || 0 },
+    unreadCount: boot?.unreadCount || 0,
+    live: boot?.stats?.live || null,
+    template
+  };
 
-  const shouldShowSponsorSetup = showSponsorSetup;
-  const shouldShowStandardFlyerSetup = !showSponsorSetup && formData.flyerType === 'standard';
-  const shouldShowPersonalizedFlyerSetup = !showSponsorSetup && formData.flyerType === 'personalized';
+  useEffect(() => {
+    if (!previewOpen) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setPreviewOpen(false); };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [previewOpen]);
 
-  const churchInitials = churchData.name
-    ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : 'IN';
+  const previewProps = {
+    event: {
+      title: form.programTitle.trim(),
+      date: form.date,
+      startTime: form.startTime,
+      endTime: form.endTime,
+      flyerUrl: flyer.previewUrl || '',
+      hostName: boot?.church?.churchName || '',
+      hostLogoUrl: boot?.church?.logoUrl || ''
+    },
+    collect,
+    dataFields: form.dataFields,
+    textareaLabel: form.textareaLabel.trim(),
+    questions: form.customFormSchema,
+    gifting: collect && form.enableGifting,
+    after: form.after,
+    messages: parseMessages(form.messages),
+    colors: { brand: form.brandColor, text: form.textColor, accent: form.accentColor },
+    backgroundUrl: background.previewUrl,
+    logoUrl: logo.previewUrl,
+    sponsors,
+    sponsorMode: form.sponsorMode,
+    proxy: form.proxyCheckinEnabled
+  };
+  const previewTabs = (
+    <div className="ig-ce-pvtabs" role="tablist" aria-label="Preview screen">
+      {[['form', 'Check-in'], ['after', 'After check-in']].map(([key, label]) => (
+        <button key={key} type="button" role="tab" aria-selected={previewTab === key} className={previewTab === key ? 'is-on' : ''} onClick={() => setPreviewTab(key)}>{label}</button>
+      ))}
+    </div>
+  );
+
+  // Count only has no form, so its steps are renumbered.
+  const afterStep = collect ? 5 : 3;
+  const afterBadge = { eventFlyer: flyer.file || flyer.existing ? 'Added' : '', personalFlyer: '', sponsors: sponsors.length ? `${sponsors.length} added` : '' };
+
+  if (isEdit && loadState !== 'ready') {
+    return (
+      <IgDashShell {...shellProps}>
+        <div className="ig-db-page ig-cp ig-ce">
+          {loadState === 'loading' ? (
+            <div className="ig-ce-loading" role="status"><span className="ig-st-spinner is-inline ig-cp-dark-spin" aria-hidden="true" />Loading your {eventWord}…</div>
+          ) : (
+            <div className="ig-db-card ig-ce-loadfail">
+              <strong>{loadState === 'notfound' ? `This ${eventWord} doesn't exist` : `We couldn't load this ${eventWord}`}</strong>
+              <span>{loadState === 'notfound' ? 'It may have been deleted, or it belongs to another workspace.' : 'Check your connection and try again.'}</span>
+              <span className="ig-ce-loadfail-actions">
+                {loadState === 'error' && <button type="button" className="ig-db-btn-primary" onClick={() => setLoadAttempt((n) => n + 1)}>Try again</button>}
+                <Link to="/programs" className="ig-db-btn-ghost">{template?.event?.all || 'All Events'}</Link>
+              </span>
+            </div>
+          )}
+        </div>
+      </IgDashShell>
+    );
+  }
 
   return (
-    <div className="dashboard">
-      {/* ====== SIDEBAR ====== */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
-        <div className="sidebar-logo">
-          <a href="/dashboard" className="sidebar-logo-link">
-            <span className="sidebar-logo-icon">{Icons.logo}</span>
-            <span className="sidebar-logo-text">Ingather</span>
-          </a>
-          <button className="sidebar-collapse-btn" title="Toggle sidebar">
-            {Icons.collapse}
-          </button>
-        </div>
-
-        <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.dashboard}</span>
-            <span>Dashboard</span>
-          </a>
-          <a href="/pre-events" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>Pre-Events</span>
-          </a>
-          <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.createProgram}</span>
-            <span>{template.event.create}</span>
-          </a>
-          <a href="/programs" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.allPrograms}</span>
-            <span>{template.event.all}</span>
-          </a>
-          <a href="/settings" className="nav-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.settings}</span>
-            <span>Settings</span>
-          </a>
-        </nav>
-
-        <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}>
-            <span className="nav-icon">{Icons.notification}</span>
-            <span>Notification</span>
-            {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-          </a>
-          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}>
-            <span className="nav-icon">{Icons.logout}</span>
-            <span>Log out</span>
-          </button>
-        </div>
-
-        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
-          <div className="sidebar-profile-avatar">
-            {churchData.logo ? (
-              <img src={churchData.logo} alt={churchData.name} />
-            ) : (
-              <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>
-            )}
-          </div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{churchData.name}</div>
-            <div className="sidebar-profile-email">{churchData.email || `${churchData.name?.toLowerCase().replace(/\s+/g, '')}@gmail.com`}</div>
-          </div>
-          <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
-        </div>
-      </aside>
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-backdrop"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      {/* ====== MAIN CONTENT ====== */}
-      <main className="dashboard-main">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div className="navbar-left">
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              aria-label="Open navigation menu"
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-            <span className="navbar-church-name">{template.event.create}</span>
-          </div>
-          <div className="navbar-right">
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
-              <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
-            </button>
-            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>
-              {Icons.notification}
-              {unreadCount > 0 && <span className="icon-badge"></span>}
-            </button>
-            <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>
-              {Icons.gear}
-            </button>
-            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
-              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
-                {churchData.logo ? (
-                  <img src={churchData.logo} alt={churchData.name} />
-                ) : (
-                  <div className="navbar-avatar-fallback">{churchInitials}</div>
-                )}
-              </div>
-              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
-                {Icons.chevronDown}
-              </span>
-              {showProfileMenu && (
-                <div className="profile-dropdown-menu">
-                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
-                    View Profile
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+    <IgDashShell {...shellProps}>
+      <div className="ig-db-page ig-cp ig-ce">
+        <header className="ig-cp-head">
+          <Link to={backTo} className="ig-pd-back" onClick={(event) => { if (dirty) { event.preventDefault(); setLeaveOpen(true); } }}>
+            {Icon.back}{isEdit ? (editData?.title || template?.event?.singular || 'Event') : (template?.event?.all || 'All Events')}
+          </Link>
+          {isEdit
+            ? <h1>Edit <span className="ig-db-title-mark">{eventWord}</span></h1>
+            : <h1>Create {/^[aeiou]/i.test(eventWord) ? 'an' : 'a'} <span className="ig-db-title-mark">{eventWord}</span></h1>}
+          <p>{isEdit
+            ? 'Your QR code and check-in links stay the same, so nothing you printed needs replacing.'
+            : 'Set up check-in for the day. You get a QR code for the entrance as soon as you create it.'}</p>
         </header>
 
-        {/* Page Content */}
-        <div className="dashboard-content create-program-content">
-          <div className="cp-page-title">
-            <h2>Create A New {template.event.singular}</h2>
+        {isEdit && (
+          <div className={`ig-ce-state${locked ? ' is-live' : ''}`} role="status">
+            <em>{locked ? (editData?.isActive === false ? 'Ended' : 'Live') : 'Not started'}</em>
+            <span>
+              {locked
+                ? `${editData?.isActive === false ? 'This ' + eventWord + ' has ended and' : 'This ' + eventWord + ' is running and'} ${checkinsCount} ${checkinsCount === 1 ? 'guest has' : 'guests have'} checked in. Changes show up for the next guest who scans. A few settings are locked to protect your data.`
+                : 'Everything can still change. Once the first guest checks in, the check-in method and form lock.'}
+            </span>
           </div>
+        )}
 
-          <form className="create-program-form" onSubmit={handleSubmit}>
-            {/* Basic Information Card */}
-            <div className="form-card" id="basic-info-card">
-              <h3 className="card-title">Basic Information</h3>
-              <p className="card-description">Set up a new {template.event.singular.toLowerCase()} and configure date and time.</p>
+        <div className="ig-cp-layout ig-ce-layout">
+        <form className="ig-cp-form ig-ce-form" onSubmit={submit} noValidate>
+          {errorList.length > 0 && (
+            <div className="ig-ce-errors" id="ig-ce-errors" role="alert" tabIndex={-1}>
+              <span className="ig-ce-errors-icon" aria-hidden="true">!</span>
+              <span className="ig-ce-errors-body">
+                <strong>Fix {errorList.length} {errorList.length === 1 ? 'thing' : 'things'} to create this {eventWord}</strong>
+                {errorList.map((key) => (
+                  <button type="button" key={key} onClick={() => goToError(key)}>{errors[key]}</button>
+                ))}
+              </span>
+            </div>
+          )}
 
-              <div className="form-group">
-                <label htmlFor="programTitle">{template.event.titleLabel}</label>
-                <input
-                  type="text"
-                  id="programTitle"
-                  name="programTitle"
-                  value={formData.programTitle}
-                  onChange={handleChange}
-                  placeholder={template.event.titlePlaceholder}
-                  className={`form-input ${errors.programTitle ? 'input-error' : ''}`}
-                />
-                {errors.programTitle && <span className="error-text">{errors.programTitle}</span>}
+          {/* 1. Event details */}
+          <Step n={1} title={`${template?.event?.singular || 'Event'} details`} sub="Shown on the check-in page and your dashboard" labelledBy="ig-ce-s1">
+            <div className={`ig-st-field${errors.programTitle ? ' has-error' : ''}`}>
+              <label htmlFor="ig-ce-title">{template?.event?.titleLabel || 'Event Title'}</label>
+              <input id="ig-ce-title" value={form.programTitle} onChange={(e) => update('programTitle', e.target.value)} placeholder={template?.event?.titlePlaceholder || 'e.g., Product Demo Night'} maxLength={255} aria-invalid={Boolean(errors.programTitle) || undefined} aria-describedby={errors.programTitle ? 'ig-ce-title-err' : undefined} />
+              <FieldError id="ig-ce-title-err">{errors.programTitle}</FieldError>
+            </div>
+            <div className="ig-ce-when">
+              <div className={`ig-st-field${errors.date ? ' has-error' : ''}`}>
+                <label htmlFor="ig-ce-date">Date</label>
+                <input id="ig-ce-date" type="date" value={form.date} onChange={(e) => update('date', e.target.value)} disabled={locked} aria-invalid={Boolean(errors.date) || undefined} />
+                <FieldError>{errors.date}</FieldError>
               </div>
-
-              <div className="form-row-3col">
-                <div className="form-group">
-                  <label htmlFor="date">Date</label>
-                  <div className="input-icon-wrapper">
-                    <input
-                      type="date"
-                      id="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleChange}
-                      className={`form-input ${errors.date ? 'input-error' : ''}`}
-                      placeholder="dd/mm/yyyy"
-                    />
-                  </div>
-                  {errors.date && <span className="error-text">{errors.date}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="startTime">Start Time</label>
-                  <div className="select-wrapper">
-                    <select
-                      id="startTime"
-                      name="startTime"
-                      value={formData.startTime}
-                      onChange={handleChange}
-                      className={`form-input form-select ${errors.startTime ? 'input-error' : ''}`}
-                    >
-                      <option value="">00:00</option>
-                      {timeOptions.map(t => (
-                        <option key={`s-${t}`} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.startTime && <span className="error-text">{errors.startTime}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="endTime">End Time</label>
-                  <div className="select-wrapper">
-                    <select
-                      id="endTime"
-                      name="endTime"
-                      value={formData.endTime}
-                      onChange={handleChange}
-                      className={`form-input form-select ${errors.endTime ? 'input-error' : ''}`}
-                    >
-                      <option value="">00:00</option>
-                      {timeOptions.map(t => (
-                        <option key={`e-${t}`} value={t}>{t}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {errors.endTime && <span className="error-text">{errors.endTime}</span>}
-                </div>
+              <div className={`ig-st-field${errors.startTime ? ' has-error' : ''}`}>
+                <label htmlFor="ig-ce-start">Start time</label>
+                <select id="ig-ce-start" className="ig-pd-select" value={form.startTime} onChange={(e) => { update('startTime', e.target.value); clearError('endTime'); }} disabled={locked} aria-invalid={Boolean(errors.startTime) || undefined}>
+                  <option value="">Select</option>
+                  {timeOptionsWith(form.startTime).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <FieldError>{errors.startTime}</FieldError>
+              </div>
+              <div className={`ig-st-field${errors.endTime ? ' has-error' : ''}`}>
+                <label htmlFor="ig-ce-end">End time</label>
+                <select id="ig-ce-end" className="ig-pd-select" value={form.endTime} onChange={(e) => update('endTime', e.target.value)} aria-invalid={Boolean(errors.endTime) || undefined}>
+                  <option value="">Select</option>
+                  {timeOptionsWith(form.endTime).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <FieldError>{errors.endTime}</FieldError>
               </div>
             </div>
+            {locked && <div className="ig-ce-locknote">Date and start time are locked because check-in has started. You can still move the end time.</div>}
+          </Step>
 
-            {/* Optional Event Flyer */}
-            <div className="form-card" id="event-flyer-card">
-              <div className="flyer-card-header">
-                <div>
-                  <h3 className="card-title">Post Check-in Flyer</h3>
-                  <p className="card-description">Choose what attendees see after they complete check-in</p>
-                </div>
-                <span className="flyer-optional-pill">Optional</span>
-              </div>
-
-              <div className="flyer-type-options">
-                <button
-                  type="button"
-                  className={`flyer-type-card ${shouldShowStandardFlyerSetup ? 'selected' : ''}`}
-                  onClick={() => handleFlyerTypeChange('standard')}
-                >
-                  <span className="flyer-type-title">Standard Event Flyer</span>
-                  <span className="flyer-type-copy">Upload a static event image for everyone.</span>
-                </button>
-                <button
-                  type="button"
-                  className={`flyer-type-card ${shouldShowPersonalizedFlyerSetup ? 'selected' : ''}`}
-                  onClick={() => handleFlyerTypeChange('personalized')}
-                >
-                  <span className="flyer-type-title">Personalized Flyer</span>
-                  <span className="flyer-type-copy">Generate a branded card with each attendee's first name.</span>
-                </button>
-                <button
-                  type="button"
-                  className={`flyer-type-card flyer-type-action-card ${shouldShowSponsorSetup ? 'selected' : ''} ${sponsors.length > 0 ? 'has-sponsors' : ''}`}
-                  onClick={scrollToSponsorPanel}
-                >
-                  <span className="flyer-type-title">Event Sponsors</span>
-                  <span className="flyer-type-copy">Add sponsor flyers, booth CTAs, and post-check-in engagement tracking.</span>
-                  {sponsors.length > 0 && (
-                    <span className="flyer-type-count">{sponsors.length} added</span>
-                  )}
-                </button>
-              </div>
-              {errors.flyerType && <span className="error-text">{errors.flyerType}</span>}
-
-              <input
-                ref={flyerInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleFlyerSelect}
-                className="flyer-file-input"
-              />
-
-              {shouldShowStandardFlyerSetup && (
-                <>
-                  {!flyerData.compressedFile ? (
-                    <button
-                      type="button"
-                      className={`flyer-upload-zone ${flyerProcessing ? 'processing' : ''}`}
-                      onClick={() => !flyerProcessing && flyerInputRef.current?.click()}
-                      disabled={flyerProcessing}
-                    >
-                      <span className="flyer-upload-icon">
-                        {flyerProcessing ? (
-                          <span className="flyer-mini-spinner"></span>
-                        ) : (
-                          Icons.calendar
-                        )}
-                      </span>
-                      <span className="flyer-upload-copy">
-                        <strong>{flyerProcessing ? 'Compressing flyer...' : 'Choose flyer image'}</strong>
-                        <span>JPEG, PNG, or WebP. It will be compressed to about 200 KB before upload.</span>
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="flyer-preview-panel">
-                      <div className="flyer-preview-image-wrap">
-                        <img src={flyerData.previewUrl} alt="Event flyer preview" />
-                      </div>
-                      <div className="flyer-preview-meta">
-                        <div>
-                          <p className="flyer-preview-title">{flyerData.originalName}</p>
-                          <p className="flyer-preview-sub">
-                            {formatFileSize(flyerData.originalSize)} compressed to {formatFileSize(flyerData.compressedSize)}
-                          </p>
-                        </div>
-                        <div className="flyer-preview-actions">
-                          <button type="button" className="flyer-change-btn" onClick={() => flyerInputRef.current?.click()}>
-                            Change
-                          </button>
-                          <button type="button" className="flyer-remove-btn" onClick={handleRemoveFlyer}>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {flyerData.error && <span className="error-text">{flyerData.error}</span>}
-                </>
-              )}
-
-              {shouldShowPersonalizedFlyerSetup && (
-                <div className="personalized-flyer-builder">
-                  <div className="personalized-rule-callout">
-                    Personalized flyers require Collect Data mode and Full Name. Ingather has enabled both for this {template.event.singular.toLowerCase()}.
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="personalizedTemplate">Motivational Messages</label>
-                    <textarea
-                      id="personalizedTemplate"
-                      value={formData.personalizedFlyerConfig.template}
-                      onChange={(e) => handlePersonalizedConfigChange('template', e.target.value)}
-                      className={`form-input form-textarea ${errors.personalizedTemplate ? 'input-error' : ''}`}
-                      rows="4"
-                      placeholder={'[FirstName], you are blessed, loved, and created for purpose.\n[FirstName], your presence makes this gathering brighter.'}
-                    />
-                    <p className="field-hint">Add one message per line. Ingather will randomly assign one to each attendee. Use [FirstName] where their first name should appear.</p>
-                    {errors.personalizedTemplate && <span className="error-text">{errors.personalizedTemplate}</span>}
-                  </div>
-
-                  <div className="personalized-color-grid">
-                    <label className="color-control">
-                      <span>Brand color</span>
-                      <input
-                        type="color"
-                        value={formData.personalizedFlyerConfig.brandColor}
-                        onChange={(e) => handlePersonalizedConfigChange('brandColor', e.target.value)}
-                      />
-                    </label>
-                    <label className="color-control">
-                      <span>Text color</span>
-                      <input
-                        type="color"
-                        value={formData.personalizedFlyerConfig.textColor}
-                        onChange={(e) => handlePersonalizedConfigChange('textColor', e.target.value)}
-                      />
-                    </label>
-                    <label className="color-control">
-                      <span>Accent color</span>
-                      <input
-                        type="color"
-                        value={formData.personalizedFlyerConfig.accentColor}
-                        onChange={(e) => handlePersonalizedConfigChange('accentColor', e.target.value)}
-                      />
-                    </label>
-                  </div>
-
-                  <input
-                    ref={personalizedBackgroundInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePersonalizedBackgroundSelect}
-                    className="flyer-file-input"
-                  />
-
-                  {!personalizedBackgroundData.compressedFile ? (
-                    <button
-                      type="button"
-                      className={`flyer-upload-zone ${personalizedBackgroundProcessing ? 'processing' : ''}`}
-                      onClick={() => !personalizedBackgroundProcessing && personalizedBackgroundInputRef.current?.click()}
-                      disabled={personalizedBackgroundProcessing}
-                    >
-                      <span className="flyer-upload-icon">
-                        {personalizedBackgroundProcessing ? (
-                          <span className="flyer-mini-spinner"></span>
-                        ) : (
-                          Icons.calendar
-                        )}
-                      </span>
-                      <span className="flyer-upload-copy">
-                        <strong>{personalizedBackgroundProcessing ? 'Compressing background...' : 'Add branded background image'}</strong>
-                        <span>Optional. Without an image, Ingather will generate a premium branded gradient card.</span>
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="flyer-preview-panel">
-                      <div className="flyer-preview-image-wrap">
-                        <img src={personalizedBackgroundData.previewUrl} alt="Personalized flyer background preview" />
-                      </div>
-                      <div className="flyer-preview-meta">
-                        <div>
-                          <p className="flyer-preview-title">{personalizedBackgroundData.originalName}</p>
-                          <p className="flyer-preview-sub">
-                            {formatFileSize(personalizedBackgroundData.originalSize)} compressed to {formatFileSize(personalizedBackgroundData.compressedSize)}
-                          </p>
-                        </div>
-                        <div className="flyer-preview-actions">
-                          <button type="button" className="flyer-change-btn" onClick={() => personalizedBackgroundInputRef.current?.click()}>
-                            Change
-                          </button>
-                          <button type="button" className="flyer-remove-btn" onClick={handleRemovePersonalizedBackground}>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {personalizedBackgroundData.error && <span className="error-text">{personalizedBackgroundData.error}</span>}
-
-                  <input
-                    ref={personalizedLogoInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePersonalizedLogoSelect}
-                    className="flyer-file-input"
-                  />
-
-                  {!personalizedLogoData.compressedFile ? (
-                    <button
-                      type="button"
-                      className={`flyer-upload-zone logo-upload-zone ${personalizedLogoProcessing ? 'processing' : ''}`}
-                      onClick={() => !personalizedLogoProcessing && personalizedLogoInputRef.current?.click()}
-                      disabled={personalizedLogoProcessing}
-                    >
-                      <span className="flyer-upload-icon">
-                        {personalizedLogoProcessing ? (
-                          <span className="flyer-mini-spinner"></span>
-                        ) : (
-                          Icons.logo
-                        )}
-                      </span>
-                      <span className="flyer-upload-copy">
-                        <strong>{personalizedLogoProcessing ? 'Compressing logo...' : 'Add organization or event logo'}</strong>
-                        <span>Optional. This logo appears on the personalized card and downloaded flyer.</span>
-                      </span>
-                    </button>
-                  ) : (
-                    <div className="flyer-preview-panel logo-preview-panel">
-                      <div className="flyer-preview-image-wrap logo-preview-image-wrap">
-                        <img src={personalizedLogoData.previewUrl} alt="Personalized flyer logo preview" />
-                      </div>
-                      <div className="flyer-preview-meta">
-                        <div>
-                          <p className="flyer-preview-title">{personalizedLogoData.originalName}</p>
-                          <p className="flyer-preview-sub">
-                            {formatFileSize(personalizedLogoData.originalSize)} compressed to {formatFileSize(personalizedLogoData.compressedSize)}
-                          </p>
-                        </div>
-                        <div className="flyer-preview-actions">
-                          <button type="button" className="flyer-change-btn" onClick={() => personalizedLogoInputRef.current?.click()}>
-                            Change
-                          </button>
-                          <button type="button" className="flyer-remove-btn" onClick={handleRemovePersonalizedLogo}>
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {personalizedLogoData.error && <span className="error-text">{personalizedLogoData.error}</span>}
-                </div>
-              )}
-
-              {shouldShowSponsorSetup && (
-              <div className="sponsor-setup-panel" ref={sponsorPanelRef} id="event-sponsors-setup" tabIndex="-1">
-                <div className="sponsor-setup-header">
-                  <div>
-                    <h4>Event Sponsors</h4>
-                    <p>Monetize the post-check-in moment with sponsor flyers, booth CTAs, and click tracking.</p>
-                  </div>
-                  <button type="button" className="sponsor-add-btn" onClick={handleAddSponsor}>
-                    Add Sponsor
+          {/* 2. How guests check in */}
+          <Step n={2} title="How guests check in" sub="This locks once the first guest checks in" labelledBy="ig-ce-s2" locked={locked}>
+            {locked && <div className="ig-ce-locknote">{checkinsCount} {checkinsCount === 1 ? 'guest has' : 'guests have'} already checked in with this method, so it can't change now.</div>}
+            <div className="ig-ce-modes" role="radiogroup" aria-labelledby="ig-ce-s2">
+              {[
+                ['count-only', 'Fastest', 'Count only', 'Guests scan and they are counted. No form, no names.', 'Best for large crowds and services'],
+                ['collect-data', 'Most popular', 'Collect details', 'Guests scan and fill in a short form. You get names, first-timers and more.', 'Unlocks gifting, personalized flyers and exports']
+              ].map(([value, tag, name, body, note]) => {
+                const on = form.trackingMode === value;
+                return (
+                  <button key={value} type="button" role="radio" aria-checked={on} className={`ig-ce-mode${on ? ' is-on' : ''}`} onClick={() => setMode(value)} disabled={locked}>
+                    <span className="ig-ce-mode-top"><em>{tag}</em><span className="ig-ce-radio" aria-hidden="true" /></span>
+                    <strong>{name}</strong>
+                    <span>{body}</span>
+                    <small>{note}</small>
                   </button>
-                </div>
+                );
+              })}
+            </div>
+          </Step>
 
-                <div className="sponsor-mode-toggle" role="group" aria-label="Sponsor display mode">
-                  <button
-                    type="button"
-                    className={formData.sponsorDisplayMode === 'carousel' ? 'active' : ''}
-                    onClick={() => handleSponsorDisplayModeChange('carousel')}
-                  >
-                    Carousel & Tiers
-                  </button>
-                  <button
-                    type="button"
-                    className={formData.sponsorDisplayMode === 'distribution' ? 'active' : ''}
-                    onClick={() => handleSponsorDisplayModeChange('distribution')}
-                  >
-                    Percentage Distribution
-                  </button>
+          {collect && (
+            <>
+              {/* 3. What guests fill in */}
+              <Step n={3} title="What guests fill in" sub="Tap a field to add it to the check-in form. Added fields are required." labelledBy="ig-ce-s3" locked={locked}>
+                {locked && <div className="ig-ce-locknote">Guests have already filled in this form. To keep your data consistent, fields and questions can't change mid-{eventWord}.</div>}
+                <div className={`ig-cp-tiles${errors.dataFields ? ' has-error' : ''}`} id="ig-ce-fields" tabIndex={-1}>
+                  {FIELD_TILES.map(([key, label, sub]) => {
+                    const on = Boolean(form.dataFields[key]);
+                    const neededForFlyer = personal && key === 'fullName';
+                    return (
+                      <button key={key} type="button" className={`ig-cp-tile${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggleField(key)} disabled={locked}>
+                        <span className="ig-cp-tile-top"><strong>{label}</strong><em>{neededForFlyer ? 'Needed' : on ? 'Added' : 'Add'}</em></span>
+                        <span>{neededForFlyer ? 'Used on the personalized flyer.' : sub}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                <FieldError>{errors.dataFields}</FieldError>
 
-                {formData.sponsorDisplayMode === 'distribution' && (
-                  <div className="form-group sponsor-expected-field">
-                    <label htmlFor="sponsorExpectedAttendees">Expected Attendees</label>
-                    <input
-                      type="number"
-                      id="sponsorExpectedAttendees"
-                      name="sponsorExpectedAttendees"
-                      min="1"
-                      value={formData.sponsorExpectedAttendees}
-                      onChange={handleChange}
-                      className={`form-input ${errors.sponsorExpectedAttendees ? 'input-error' : ''}`}
-                      placeholder="500"
-                    />
-                    {errors.sponsorExpectedAttendees && <span className="error-text">{errors.sponsorExpectedAttendees}</span>}
+                {form.dataFields.textarea && (
+                  <div className="ig-st-field">
+                    <label htmlFor="ig-ce-textareaLabel">Your longer question</label>
+                    <input id="ig-ce-textareaLabel" value={form.textareaLabel} onChange={(e) => update('textareaLabel', e.target.value)} placeholder="e.g. What do you hope to get from today?" maxLength={120} disabled={locked} />
                   </div>
                 )}
 
-                {sponsors.length === 0 ? (
-                  <div className="sponsor-empty-state">
-                    <strong>No sponsors added yet.</strong>
-                    <span>Add sponsor flyers when this program has paid partners or booth campaigns.</span>
+                <div className="ig-pd-q-head ig-cp-q-head">
+                  <span className="ig-db-card-title"><strong>Your own questions</strong><span>{form.customFormSchema.length} of {MAX_CUSTOM_FIELDS} questions. Short answer, pick one or pick many.</span></span>
+                  {!locked && <button type="button" className="ig-st-pill ig-pd-pill" onClick={() => openQuestion()} disabled={form.customFormSchema.length >= MAX_CUSTOM_FIELDS}>{DashIcon.plus}Add Question</button>}
+                </div>
+                {form.customFormSchema.length > 0 && (
+                  <ul className="ig-pd-questions">
+                    {form.customFormSchema.map((field) => (
+                      <li key={field.id}>
+                        <span className="ig-pd-q-text">
+                          <strong>{field.label}</strong>
+                          <span>
+                            {questionTypeLabel(field.type)}
+                            {field.required ? ' · Required' : ' · Optional'}
+                            {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
+                          </span>
+                        </span>
+                        {!locked && <button type="button" className="ig-db-round-btn is-xs is-line" aria-label={`Edit ${field.label}`} onClick={() => openQuestion(field)}>{Icon.pencil}</button>}
+                        {!locked && <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label={`Delete ${field.label}`} onClick={() => removeQuestion(field.id)}>{DashIcon.trash}</button>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Step>
+
+              {/* 4. Check-in rules */}
+              <Step n={4} title="Check-in rules" sub="How strict the door is" labelledBy="ig-ce-s4">
+                <Switch
+                  id="ig-ce-onephone"
+                  checked={form.strictDeviceFingerprinting}
+                  onChange={(v) => { if (v) update('strictDeviceFingerprinting', true); else setPhoneRuleOpen(true); }}
+                  title="One check-in per phone"
+                  description="Stops the same phone from checking in twice. Turn it off if families share one phone."
+                />
+                <Switch
+                  id="ig-ce-proxy"
+                  checked={form.proxyCheckinEnabled}
+                  onChange={(v) => setProxyConfirm(v ? 'on' : 'off')}
+                  title="Let guests check in others"
+                  description="One guest can check in up to 3 people from their phone."
+                />
+              </Step>
+            </>
+          )}
+
+          {/* After check-in */}
+          <Step n={afterStep} title="After check-in" sub="What guests see right after they check in" labelledBy="ig-ce-s5">
+            <div className="ig-ce-after" role="tablist" aria-labelledby="ig-ce-s5">
+              {AFTER_OPTIONS.map(([key, name, body]) => {
+                const on = form.after === key;
+                const disabled = key === 'personalFlyer' && (!collect || personalBlocked);
+                return (
+                  <button key={key} type="button" role="tab" aria-selected={on} disabled={disabled} className={`ig-ce-opt${on ? ' is-on' : ''}`} onClick={() => setAfter(key)}>
+                    <span className="ig-ce-mode-top"><strong>{name}</strong><span className="ig-ce-radio" aria-hidden="true" /></span>
+                    <span>{disabled ? (personalBlocked && collect ? "Needs Full Name on the form, which can't change now." : 'Needs Collect details, since it uses names.') : body}</span>
+                    {afterBadge[key] && <em>{afterBadge[key]}</em>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {form.after === 'eventFlyer' && (
+              <>
+                <input ref={flyerInputRef} type="file" accept={IMAGE_TYPES.join(',')} className="ig-cp-file" tabIndex={-1} aria-hidden="true" onChange={(e) => { pickImage(e.target.files?.[0], flyer, setFlyer, 'flyer'); e.target.value = ''; }} />
+                {flyer.file || flyer.existing ? (
+                  <div className="ig-ce-flyer">
+                    <img src={flyer.previewUrl} alt="Chosen event flyer" />
+                    <span className="ig-ce-flyer-text">
+                      <strong>{flyer.name}</strong>
+                      <span>{flyer.processing ? 'Compressing…' : flyer.existing ? 'Saved flyer. Guests see this now.' : flyer.size < flyer.originalSize ? `${formatFileSize(flyer.originalSize)}, compressed to ${formatFileSize(flyer.size)}` : formatFileSize(flyer.size)}</span>
+                    </span>
+                    <button type="button" id="ig-ce-flyer" className="ig-st-pill ig-ce-pill-sm" onClick={() => flyerInputRef.current?.click()} disabled={flyer.processing}>Change</button>
+                    <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label="Remove flyer" onClick={() => removeImage(flyer, setFlyer)} disabled={flyer.processing}>{DashIcon.trash}</button>
                   </div>
                 ) : (
-                  <div className="sponsor-list">
-                    {sponsors.map((sponsor, index) => (
-                      <div
-                        className="sponsor-editor"
-                        key={sponsor.clientId}
-                        ref={(node) => {
-                          if (node) sponsorEditorRefs.current[sponsor.clientId] = node;
-                          else delete sponsorEditorRefs.current[sponsor.clientId];
-                        }}
-                      >
-                        <div className="sponsor-editor-top">
-                          <span className="sponsor-number">Sponsor {index + 1}</span>
-                          <button type="button" className="sponsor-remove-btn" onClick={() => handleRemoveSponsor(sponsor.clientId)}>
-                            Remove
-                          </button>
-                        </div>
-
-                        <div className="sponsor-editor-grid">
-                          <div className="form-group">
-                            <label htmlFor={`sponsor-name-${sponsor.clientId}`}>Sponsor Name</label>
-                            <input
-                              id={`sponsor-name-${sponsor.clientId}`}
-                              type="text"
-                              value={sponsor.sponsorName}
-                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'sponsorName', e.target.value)}
-                              className="form-input"
-                              placeholder="Acme Media"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor={`sponsor-cta-${sponsor.clientId}`}>CTA Text</label>
-                            <input
-                              id={`sponsor-cta-${sponsor.clientId}`}
-                              type="text"
-                              value={sponsor.ctaText}
-                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'ctaText', e.target.value)}
-                              className="form-input"
-                              placeholder="Visit Booth"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor={`sponsor-link-${sponsor.clientId}`}>CTA Link</label>
-                            <input
-                              id={`sponsor-link-${sponsor.clientId}`}
-                              type="url"
-                              value={sponsor.ctaLink}
-                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'ctaLink', e.target.value)}
-                              className="form-input"
-                              placeholder="https://example.com"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor={`sponsor-booth-${sponsor.clientId}`}>Booth / Location</label>
-                            <input
-                              id={`sponsor-booth-${sponsor.clientId}`}
-                              type="text"
-                              value={sponsor.boothText}
-                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'boothText', e.target.value)}
-                              className="form-input"
-                              placeholder="Booth A12"
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label htmlFor={`sponsor-campaign-${sponsor.clientId}`}>Campaign Tag</label>
-                            <input
-                              id={`sponsor-campaign-${sponsor.clientId}`}
-                              type="text"
-                              value={sponsor.campaignTag}
-                              onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'campaignTag', e.target.value)}
-                              className="form-input"
-                              placeholder="youth-conference-2026-sponsor-a"
-                            />
-                          </div>
-                          {formData.sponsorDisplayMode === 'carousel' ? (
-                            <div className="form-group">
-                              <label htmlFor={`sponsor-tier-${sponsor.clientId}`}>Tier</label>
-                              <input
-                                id={`sponsor-tier-${sponsor.clientId}`}
-                                type="text"
-                                value={sponsor.tier}
-                                onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'tier', e.target.value)}
-                                className="form-input"
-                                placeholder="Headline Sponsor"
-                              />
-                            </div>
-                          ) : (
-                            <div className="form-group">
-                              <label htmlFor={`sponsor-percentage-${sponsor.clientId}`}>Distribution %</label>
-                              <input
-                                id={`sponsor-percentage-${sponsor.clientId}`}
-                                type="number"
-                                min="1"
-                                max="100"
-                                value={sponsor.distributionPercentage}
-                                onChange={(e) => handleSponsorFieldChange(sponsor.clientId, 'distributionPercentage', e.target.value)}
-                                className="form-input"
-                                placeholder="20"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        <label className={`sponsor-flyer-upload ${sponsor.processing ? 'processing' : ''}`}>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              e.target.value = '';
-                              handleSponsorFlyerSelect(sponsor.clientId, file);
-                            }}
-                          />
-                          {sponsor.previewUrl ? (
-                            <>
-                              <span className="sponsor-flyer-thumb">
-                                <img src={sponsor.previewUrl} alt={`${sponsor.sponsorName || 'Sponsor'} flyer preview`} />
-                              </span>
-                              <span>
-                                <strong>{sponsor.originalName}</strong>
-                                <small>{formatFileSize(sponsor.originalSize)} compressed to {formatFileSize(sponsor.compressedSize)}</small>
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="flyer-upload-icon">
-                                {sponsor.processing ? <span className="flyer-mini-spinner"></span> : Icons.calendar}
-                              </span>
-                              <span>
-                                <strong>{sponsor.processing ? 'Compressing sponsor flyer...' : 'Upload sponsor flyer'}</strong>
-                                <small>JPEG, PNG, or WebP. The sponsor logo should be part of the flyer.</small>
-                              </span>
-                            </>
-                          )}
-                        </label>
-                        {sponsor.error && <span className="error-text">{sponsor.error}</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {formData.sponsorDisplayMode === 'distribution' && sponsors.length > 0 && (
-                  <div className={`sponsor-percentage-total ${sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0) === 100 ? 'complete' : ''}`}>
-                    Total distribution: {sponsors.reduce((sum, sponsor) => sum + Number(sponsor.distributionPercentage || 0), 0)}%
-                  </div>
-                )}
-
-                {errors.sponsors && <span className="error-text">{errors.sponsors}</span>}
-              </div>
-              )}
-            </div>
-
-            {/* Tracking Mode Card */}
-            <div className="form-card" id="tracking-mode-card">
-              <h3 className="card-title">Tracking Mode</h3>
-              <p className="card-description">Check how you want to track attendance</p>
-
-              <div className="tracking-options">
-                {/* Count Only */}
-                <div
-                  className={`tracking-option ${formData.trackingMode === 'count-only' ? 'selected' : ''} ${formData.flyerType === 'personalized' ? 'disabled' : ''}`}
-                  onClick={() => handleTrackingModeChange('count-only')}
-                  id="opt-count-only"
-                >
-                  <div className="option-top">
-                    <h4 className="option-title">Count Only</h4>
-                    <div className="radio-circle">
-                      {formData.trackingMode === 'count-only' && <div className="radio-dot"></div>}
-                    </div>
-                  </div>
-                  <p className="option-detail">
-                    Track attendance numbers anonymously Users scan the QR code and are immediately counted. No data is collected
-                  </p>
-                </div>
-
-                {/* Collect Data */}
-                <div
-                  className={`tracking-option ${formData.trackingMode === 'collect-data' ? 'selected' : ''}`}
-                  onClick={() => handleTrackingModeChange('collect-data')}
-                  id="opt-collect-data"
-                >
-                  <div className="option-top">
-                    <h4 className="option-title">Collect Data</h4>
-                    <div className="radio-circle">
-                      {formData.trackingMode === 'collect-data' && <div className="radio-dot"></div>}
-                    </div>
-                  </div>
-                  <p className="option-detail">
-                    Track attendance and collect attendee information. Users fill a form after scanning. You can enable gifting to incentivize participation.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Data Collection Settings (conditional) */}
-            {formData.trackingMode === 'collect-data' && (
-              <div className="form-card" id="data-fields-card">
-                <h3 className="card-title">Data Collection Settings</h3>
-                <p className="card-description">Select the information you want to collect from attendees</p>
-
-                <div className="data-fields-grid">
-                  {Object.keys(formData.dataFields).map(field => (
-                    <div
-                      key={field}
-                      className={`checkbox-card ${formData.dataFields[field] ? 'checked' : ''} ${formData.flyerType === 'personalized' && field === 'fullName' ? 'locked' : ''}`}
-                      onClick={() => handleDataFieldToggle(field)}
-                    >
-                      <span className="checkbox-label">
-                        {dataFieldLabels[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </span>
-                      <span className="checkbox-icon">
-                        {formData.dataFields[field] ? (
-                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <rect x="1" y="1" width="18" height="18" rx="4" fill="#E8590C" stroke="#E8590C" strokeWidth="1.5"/>
-                            <path d="M6 10l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ) : (
-                          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <rect x="1" y="1" width="18" height="18" rx="4" stroke="var(--border-color)" strokeWidth="1.5" fill="none"/>
-                          </svg>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {formData.dataFields.textarea && (
-                  <label className="data-field-config-row" htmlFor="textareaLabel">
-                    <span>Textarea question label</span>
-                    <input
-                      id="textareaLabel"
-                      type="text"
-                      value={formData.dataFieldConfig.textareaLabel}
-                      onChange={(event) => handleDataFieldConfigChange('textareaLabel', event.target.value)}
-                      placeholder="What do you expect from this event?"
-                      maxLength={120}
-                    />
-                    <small>This is what attendees will see above the long-answer field.</small>
-                  </label>
-                )}
-                <div className="custom-field-list" aria-label="Customized fields">
-                  <div className="section-subhead">
-                    <h4>Customized Fields</h4>
-                    <p>Add extra questions for this event without changing the preset Ingather fields.</p>
-                  </div>
-                  {formData.customFormSchema.map(field => (
-                    <div className="custom-field-card" key={field.id}>
-                      <div>
-                        <strong>{field.label}</strong>
-                        <span>
-                          {field.type === 'text' ? 'Short Text' : field.type === 'radio' ? 'Radio Buttons' : 'Checkboxes'}
-                          {field.required ? ' · Required' : ' · Optional'}
-                          {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
-                        </span>
-                      </div>
-                      <div className="custom-field-card-actions">
-                        <button type="button" onClick={() => openCustomFieldModal(field)}>Edit</button>
-                        <button type="button" onClick={() => handleRemoveCustomField(field.id)}>Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                  <button type="button" className="custom-field-add-btn" onClick={() => openCustomFieldModal()}>
-                    Add Custom Field
+                  <button type="button" id="ig-ce-flyer" className={`ig-cp-drop${flyer.processing ? ' is-busy' : ''}`} onClick={() => flyerInputRef.current?.click()} disabled={flyer.processing}>
+                    {flyer.processing
+                      ? <><span className="ig-st-spinner is-inline ig-cp-dark-spin" aria-hidden="true" /><strong>Compressing your flyer…</strong></>
+                      : <><span className="ig-cp-drop-icon">{Icon.image}</span><strong>Add your event flyer</strong><span>Optional. JPEG, PNG or WebP. We compress it before upload.</span></>}
                   </button>
-                </div>
-                {errors.dataFields && <span className="error-text">{errors.dataFields}</span>}
-              </div>
+                )}
+                <FieldError>{flyer.error || errors.flyer}</FieldError>
+                {personal === false && sponsors.length > 0 && (flyer.file || flyer.existing) && (
+                  <span className="ig-pd-hint ig-cp-hint">Guests see this flyer along with your sponsor cards.</span>
+                )}
+              </>
             )}
 
-            {formData.trackingMode === 'collect-data' && (
-              <div className="form-card fingerprint-control-card">
-                <div className="fingerprint-control-copy">
-                  <h3 className="card-title">Device Fingerprint Control</h3>
-                  <p className="card-description">Control whether one device can check in more than once.</p>
+            {form.after === 'personalFlyer' && collect && (
+              <>
+                <div className="ig-ce-note">{Icon.alert}<span>Each card uses the guest's first name, so Full Name is now required on your form.</span></div>
+                <div className={`ig-st-field${errors.messages ? ' has-error' : ''}`}>
+                  <label htmlFor="ig-ce-messages">Messages</label>
+                  <textarea id="ig-ce-messages" className="ig-pd-textarea ig-cp-textarea" rows={4} value={form.messages} onChange={(e) => update('messages', e.target.value)} placeholder="[FirstName], your presence makes this room brighter." maxLength={2000} />
+                  {errors.messages
+                    ? <FieldError>{errors.messages}</FieldError>
+                    : <span className="ig-pd-hint ig-cp-hint">One message per line. We pick one at random for each guest. Use [FirstName] where their name goes.</span>}
                 </div>
-                <button
-                  type="button"
-                  className={`fingerprint-toggle ${formData.strictDeviceFingerprinting ? 'checked' : ''}`}
-                  onClick={handleStrictFingerprintingToggle}
-                  aria-pressed={formData.strictDeviceFingerprinting}
-                >
-                  <span className="fingerprint-switch" aria-hidden="true"></span>
-                  <span>Strict Device Fingerprinting (1 Scan Per Device)</span>
-                </button>
-              </div>
+                <div className="ig-ce-colors">
+                  {[['brandColor', 'Brand'], ['textColor', 'Text'], ['accentColor', 'Accent']].map(([key, label]) => (
+                    <label key={key} className="ig-ce-color">
+                      <input type="color" value={form[key]} onChange={(e) => update(key, e.target.value.toUpperCase())} aria-label={`${label} colour`} />
+                      <span><strong>{label}</strong><span>{form[key]}</span></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="ig-ce-uploads">
+                  <SmallUpload id="ig-ce-bg" title="Background image" hint="Optional. Without one, we use your colours." image={background} onPick={(file) => pickImage(file, background, setBackground)} onRemove={() => removeImage(background, setBackground)} />
+                  <SmallUpload id="ig-ce-logo" title="Your logo" hint="Optional. Shown on the card guests download." image={logo} onPick={(file) => pickImage(file, logo, setLogo)} onRemove={() => removeImage(logo, setLogo)} />
+                </div>
+              </>
             )}
 
-            {formData.trackingMode === 'collect-data' && (
-              <div className="form-card proxy-checkin-card">
-                <div className="proxy-checkin-copy">
-                  <h3 className="card-title">Proxy Check-in</h3>
-                  <p className="card-description">Let one attendee check in up to 3 guests from the same device.</p>
+            {form.after === 'sponsors' && (
+              <>
+                <div className="ig-ce-seg" role="group" aria-label="How sponsors are shown">
+                  {[['carousel', 'Carousel and tiers'], ['distribution', 'Percentage split']].map(([value, label]) => (
+                    <button key={value} type="button" aria-pressed={form.sponsorMode === value} className={form.sponsorMode === value ? 'is-on' : ''} onClick={() => { update('sponsorMode', value); clearError('sponsors', 'sponsorExpectedAttendees'); }}>{label}</button>
+                  ))}
                 </div>
-                <label className={`proxy-checkin-toggle ${formData.proxyCheckinEnabled ? 'checked' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={formData.proxyCheckinEnabled}
-                    onChange={(event) => setFormData(prev => ({
-                      ...prev,
-                      proxyCheckinEnabled: event.target.checked
-                    }))}
-                  />
-                  <span className="proxy-checkin-switch" aria-hidden="true"></span>
-                  <span>{formData.proxyCheckinEnabled ? 'Enabled' : 'Disabled'}</span>
-                </label>
-              </div>
+                <span className="ig-pd-hint ig-cp-hint">
+                  {split ? 'Each guest sees one sponsor. You choose what share of guests each sponsor gets.' : 'Guests swipe through every sponsor. Headline sponsors come first.'}
+                </span>
+
+                {split && (
+                  <div className={`ig-st-field ig-ce-expected${errors.sponsorExpectedAttendees ? ' has-error' : ''}`}>
+                    <label htmlFor="ig-ce-expected">Guests you expect</label>
+                    <input id="ig-ce-expected" type="number" inputMode="numeric" min="1" value={form.sponsorExpectedAttendees} onChange={(e) => update('sponsorExpectedAttendees', e.target.value)} placeholder="e.g. 300" />
+                    {errors.sponsorExpectedAttendees
+                      ? <FieldError>{errors.sponsorExpectedAttendees}</FieldError>
+                      : <span className="ig-pd-hint ig-cp-hint">Used to share sponsor cards fairly across your guests.</span>}
+                  </div>
+                )}
+
+                <div id="ig-ce-sponsors" tabIndex={-1} className="ig-ce-sponsors">
+                  {sponsors.map((sponsor) => {
+                    const err = errors[`sponsor-${sponsor.clientId}`];
+                    let host = '';
+                    try { host = new URL(sponsor.ctaLink).hostname.replace(/^www\./, ''); } catch (e) { host = ''; }
+                    return (
+                      <div key={sponsor.clientId} className={`ig-ce-sponsor${err ? ' has-error' : ''}`} id={`ig-ce-sponsor-${sponsor.clientId}`} tabIndex={-1}>
+                        {sponsor.image.previewUrl
+                          ? <img src={sponsor.image.previewUrl} alt="" className="ig-ce-sponsor-thumb" />
+                          : <span className="ig-ce-sponsor-thumb" aria-hidden="true">{(sponsor.sponsorName || 'S').charAt(0).toUpperCase()}</span>}
+                        <span className="ig-ce-sponsor-text">
+                          <strong>{sponsor.sponsorName}</strong>
+                          <span>{[sponsor.ctaText, sponsor.boothText || host].filter(Boolean).join(' · ')}</span>
+                          {err && <span className="ig-ce-upload-err">{err}</span>}
+                        </span>
+                        {split
+                          ? <em>{sponsor.distributionPercentage ? `${sponsor.distributionPercentage}%` : 'No share'}</em>
+                          : sponsor.tier && <em>{sponsor.tier}</em>}
+                        <button type="button" className="ig-db-round-btn is-xs is-line" aria-label={`Edit ${sponsor.sponsorName}`} onClick={() => openSponsor(sponsor)}>{Icon.pencil}</button>
+                        <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label={`Remove ${sponsor.sponsorName}`} onClick={() => removeSponsor(sponsor.clientId)}>{DashIcon.trash}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {split && sponsors.length > 0 && (
+                  <span className={`ig-ce-total${splitTotal === 100 ? ' is-ok' : ''}`}>Shares add up to {splitTotal}%{splitTotal === 100 ? '.' : '. They need to reach exactly 100%.'}</span>
+                )}
+                <FieldError>{errors.sponsors}</FieldError>
+                <button type="button" className="ig-st-pill ig-pd-pill ig-ce-add" onClick={() => openSponsor()} disabled={sponsors.length >= MAX_SPONSORS}>{DashIcon.plus}Add sponsor</button>
+                {sponsors.length === 0 && <span className="ig-pd-hint ig-cp-hint">Optional. Add up to {MAX_SPONSORS} sponsors.</span>}
+              </>
             )}
+          </Step>
 
-            {/* Gifting Configuration (conditional) */}
-            {formData.trackingMode === 'collect-data' && (
-              <div className="form-card" id="gifting-card">
-                <h3 className="card-title">Gifting System</h3>
-                <p className="card-description">Enable a lucky dip system to incentivize data collection</p>
-
-                <div
-                  className={`toggle-option ${formData.enableGifting ? 'checked' : ''}`}
-                  onClick={handleGiftingToggle}
-                >
-                  <span className="toggle-label">Enable Gifting System</span>
-                  <span className="checkbox-icon">
-                    {formData.enableGifting ? (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="1" y="1" width="18" height="18" rx="4" fill="#E8590C" stroke="#E8590C" strokeWidth="1.5"/>
-                        <path d="M6 10l3 3 5-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="1" y="1" width="18" height="18" rx="4" stroke="var(--border-color)" strokeWidth="1.5" fill="none"/>
-                      </svg>
-                    )}
+          {/* Gifting */}
+          {collect && (
+            <Step n={6} title="Gifting" sub="A lucky draw to thank guests for filling in the form" labelledBy="ig-ce-s6">
+              <Switch
+                id="ig-ce-gifting"
+                checked={form.enableGifting}
+                onChange={(v) => { update('enableGifting', v); clearError('numberOfWinners'); }}
+                title="Pick gift winners"
+                description="Winners are drawn at random from guests who submit the form."
+              />
+              {form.enableGifting && (
+                <div className={`ig-ce-winners${errors.numberOfWinners ? ' has-error' : ''}`}>
+                  <span>
+                    <strong>Number of winners</strong>
+                    <span>
+                      {isEdit && (editData?.winnersSelected || 0) > 0
+                        ? `${editData.winnersSelected} already drawn. You can add more, but not fewer.`
+                        : 'Winners see a gift screen. You mark gifts handed out on the dashboard.'}
+                    </span>
+                  </span>
+                  <span className="ig-ce-stepper">
+                    <button type="button" aria-label="Fewer winners" onClick={() => update('numberOfWinners', Math.max(winnersFloor, (Number(form.numberOfWinners) || 1) - 1))} disabled={Number(form.numberOfWinners) <= winnersFloor}>−</button>
+                    <input
+                      id="ig-ce-winners"
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      max={MAX_WINNERS}
+                      value={form.numberOfWinners}
+                      onChange={(e) => update('numberOfWinners', e.target.value === '' ? '' : Math.min(MAX_WINNERS, Math.max(0, Math.floor(Number(e.target.value) || 0))))}
+                      aria-label="Number of winners"
+                    />
+                    <button type="button" aria-label="More winners" onClick={() => update('numberOfWinners', Math.min(MAX_WINNERS, (Number(form.numberOfWinners) || 0) + 1))}>+</button>
                   </span>
                 </div>
+              )}
+              <FieldError>{errors.numberOfWinners}</FieldError>
+            </Step>
+          )}
 
-                {formData.enableGifting && (
-                  <div className="form-group gifting-winners-group">
-                    <label htmlFor="numberOfWinners">Number of Winners</label>
-                    <input
-                      type="number"
-                      id="numberOfWinners"
-                      name="numberOfWinners"
-                      value={formData.numberOfWinners}
-                      onChange={handleChange}
-                      placeholder="10"
-                      min="1"
-                      className="form-input"
-                    />
-                    {errors.numberOfWinners && <span className="error-text">{errors.numberOfWinners}</span>}
-                  </div>
-                )}
+          {serverError && <div className="ig-cp-alert" role="alert">{Icon.alert}<span>{serverError}</span></div>}
+
+          {isEdit && dirty && <span className="ig-ce-unsaved" role="status"><span aria-hidden="true" />You have unsaved changes</span>}
+          <div className="ig-cp-actions">
+            <button type="button" className="ig-db-btn-ghost" onClick={cancel} disabled={submitting}>Cancel</button>
+            <button type="submit" className="ig-db-btn-primary" disabled={submitting || (isEdit && !dirty)}>
+              {submitting
+                ? <><span className="ig-st-spinner is-inline" aria-hidden="true" />{isEdit ? 'Saving…' : 'Creating…'}</>
+                : (isEdit ? 'Save changes' : `Create ${eventWord}`)}
+            </button>
+          </div>
+        </form>
+
+        <aside className="ig-cp-aside ig-ce-aside" aria-label="Live preview">
+          <span className="ig-cp-aside-head"><strong>Live preview</strong><span>What guests see</span></span>
+          {previewTabs}
+          <div className="ig-cp-phone">
+            <div className="ig-cp-phone-screen">
+              <div className="ig-ce-phone-scroll" key={previewTab}>
+                <IgCheckinPreview tab={previewTab} {...previewProps} />
               </div>
-            )}
-
-            {/* Form Actions */}
-            <div className="form-actions">
-              <button
-                type="button"
-                className="btn-cancel"
-                onClick={() => window.location.href = '/dashboard'}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn-create"
-                disabled={isSubmitting || flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing || sponsors.some(sponsor => sponsor.processing)}
-              >
-                {isSubmitting ? 'Creating...' : (flyerProcessing || personalizedBackgroundProcessing || personalizedLogoProcessing || sponsors.some(sponsor => sponsor.processing)) ? 'Preparing Flyer...' : template.event.create}
-              </button>
             </div>
-          </form>
+          </div>
+          <span className="ig-cp-aside-note">Scroll inside the phone to see the whole screen.</span>
+        </aside>
         </div>
-      </main>
-      {showFingerprintWarning && (
-        <FingerprintWarningModal
-          onCancel={() => setShowFingerprintWarning(false)}
-          onConfirm={confirmDisableStrictFingerprinting}
+
+        <button type="button" className="ig-ce-pvbtn" onClick={() => setPreviewOpen(true)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+          Preview
+        </button>
+      </div>
+
+      {previewOpen && (
+        <div className="ig-ce-pvsheet" role="dialog" aria-modal="true" aria-label="Preview what guests see">
+          <div className="ig-ce-pvsheet-head">
+            <span><strong>Preview</strong><span>What guests see on their phone</span></span>
+            <button type="button" className="ig-db-btn-ink" onClick={() => setPreviewOpen(false)}>Done</button>
+          </div>
+          {previewTabs}
+          <div className="ig-ce-pvsheet-body" key={previewTab}>
+            <IgCheckinPreview tab={previewTab} {...previewProps} />
+          </div>
+        </div>
+      )}
+
+      {questionModal && (
+        <IgQuestionModal
+          field={questionModal.id ? questionModal : null}
+          onClose={() => setQuestionModal(null)}
+          onSave={saveQuestion}
+          subtitle="Guests answer this when they check in."
+          note={`Added when you create the ${eventWord}.`}
         />
       )}
-      {customFieldModal && (
-        <CustomFieldBuilderModal
-          field={customFieldModal.id ? customFieldModal : null}
-          onClose={() => setCustomFieldModal(null)}
-          onSave={handleSaveCustomField}
-        />
+
+      {sponsorModal && (
+        <SponsorModal sponsor={sponsorModal.clientId ? sponsorModal : null} split={split} onClose={() => setSponsorModal(null)} onSave={saveSponsor} />
       )}
-    </div>
+
+      {phoneRuleOpen && (
+        <DashDialog
+          icon={Icon.phone}
+          tone="primary"
+          title="Turn off one check-in per phone?"
+          cancelLabel="Cancel"
+          confirmLabel="Turn it off"
+          onCancel={() => setPhoneRuleOpen(false)}
+          onConfirm={() => { update('strictDeviceFingerprinting', false); setPhoneRuleOpen(false); }}
+        >
+          Allowing multiple scans from the same device can help attendees with poor network connections, but it risks skewing your total attendance metrics with duplicate entries.
+        </DashDialog>
+      )}
+
+      {proxyConfirm && (
+        <DashDialog
+          icon={Icon.group}
+          tone="primary"
+          title={proxyConfirm === 'on' ? 'Let guests check in others?' : 'Stop guests checking in others?'}
+          cancelLabel="Cancel"
+          confirmLabel={proxyConfirm === 'on' ? 'Turn it on' : 'Turn it off'}
+          onCancel={() => setProxyConfirm(null)}
+          onConfirm={() => { update('proxyCheckinEnabled', proxyConfirm === 'on'); setProxyConfirm(null); }}
+        >
+          {proxyConfirm === 'on'
+            ? 'This allows one guest to help check in the people who came with them, up to 3 people from their phone. It helps when guests arrive in a group, or someone in the group has no phone or data.'
+            : 'Each guest will need to check in on their own phone. Someone arriving with family or friends will no longer be able to check them in.'}
+        </DashDialog>
+      )}
+
+      {leaveOpen && (
+        <DashDialog
+          icon={DashIcon.trash}
+          tone="danger"
+          title={isEdit ? 'Discard your changes?' : `Discard this ${eventWord}?`}
+          cancelLabel="Keep editing"
+          confirmLabel="Discard"
+          onCancel={() => setLeaveOpen(false)}
+          onConfirm={discard}
+        >
+          {isEdit ? `Your ${eventWord} stays exactly as it was before you started editing.` : "Nothing has been created yet. What you've filled in will be lost."}
+        </DashDialog>
+      )}
+    </IgDashShell>
   );
 }
 

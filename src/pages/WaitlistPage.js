@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { joinWaitlist } from '../api/waitlistService';
-import '../styles/Waitlist.css';
+import '../styles/IgWaitlist.css';
 
 const eventSizeOptions = [
   { value: '', label: 'Select event size' },
-  { value: '1-50', label: '1 - 50 attendees' },
-  { value: '50-200', label: '50 - 200 attendees' },
-  { value: '200-500', label: '200 - 500 attendees' },
+  { value: '1-50', label: '1 to 50 attendees' },
+  { value: '50-200', label: '50 to 200 attendees' },
+  { value: '200-500', label: '200 to 500 attendees' },
   { value: '500+', label: '500+ attendees' }
 ];
 
@@ -21,8 +21,18 @@ const initialForm = {
   website: ''
 };
 
+const Check = ({ size = 16, color = '#E8590C', width = 2.4 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
+
+const PHOTO_ALT = 'Guests in traditional attire seated under a decorated canopy at an outdoor gathering';
+
 function WaitlistPage() {
-  const [formData, setFormData] = useState(initialForm);
+  const location = useLocation();
+  const prefillEmail = typeof location.state?.email === 'string' ? location.state.email.slice(0, 254) : '';
+  const [formData, setFormData] = useState({ ...initialForm, email: prefillEmail });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,6 +94,8 @@ function WaitlistPage() {
       });
       setSubmittedEmail(formData.email.trim().toLowerCase());
       setFormData(initialForm);
+      // Bring the "You're on the list" card into view (the form was taller)
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       setSubmitError(
         error.response?.data?.error ||
@@ -94,155 +106,163 @@ function WaitlistPage() {
     }
   };
 
+  // Open the browser's date and time picker on click, so the calendar shows
+  // wherever the field is tapped (older browsers just ignore this).
+  const openPicker = (event) => {
+    const input = event.currentTarget;
+    if (typeof input.showPicker !== 'function') return;
+    // Clicks on the browser's own calendar icon (right edge of the box) are
+    // left to the browser, which already opens the picker from there.
+    // Calling showPicker as well made some browsers open and close it at once.
+    const rect = input.getBoundingClientRect();
+    if (event.clientX && event.clientX > rect.right - 44) return;
+    try {
+      input.showPicker();
+    } catch (error) {
+      // Picker already open or not allowed here; typing the date still works.
+    }
+  };
+
+  const fieldClass = (name) => (errors[name] ? 'has-error' : '');
+
   return (
-    <div className="waitlist-page">
-      <div className="waitlist-noise" aria-hidden="true"></div>
-      <header className="waitlist-header">
-        <Link to="/" className="waitlist-brand" aria-label="Ingather home">
-          <img src="/ingather-logo.png" alt="Ingather" />
-        </Link>
-        <span>Invite-only access</span>
-      </header>
-
-      <main className="waitlist-shell">
-        <section className="waitlist-copy" aria-labelledby="waitlist-title">
-          <p className="waitlist-kicker">Built for serious event teams</p>
-          <h1 id="waitlist-title">Kill the check-in queue before it starts.</h1>
-          <p>
-            Ingather is rolling out access in phases for organizers who need
-            QR check-ins, attendee intelligence, sponsor ROI, and polished
-            post-event reporting in one calm workspace.
-          </p>
-
-          <div className="waitlist-proof-grid" aria-label="Ingather waitlist highlights">
-            <div>
-              <strong>Live</strong>
-              <span>attendance intelligence</span>
-            </div>
-            <div>
-              <strong>Fast</strong>
-              <span>QR and RSVP workflows</span>
-            </div>
-            <div>
-              <strong>ROI</strong>
-              <span>sponsor engagement data</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="waitlist-card" aria-label="Join the Ingather waitlist">
-          {submittedEmail ? (
-            <div className="waitlist-success" role="status" aria-live="polite">
-              <span className="waitlist-success-icon" aria-hidden="true">✓</span>
-              <p className="waitlist-kicker">Request received</p>
-              <h2>You're on the list.</h2>
-              <p>
-                We're rolling out access in phases. Keep an eye on
-                <strong> {submittedEmail}</strong>.
-              </p>
-              <Link to="/" className="waitlist-secondary-link">Back to home</Link>
-            </div>
-          ) : (
-            <>
-              <div className="waitlist-card-header">
-                <p className="waitlist-kicker">Request access</p>
-                <h2>Join the Ingather waitlist</h2>
-                <span>Tell us where Ingather can help your event team move faster.</span>
+    <div className="ig-wl">
+      <div className="ig-wl-frame">
+        <div className="ig-wl-col">
+          <div className="ig-wl-navwrap">
+            <nav className="ig-wl-nav" aria-label="Main">
+              <Link to="/" className="ig-wl-brand" aria-label="Ingather home">
+                <img src="/ingather-logo.png" alt="Ingather" />
+              </Link>
+              <div className="ig-wl-navlinks">
+                <Link to="/">Home</Link>
+                <Link to="/#features">Features</Link>
+                <Link to="/discover">Discover</Link>
+                <Link to="/#faq">FAQs</Link>
               </div>
+              <Link to="/login" className="ig-wl-login">Log in</Link>
+            </nav>
+          </div>
 
-              <form className="waitlist-form" onSubmit={handleSubmit} noValidate>
-                <div className="waitlist-field-grid">
-                  <label>
-                    <span>First name</span>
-                    <input
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      placeholder="Frank"
-                      autoComplete="given-name"
-                    />
-                    {errors.firstName && <small>{errors.firstName}</small>}
-                  </label>
+          <main className="ig-wl-main">
+            <div className="ig-wl-photo-top">
+              <img src="/landing/gathering.jpg" alt={PHOTO_ALT} />
+              <div className="ig-wl-shade" aria-hidden="true" />
+              <span>Now onboarding organizers in phases</span>
+            </div>
 
-                  <label>
-                    <span>Last name</span>
-                    <input
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      placeholder="Leo"
-                      autoComplete="family-name"
-                    />
-                    {errors.lastName && <small>{errors.lastName}</small>}
-                  </label>
+            <div className="ig-wl-left">
+              <span className="ig-wl-pill"><span>Invite-only</span>Access opens in phases</span>
+              <h1>Join the waitlist for your next <span className="ig-wl-mark">event</span></h1>
+              <p className="ig-wl-lead">Tell us a little about your event. We'll email your invite when your spot opens.</p>
+
+              {submittedEmail ? (
+                <div className="ig-wl-card ig-wl-success" role="status" aria-live="polite">
+                  <span className="ig-wl-success-icon"><Check size={26} /></span>
+                  <span className="ig-wl-kicker">Request received</span>
+                  <h2>You're on the list.</h2>
+                  <p>We're opening access in phases. Keep an eye on <strong>{submittedEmail}</strong> for your invite.</p>
+                  <div className="ig-wl-next">
+                    <span className="ig-wl-next-title">What happens next</span>
+                    <span><span className="ig-wl-num">1</span>We review your request and your event date.</span>
+                    <span><span className="ig-wl-num">2</span>You get an invite link by email.</span>
+                    <span><span className="ig-wl-num">3</span>Create your workspace and set up your first event.</span>
+                  </div>
+                  <div className="ig-wl-success-ctas">
+                    <Link to="/" className="ig-wl-btn-dark">Back to home</Link>
+                    <Link to="/discover" className="ig-wl-btn-light">Explore Events</Link>
+                  </div>
                 </div>
+              ) : (
+                <form className="ig-wl-card ig-wl-form" onSubmit={handleSubmit} noValidate>
+                  <div className="ig-wl-row">
+                    <label className={fieldClass('firstName')}>
+                      <span>First name</span>
+                      <input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Frank" autoComplete="given-name" />
+                      {errors.firstName && <small>{errors.firstName}</small>}
+                    </label>
+                    <label className={fieldClass('lastName')}>
+                      <span>Last name</span>
+                      <input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Leo" autoComplete="family-name" />
+                      {errors.lastName && <small>{errors.lastName}</small>}
+                    </label>
+                  </div>
 
-                <label>
-                  <span>Email address</span>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="you@organization.com"
-                    autoComplete="email"
-                  />
-                  {errors.email && <small>{errors.email}</small>}
-                </label>
+                  <label className={fieldClass('email')}>
+                    <span>Work email</span>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@organization.com" autoComplete="email" />
+                    {errors.email && <small>{errors.email}</small>}
+                  </label>
 
-                <label>
-                  <span>Organization name</span>
-                  <input
-                    name="organizationName"
-                    value={formData.organizationName}
-                    onChange={handleChange}
-                    placeholder="Your church, brand, school, or event team"
-                    autoComplete="organization"
-                  />
-                </label>
+                  <label>
+                    <span>Organization <em>(optional)</em></span>
+                    <input name="organizationName" value={formData.organizationName} onChange={handleChange} placeholder="Your church, brand, school or event team" autoComplete="organization" />
+                  </label>
 
-                <label>
-                  <span>Typical event size</span>
-                  <select name="eventSize" value={formData.eventSize} onChange={handleChange}>
-                    {eventSizeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                  {errors.eventSize && <small>{errors.eventSize}</small>}
-                </label>
+                  <div className="ig-wl-row">
+                    <label className={fieldClass('eventSize')}>
+                      <span>Event size</span>
+                      <select name="eventSize" value={formData.eventSize} onChange={handleChange}>
+                        {eventSizeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      {errors.eventSize && <small>{errors.eventSize}</small>}
+                    </label>
+                    <div className={`ig-wl-field ${fieldClass('upcomingEventAt')}`}>
+                      <label htmlFor="waitlist-event-at">Next event date and time</label>
+                      <input
+                        id="waitlist-event-at"
+                        type="datetime-local"
+                        name="upcomingEventAt"
+                        value={formData.upcomingEventAt}
+                        onChange={handleChange}
+                        onClick={openPicker}
+                      />
+                      {errors.upcomingEventAt && <small>{errors.upcomingEventAt}</small>}
+                    </div>
+                  </div>
 
-                <label>
-                  <span>Upcoming event date and time</span>
-                  <input
-                    type="datetime-local"
-                    name="upcomingEventAt"
-                    value={formData.upcomingEventAt}
-                    onChange={handleChange}
-                  />
-                  {errors.upcomingEventAt && <small>{errors.upcomingEventAt}</small>}
-                </label>
+                  <label className="ig-wl-honeypot" aria-hidden="true">
+                    <span>Website</span>
+                    <input name="website" value={formData.website} onChange={handleChange} tabIndex="-1" autoComplete="off" />
+                  </label>
 
-                <label className="waitlist-honeypot" aria-hidden="true">
-                  <span>Website</span>
-                  <input
-                    name="website"
-                    value={formData.website}
-                    onChange={handleChange}
-                    tabIndex="-1"
-                    autoComplete="off"
-                  />
-                </label>
+                  {submitError && <div className="ig-wl-error" role="alert">{submitError}</div>}
 
-                {submitError && <div className="waitlist-error">{submitError}</div>}
+                  <button type="submit" className="ig-wl-submit" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <span className="ig-wl-spinner" aria-hidden="true" />
+                        Joining the waitlist...
+                      </>
+                    ) : 'Join the Waitlist'}
+                  </button>
+                  <p className="ig-wl-already">Already have an account? <Link to="/login">Log in</Link></p>
+                </form>
+              )}
+            </div>
 
-                <button type="submit" className="waitlist-submit" disabled={loading}>
-                  {loading ? 'Joining waitlist...' : 'Join the waitlist'}
-                </button>
-              </form>
-            </>
-          )}
-        </section>
-      </main>
+            <div className="ig-wl-photo">
+              <img src="/landing/gathering.jpg" alt={PHOTO_ALT} />
+              <div className="ig-wl-shade" aria-hidden="true" />
+              <div className="ig-wl-photo-fade" aria-hidden="true" />
+              <span className="ig-wl-photo-tag">Now onboarding organizers in phases</span>
+              <div className="ig-wl-photo-card">
+                <span className="ig-wl-photo-card-title">What you get with Ingather</span>
+                <span><Check />Live attendance while your event is running</span>
+                <span><Check />Fast QR check-in and RSVP passes</span>
+                <span><Check />Sponsor and attendance reports after the event</span>
+              </div>
+            </div>
+          </main>
+
+          <footer className="ig-wl-foot">
+            <span>&copy; 2026 Ingather. All rights reserved.</span>
+            <span>Made in Nigeria</span>
+          </footer>
+        </div>
+      </div>
     </div>
   );
 }

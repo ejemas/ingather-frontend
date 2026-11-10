@@ -1,0 +1,218 @@
+/* Ingather log in page (redesign, Nov 2026). Builds on IgWaitlist.css; scoped to .ig-login. */
+
+.ig-login .ig-login-navcta { border: 0; cursor: pointer; }
+.ig-login .ig-login-left { justify-content: center; }
+.ig-login .ig-wl-photo { min-height: 640px; }
+.ig-login .ig-wl-photo > img { object-position: 60% center; }
+
+/* Notice (verified, password reset, logged out) */
+.ig-login-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #EAF6EF;
+  border: 1px solid #BFE3CC;
+  border-radius: 16px;
+  animation: igWlRise 0.24s ease both;
+}
+.ig-login-notice-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #1F8A4C;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ig-login-notice > span:last-child { display: flex; flex-direction: column; gap: 1px; }
+.ig-login-notice strong { font-size: 14px; color: #14532D; }
+.ig-login-notice > span:last-child > span { font-size: 13px; color: #2F6B45; }
+
+/* Password field with show/hide */
+.ig-login-pw {
+  display: flex;
+  align-items: center;
+  border: 1px solid #E2E2E0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  padding-right: 4px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ig-login-pw:focus-within { border-color: var(--ig-orange); box-shadow: 0 0 0 3px rgba(232, 89, 12, 0.12); }
+.ig-wl-form .ig-login-pw input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+}
+.ig-wl-form .ig-login-pw input:focus { box-shadow: none; }
+.ig-wl-form .has-error .ig-login-pw { border-color: #D93025; }
+.ig-login-pw button {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ig-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ig-login-pw button:hover { background: #F4F4F3; color: var(--ig-ink); }
+
+.ig-login-extras { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; margin-top: -4px; }
+.ig-wl-form .ig-login-remember {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ig-text);
+  cursor: pointer;
+}
+.ig-wl-form .ig-login-remember input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--ig-orange-deep);
+  cursor: pointer;
+}
+.ig-login-extras a { color: var(--ig-orange-deep); font-weight: 600; }
+.ig-login-extras a:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+.ig-login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #8A8A8A;
+}
+.ig-login-divider span { flex: 1; height: 1px; background: var(--ig-line-2); }
+
+.ig-login-secondary {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #FFFFFF;
+  color: var(--ig-ink);
+  border: 1px solid #E7E7E5;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+.ig-login-secondary:hover { background: var(--ig-paper); border-color: #D9D9D6; }
+.ig-login-secondary:active { transform: scale(0.97); }
+.ig-login-hint { text-align: center; font-size: 12px; color: var(--ig-muted); }
+
+/* Photo panel */
+.ig-login-photo-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 65%;
+  background: linear-gradient(180deg, rgba(17, 17, 17, 0) 0%, rgba(17, 17, 17, 0.7) 100%);
+}
+.ig-login-livecard {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 220px;
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 16px 40px -16px rgba(17, 17, 17, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ig-login-livecard-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ig-muted); }
+.ig-login-dot { position: relative; width: 8px; height: 8px; border-radius: 999px; background: var(--ig-orange); }
+.ig-login-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--ig-orange);
+  animation: igLoginPulse 1.8s ease-out infinite;
+}
+.ig-login-livecard-num { display: flex; align-items: baseline; gap: 6px; }
+.ig-login-livecard-num span:first-child { font-size: 32px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+.ig-login-livecard-num span:last-child { font-size: 12px; color: var(--ig-muted); }
+.ig-login-livecard-bar { height: 6px; border-radius: 999px; background: #F4F4F3; }
+.ig-login-livecard-bar div { width: 78%; height: 6px; border-radius: 999px; background: var(--ig-orange); }
+.ig-login-livecard-row { display: flex; justify-content: space-between; font-size: 12px; }
+.ig-login-livecard-row span { color: var(--ig-muted); }
+
+.ig-login-photo-copy {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: #FFFFFF;
+}
+.ig-login-toast {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: #FFFFFF;
+  color: var(--ig-ink);
+  border-radius: 999px;
+  font-size: 12px;
+  box-shadow: 0 8px 20px -10px rgba(17, 17, 17, 0.5);
+}
+.ig-login-toast-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--ig-peach);
+  color: var(--ig-orange-deep);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ig-login-photo-title { font-size: 26px; font-weight: 600; line-height: 1.2; letter-spacing: -0.03em; }
+.ig-login-photo-text { font-size: 14px; color: #F1E6DD; }
+
+/* Phone: photo strip on top with a small live card */
+.ig-login .ig-login-photo-top { height: 180px; }
+.ig-login-minicard {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 10px 24px -12px rgba(17, 17, 17, 0.5);
+}
+.ig-login-minicard span { font-size: 11px; color: var(--ig-muted); }
+.ig-login-minicard strong { font-size: 22px; font-weight: 600; letter-spacing: -0.04em; line-height: 1; }
+
+@keyframes igLoginPulse { 0% { transform: scale(1); opacity: 0.5; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-login *, .ig-login *::before, .ig-login *::after { animation: none !important; transition: none !important; }
+}

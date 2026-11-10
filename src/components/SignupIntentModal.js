@@ -1,33 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import '../styles/SignupIntentModal.css';
+import '../styles/IgSignupIntent.css';
 
 export const SIGNUP_INTENT_STORAGE_KEY = 'ingather-signup-intent';
 
-const signupIntentIcons = {
+const icons = {
   church: (
-    <svg viewBox="0 0 48 48" focusable="false" aria-hidden="true">
-      <path className="signup-intent-icon-base" d="M10 40h28" />
-      <path className="signup-intent-icon-base" d="M15 40V23.5L24 17l9 6.5V40" />
-      <path className="signup-intent-icon-base" d="M12.5 26.5L24 18l11.5 8.5" />
-      <path className="signup-intent-icon-accent" d="M24 8v10" />
-      <path className="signup-intent-icon-accent" d="M20.5 12h7" />
-      <path className="signup-intent-icon-base" d="M20.5 40v-9.5a3.5 3.5 0 0 1 7 0V40" />
-      <path className="signup-intent-icon-accent" d="M18.5 27.5h3.5" />
-      <path className="signup-intent-icon-accent" d="M26 27.5h3.5" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2v5M9.5 4.5h5M5 21V12l7-5 7 5v9M3 21h18M10 21v-4a2 2 0 014 0v4" />
     </svg>
   ),
   general: (
-    <svg viewBox="0 0 48 48" focusable="false" aria-hidden="true">
-      <path
-        className="signup-intent-icon-base"
-        d="M11 17.5h26a3 3 0 0 1 3 3V26a4 4 0 0 0 0 8v5.5a3 3 0 0 1-3 3H11a3 3 0 0 1-3-3V34a4 4 0 0 0 0-8v-5.5a3 3 0 0 1 3-3Z"
-      />
-      <path className="signup-intent-icon-accent" d="M18 18v24" />
-      <path className="signup-intent-icon-base" d="M23 26h10" />
-      <path className="signup-intent-icon-base" d="M23 33h7" />
-      <path className="signup-intent-icon-accent" d="M31.5 17.5v-4" />
-      <path className="signup-intent-icon-accent" d="M25 17.5v-4" />
-      <path className="signup-intent-icon-accent" d="M28.25 13.5h6.5" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 7h16a1 1 0 011 1v2.5a1.5 1.5 0 000 3V16a1 1 0 01-1 1H4a1 1 0 01-1-1v-2.5a1.5 1.5 0 000-3V8a1 1 0 011-1zM14 7v10" />
     </svg>
   )
 };
@@ -36,23 +20,24 @@ const options = [
   {
     id: 'church',
     eyebrow: 'Church workspace',
-    title: 'Register as a Church',
-    description: 'For services, programs, ministry gatherings, first-timer follow-up, and church attendance.',
-    highlights: ['Programs', 'Church dashboard', 'Service check-ins'],
-    icon: signupIntentIcons.church
+    title: 'Register as a church',
+    description: 'For services, programs, ministry gatherings, first-timer follow-up and church attendance.',
+    highlights: ['Programs', 'Service check-ins', 'Visitors'],
+    continueLabel: 'Continue as a church'
   },
   {
     id: 'general',
     eyebrow: 'Event workspace',
-    title: 'Other Events',
-    description: 'For conferences, tech meetups, seminars, bootcamps, corporate sessions, and communities.',
+    title: 'Other events',
+    description: 'For conferences, meetups, seminars, bootcamps, company sessions and communities.',
     highlights: ['Conferences', 'Meetups', 'Seminars'],
-    icon: signupIntentIcons.general
+    continueLabel: 'Continue as an event organizer'
   }
 ];
 
 function SignupIntentModal({ onClose, onSelect }) {
   const [isClosing, setIsClosing] = useState(false);
+  const [pick, setPick] = useState('general');
   const closeButtonRef = useRef(null);
 
   useEffect(() => {
@@ -83,21 +68,27 @@ function SignupIntentModal({ onClose, onSelect }) {
     finishClose(onClose);
   };
 
-  const handleSelect = (intent) => {
-    localStorage.setItem(SIGNUP_INTENT_STORAGE_KEY, intent);
-    finishClose(() => onSelect(intent));
+  const handleContinue = () => {
+    try {
+      localStorage.setItem(SIGNUP_INTENT_STORAGE_KEY, pick);
+    } catch (error) {
+      // Storage blocked; the choice still travels in the link.
+    }
+    finishClose(() => onSelect(pick));
   };
+
+  const current = options.find((option) => option.id === pick) || options[1];
 
   return (
     <div
-      className={`signup-intent-overlay ${isClosing ? 'is-closing' : ''}`}
+      className={`ig-si-overlay ${isClosing ? 'is-closing' : ''}`}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) handleClose();
       }}
     >
       <section
-        className="signup-intent-modal"
+        className="ig-si-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="signup-intent-title"
@@ -106,43 +97,53 @@ function SignupIntentModal({ onClose, onSelect }) {
         <button
           ref={closeButtonRef}
           type="button"
-          className="signup-intent-close"
+          className="ig-si-close"
           onClick={handleClose}
           aria-label="Close signup options"
         >
-          &times;
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
         </button>
 
-        <div className="signup-intent-header">
-          <span className="signup-intent-kicker">Choose your workspace</span>
+        <div className="ig-si-head">
+          <span className="ig-si-chip">Before you start</span>
           <h2 id="signup-intent-title">How will you use Ingather?</h2>
-          <p id="signup-intent-description">
-            Pick the setup that fits your team. You can still adjust your workspace template later.
-          </p>
+          <p id="signup-intent-description">Pick the setup that fits your team. You can change it later in Settings.</p>
         </div>
 
-        <div className="signup-intent-grid">
-          {options.map(option => (
-            <button
-              key={option.id}
-              type="button"
-              className={`signup-intent-card signup-intent-card-${option.id}`}
-              onClick={() => handleSelect(option.id)}
-            >
-              <span className="signup-intent-card-mark" aria-hidden="true">
-                {option.icon}
-              </span>
-              <span className="signup-intent-card-eyebrow">{option.eyebrow}</span>
-              <strong>{option.title}</strong>
-              <span className="signup-intent-card-description">{option.description}</span>
-              <span className="signup-intent-card-tags" aria-label={`${option.title} examples`}>
-                {option.highlights.map(highlight => (
-                  <span key={highlight}>{highlight}</span>
-                ))}
-              </span>
-            </button>
-          ))}
+        <div className="ig-si-grid" role="radiogroup" aria-label="Workspace type">
+          {options.map((option) => {
+            const selected = option.id === pick;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={`ig-si-card ${selected ? 'is-on' : ''}`}
+                onClick={() => setPick(option.id)}
+              >
+                <span className="ig-si-card-top">
+                  <span className="ig-si-icon">{icons[option.id]}</span>
+                  <span className="ig-si-radio" aria-hidden="true"><span /></span>
+                </span>
+                <span className="ig-si-copy">
+                  <span className="ig-si-eyebrow">{option.eyebrow}</span>
+                  <strong>{option.title}</strong>
+                  <span className="ig-si-desc">{option.description}</span>
+                </span>
+                <span className="ig-si-tags">
+                  {option.highlights.map((highlight) => (
+                    <span key={highlight}>{highlight}</span>
+                  ))}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
+        <button type="button" className="ig-si-continue" onClick={handleContinue}>
+          {current.continueLabel}
+        </button>
       </section>
     </div>
   );

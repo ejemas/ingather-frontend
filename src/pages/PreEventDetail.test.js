@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import PreEventDetail from './PreEventDetail';
+import { EventTemplateProvider } from '../context/EventTemplateContext';
 import {
   getPreEvent,
   importPreEventRsvps,
@@ -14,7 +15,9 @@ const mockToast = {
 };
 
 jest.mock('react-router-dom', () => ({
-  useParams: () => ({ id: '42' })
+  useParams: () => ({ id: '42' }),
+  useNavigate: () => jest.fn(),
+  Link: ({ to, children, ...props }) => <a href={String(to)} {...props}>{children}</a>
 }), { virtual: true });
 
 jest.mock('../api/preEventService', () => ({
@@ -27,31 +30,29 @@ jest.mock('../api/preEventService', () => ({
 }));
 
 jest.mock('../api/programService', () => ({
-  getPrograms: jest.fn().mockResolvedValue({ programs: [] })
+  getPrograms: jest.fn().mockResolvedValue({ programs: [] }),
+  getDashboardBootstrap: jest.fn().mockResolvedValue(null)
 }));
 
-jest.mock('../components/DashboardShell', () => function MockDashboardShell({ children }) {
-  return <div>{children}</div>;
-});
-
-jest.mock('../components/CustomFieldBuilderModal', () => function MockCustomFieldBuilderModal() {
-  return null;
+jest.mock('../components/IgDashShell', () => {
+  const actual = jest.requireActual('../components/IgDashShell');
+  return {
+    __esModule: true,
+    ...actual,
+    default: function MockIgDashShell({ children }) {
+      return <div>{children}</div>;
+    }
+  };
 });
 
 jest.mock('../components/Toast', () => ({
   useToast: () => mockToast
 }));
 
-jest.mock('recharts', () => ({
-  Bar: () => null,
-  BarChart: ({ data, children }) => (
-    <div data-testid="velocity-chart" data-chart={JSON.stringify(data)}>{children}</div>
-  ),
-  CartesianGrid: () => null,
-  ResponsiveContainer: ({ children }) => <div>{children}</div>,
-  Tooltip: () => null,
-  XAxis: () => null,
-  YAxis: () => null
+jest.mock('../utils/flyerCompression', () => ({
+  compressFlyerImage: jest.fn(async (file) => file),
+  fileToDataUrl: jest.fn(async () => 'data:image/png;base64,TkVX'),
+  formatFileSize: (size) => `${size} B`
 }));
 
 const quota = {
@@ -116,6 +117,12 @@ const refreshedDetail = {
   qrEmailQuota: quota
 };
 
+const renderPage = () => render(
+  <EventTemplateProvider>
+    <PreEventDetail />
+  </EventTemplateProvider>
+);
+
 const prepareSingleGuestImport = async (container) => {
   fireEvent.click(screen.getByRole('button', { name: 'Upload Data' }));
   const file = new File(
@@ -124,9 +131,9 @@ const prepareSingleGuestImport = async (container) => {
     { type: 'text/csv' }
   );
   file.text = jest.fn().mockResolvedValue('Full Name,Email Address\nAda Okafor,ADA@example.com');
-  fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [file] } });
+  fireEvent.change(container.querySelector('input[type="file"][accept=".csv,.xlsx"]'), { target: { files: [file] } });
 
-  expect(await screen.findByText('Match your columns')).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Match your columns' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Review rows' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Import 1 guest' }));
 };
@@ -147,7 +154,7 @@ test('refreshes RSVP rows and all analytics exactly once after import', async ()
     errors: []
   });
 
-  const { container } = render(<PreEventDetail />);
+  const { container } = renderPage();
 
   const totalCard = await screen.findByText('Total RSVPs');
   expect(totalCard.closest('article')).toHaveTextContent('1');
@@ -159,8 +166,8 @@ test('refreshes RSVP rows and all analytics exactly once after import', async ()
     { sourceRow: 2, fullName: 'Ada Okafor', emailAddress: 'ada@example.com' }
   ]);
 
-  expect(totalCard.closest('article')).toHaveTextContent('2');
-  expect(screen.getByText('Today').closest('article')).toHaveTextContent('2');
+  await waitFor(() => expect(totalCard.closest('article')).toHaveTextContent('2'));
+  expect(screen.getByText('Today', { selector: 'span' }).closest('article')).toHaveTextContent('2');
   expect(JSON.parse(screen.getByTestId('velocity-chart').getAttribute('data-chart'))).toEqual([
     { date: '2026-07-30', label: 'Jul 30', registrations: 2 }
   ]);
@@ -178,7 +185,7 @@ test('keeps import success when the single dashboard refresh fails', async () =>
     errors: []
   });
 
-  const { container } = render(<PreEventDetail />);
+  const { container } = renderPage();
   await screen.findByText('Total RSVPs');
   await prepareSingleGuestImport(container);
 
@@ -195,7 +202,7 @@ test('does not refresh the dashboard when the import request fails', async () =>
     response: { data: { error: 'Import rejected' } }
   });
 
-  const { container } = render(<PreEventDetail />);
+  const { container } = renderPage();
   await screen.findByText('Total RSVPs');
   await prepareSingleGuestImport(container);
 
@@ -233,16 +240,16 @@ test('shows the actual bulk QR count and confirms the allowance impact', async (
     ]
   });
 
-  render(<PreEventDetail />);
+  renderPage();
 
   const bulkButton = await screen.findByRole('button', { name: 'Send 2 QR emails' });
   fireEvent.click(bulkButton);
 
-  const dialog = screen.getByRole('dialog', { name: 'Send 2 QR emails?' });
+  const dialog = screen.getByRole('alertdialog', { name: 'Send 2 QR emails?' });
   expect(dialog).toHaveTextContent('Expected remaining today');
   expect(dialog).toHaveTextContent('0');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
 });
 
 test('sends imported QR emails and refreshes the dashboard exactly once', async () => {
@@ -278,14 +285,14 @@ test('sends imported QR emails and refreshes the dashboard exactly once', async 
     resolveBatchRequest = resolve;
   }));
 
-  render(<PreEventDetail />);
+  renderPage();
 
   fireEvent.click(await screen.findByRole('button', { name: 'Send 2 QR emails' }));
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send 2 QR emails' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Send 2 QR emails' }));
 
   await waitFor(() => expect(sendImportedRsvpQrBatch).toHaveBeenCalledWith(42));
   expect(await screen.findByRole('button', { name: 'Sending 2...' })).toBeDisabled();
-  const firstImportedRow = screen.getByText('one@example.com').closest('tr');
+  const firstImportedRow = within(screen.getByRole('table')).getByText('one@example.com').closest('tr');
   expect(within(firstImportedRow).getByRole('button', { name: 'Send QR' })).toBeDisabled();
 
   resolveBatchRequest({
@@ -297,7 +304,7 @@ test('sends imported QR emails and refreshes the dashboard exactly once', async 
 
   await waitFor(() => expect(getPreEvent).toHaveBeenCalledTimes(2));
   expect(mockToast.success).toHaveBeenCalledWith('2 QR emails sent. 98 remaining today.');
-  expect(screen.getByText('98 / 100 remaining')).toBeInTheDocument();
+  expect(screen.getByText('QR email allowance').closest('.ig-pd-quota')).toHaveTextContent('98 of 100 left today');
 });
 
 test('keeps bulk-send success when the dashboard refresh fails', async () => {
@@ -320,10 +327,10 @@ test('keeps bulk-send success when the dashboard refresh fails', async () => {
     quota: { ...quota, used: 1, remaining: 99 }
   });
 
-  render(<PreEventDetail />);
+  renderPage();
 
   fireEvent.click(await screen.findByRole('button', { name: 'Send 1 QR email' }));
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Send 1 QR email' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Send 1 QR email' }));
 
   await waitFor(() => expect(mockToast.warning).toHaveBeenCalledWith(
     expect.stringContaining('1 QR email sent, but the dashboard could not refresh')
@@ -361,17 +368,17 @@ test('keeps public QR actions enabled when the organizer-added allowance is exha
     ]
   });
 
-  render(<PreEventDetail />);
+  renderPage();
 
-  expect(await screen.findByText(/100 daily QR emails for uploaded\/manual guests/)).toBeInTheDocument();
-  expect(screen.getByText(/public RSVPs are excluded/)).toBeInTheDocument();
-  const quotaCard = screen.getByText('QR email allowance').closest('.pre-event-qr-quota');
-  const quotaStatus = quotaCard.querySelector('.pre-event-qr-quota-status');
-  expect(within(quotaStatus).getByText('0 / 100 remaining')).toBeInTheDocument();
-  expect(within(quotaStatus).getByText(/Resets/)).toBeInTheDocument();
+  expect(await screen.findByText(/100 a day for uploaded and hand-added guests/)).toBeInTheDocument();
+  expect(screen.getByText(/Page RSVPs get theirs automatically/)).toBeInTheDocument();
+  const quotaCard = screen.getByText('QR email allowance').closest('.ig-pd-quota');
+  expect(quotaCard.querySelector('.ig-pd-quota-count')).toHaveTextContent('0 of 100 left today');
+  expect(within(quotaCard).getByText(/Resets/)).toBeInTheDocument();
 
-  const publicRow = screen.getByText('public@example.com').closest('tr');
-  const importedRow = screen.getByText('imported@example.com').closest('tr');
+  const table = screen.getByRole('table');
+  const publicRow = within(table).getByText('public@example.com').closest('tr');
+  const importedRow = within(table).getByText('imported@example.com').closest('tr');
   expect(within(publicRow).getByRole('button', { name: 'Resend QR' })).toBeEnabled();
   expect(within(importedRow).getByRole('button', { name: 'Send QR' })).toBeDisabled();
 });
@@ -392,19 +399,47 @@ test('lets the host change live RSVP form fields and keeps old answers visible',
     preEvent: { ...liveEvent, rsvpFields: payload.rsvpFields, rsvpFieldConfig: payload.rsvpFieldConfig }
   }));
 
-  render(<PreEventDetail />);
+  renderPage();
 
-  expect(await screen.findByText('RSVP Form Fields')).toBeInTheDocument();
+  expect(await screen.findByText('Details guests fill in')).toBeInTheDocument();
   expect(screen.getByRole('columnheader', { name: 'School' })).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Make Phone Number required' }));
-  const ageCard = screen.getByText('Age', { selector: 'span' }).closest('.pre-event-field-card');
-  fireEvent.click(within(ageCard).getByRole('button', { name: 'Add to form' }));
+  fireEvent.change(screen.getByRole('combobox', { name: 'Add a detail to the form' }), { target: { value: 'age' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add to form' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save Settings' }));
 
   await waitFor(() => expect(updatePreEvent).toHaveBeenCalledTimes(1));
   const payload = updatePreEvent.mock.calls[0][1];
   expect(payload.rsvpFields).toEqual(expect.objectContaining({ emailAddress: true, phoneNumber: true, age: true }));
   expect(payload.rsvpFieldConfig.requiredFields).toEqual({ phoneNumber: false });
-  expect(await screen.findByText('Optional', { selector: 'strong' })).toBeInTheDocument();
+  const phoneRow = screen.getByRole('checkbox', { name: 'Make Phone Number required' }).closest('li');
+  expect(await within(phoneRow).findByText('Optional')).toBeInTheDocument();
+});
+
+test('changes the banner on a live page without sending unsaved edits', async () => {
+  const { updatePreEvent } = jest.requireMock('../api/preEventService');
+  getPreEvent.mockResolvedValue(initialDetail);
+  updatePreEvent.mockImplementation(async (id, payload) => ({
+    preEvent: { ...preEvent, ...payload, bannerUrl: 'https://cdn.example.com/new-banner.png' }
+  }));
+  global.URL.createObjectURL = jest.fn(() => 'blob:preview');
+  global.URL.revokeObjectURL = jest.fn();
+  const { container } = renderPage();
+
+  await screen.findByText('Details guests fill in');
+  // An unsaved edit elsewhere must not be sent with the banner.
+  fireEvent.change(screen.getByLabelText('Venue name'), { target: { value: 'Unsaved Venue' } });
+
+  const file = new File(['img'], 'new.png', { type: 'image/png' });
+  fireEvent.change(container.querySelector('.ig-pd-banner-file'), { target: { files: [file] } });
+
+  await waitFor(() => expect(updatePreEvent).toHaveBeenCalledTimes(1));
+  const [id, payload] = updatePreEvent.mock.calls[0];
+  expect(id).toBe(preEvent.id);
+  expect(payload.banner).toEqual({ dataUrl: 'data:image/png;base64,TkVX', originalName: 'new.png' });
+  expect(payload.venueName).not.toBe('Unsaved Venue');
+  expect(payload.isRsvpActive).toBe(preEvent.isRsvpActive);
+  await waitFor(() => expect(container.querySelector('.ig-pd-banner img')).toHaveAttribute('src', 'https://cdn.example.com/new-banner.png'));
+  expect(mockToast.success).toHaveBeenCalledWith('Banner updated. Guests see the new image now.');
 });

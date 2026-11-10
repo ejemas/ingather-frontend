@@ -1,0 +1,187 @@
+/* "How will you use Ingather?" pop-up (redesign, Nov 2026). Scoped to .ig-si-*. */
+
+.ig-si-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto;
+  background: rgba(17, 17, 17, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #111111;
+  -webkit-font-smoothing: antialiased;
+  animation: igSiFade 0.16s ease both;
+}
+.ig-si-overlay *,
+.ig-si-overlay *::before,
+.ig-si-overlay *::after { box-sizing: border-box; }
+.ig-si-overlay.is-closing { animation: igSiFadeOut 0.16s ease both; }
+
+.ig-si-modal {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  margin: auto;
+  background: #FFFFFF;
+  border-radius: 28px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 30px 60px -20px rgba(17, 17, 17, 0.5);
+  animation: igSiRise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.ig-si-overlay.is-closing .ig-si-modal { animation: igSiSink 0.16s ease both; }
+
+.ig-si-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #F4F4F3;
+  border: 0;
+  border-radius: 999px;
+  color: #111111;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.ig-si-close:hover { background: #ECECEA; }
+.ig-si-close:active { transform: scale(0.94); }
+
+.ig-si-head { display: flex; flex-direction: column; gap: 6px; padding-right: 40px; }
+.ig-si-chip {
+  align-self: flex-start;
+  padding: 2px 10px;
+  background: #FFF1E7;
+  border: 1px solid #FAD4BB;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #C84B07;
+}
+.ig-si-head h2 {
+  margin: 0;
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: #111111;
+}
+.ig-si-head p { margin: 0; font-size: 14px; line-height: 1.5; color: #5A5A5A; }
+
+.ig-si-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.ig-si-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  background: #FFFFFF;
+  border: 1px solid #E7E7E5;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.ig-si-card:hover { border-color: #D9D9D6; }
+.ig-si-card:active { transform: scale(0.99); }
+.ig-si-card.is-on {
+  background: #FFF8F3;
+  border-color: #E8590C;
+  box-shadow: inset 0 0 0 1px #E8590C;
+}
+.ig-si-card:focus-visible { outline: 3px solid rgba(232, 89, 12, 0.35); outline-offset: 2px; }
+
+.ig-si-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ig-si-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #F4F4F3;
+  color: #3F3F3F;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ig-si-card.is-on .ig-si-icon { background: #E8590C; color: #FFFFFF; }
+
+.ig-si-radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #C9C9C7;
+  transition: border-color 0.15s ease;
+}
+.ig-si-radio span {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #E8590C;
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+.ig-si-card.is-on .ig-si-radio { border-color: #E8590C; }
+.ig-si-card.is-on .ig-si-radio span { transform: scale(1); }
+
+.ig-si-copy { display: flex; flex-direction: column; gap: 4px; }
+.ig-si-eyebrow { font-size: 12px; font-weight: 600; color: #8A8A8A; }
+.ig-si-copy strong { font-size: 17px; letter-spacing: -0.02em; color: #111111; }
+.ig-si-desc { font-size: 13px; line-height: 1.5; color: #5A5A5A; }
+
+.ig-si-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ig-si-tags span { padding: 2px 10px; background: #F4F4F3; border-radius: 999px; font-size: 12px; color: #3F3F3F; }
+
+.ig-si-continue {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #C84B07;
+  color: #FFFFFF;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -6px rgba(200, 75, 7, 0.55);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+.ig-si-continue:hover { background: #B54306; }
+.ig-si-continue:active { transform: scale(0.98); }
+
+@media (max-width: 640px) {
+  .ig-si-overlay { padding: 16px; align-items: flex-start; }
+  .ig-si-modal { border-radius: 24px; padding: 22px 18px 28px; }
+  .ig-si-head h2 { font-size: 24px; }
+  .ig-si-grid { grid-template-columns: 1fr; }
+}
+
+@keyframes igSiFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes igSiFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes igSiRise { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes igSiSink { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(6px) scale(0.98); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-si-overlay, .ig-si-overlay * { animation: none !important; transition: none !important; }
+}

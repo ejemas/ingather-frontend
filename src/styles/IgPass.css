@@ -1,0 +1,82 @@
+/* Guest RSVP pass (/rsvp-checkin/:token). Phone first, centred on larger screens. */
+
+.ig-ps {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #F4F4F3;
+  color: #111111;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.ig-ps *, .ig-ps *::before, .ig-ps *::after { box-sizing: border-box; }
+.ig-ps-col { width: 100%; max-width: 420px; margin: 0 auto; padding: 14px 14px 32px; display: flex; flex-direction: column; gap: 14px; }
+
+.ig-ps-top { display: flex; justify-content: space-between; align-items: center; padding: 6px 4px; }
+.ig-ps-top img { height: 18px; width: auto; display: block; }
+.ig-ps-tag { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; background: #FFFFFF; border: 1px solid #E7E7E5; border-radius: 999px; font-size: 12px; color: #3F3F3F; }
+.ig-ps-tag > span { padding: 2px 8px; background: #111111; color: #FFFFFF; border-radius: 999px; font-weight: 600; }
+
+/* Ticket */
+.ig-ps-ticket { background: #FFFFFF; border: 2px solid #E8590C; border-radius: 26px; box-shadow: 0 24px 48px -32px rgba(17, 17, 17, 0.45); animation: igPsIn 0.3s ease-out both; }
+@keyframes igPsIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.ig-ps-banner { position: relative; height: 150px; background: #2B2420; border-radius: 24px 24px 0 0; overflow: hidden; }
+.ig-ps-banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ig-ps-banner-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.72) 100%); }
+.ig-ps-banner-text { position: absolute; left: 18px; right: 18px; bottom: 14px; color: #FFFFFF; display: flex; flex-direction: column; gap: 2px; }
+.ig-ps-banner-text > span { font-size: 12px; color: #F1E6DD; }
+.ig-ps-banner-text > strong { font-size: 22px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.15; overflow-wrap: anywhere; }
+
+.ig-ps-details { margin: 0; padding: 20px 18px 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 12px; }
+.ig-ps-details > div { display: flex; flex-direction: column; min-width: 0; }
+.ig-ps-details > div.is-wide { grid-column: 1 / -1; }
+.ig-ps-details dt { font-size: 12px; color: #6B6B6B; }
+.ig-ps-details dd { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+
+/* Torn edge between details and the QR */
+.ig-ps-tear { position: relative; margin: 14px 0; height: 1px; border-top: 2px dashed #E8590C; }
+.ig-ps-tear > span { position: absolute; z-index: 2; top: -14px; width: 12px; height: 24px; background: #F4F4F3; border: 2px solid #E8590C; }
+.ig-ps-tear > span:first-child { left: -2px; border-left: 0; border-radius: 0 999px 999px 0; box-shadow: -2px 0 0 #F4F4F3; }
+.ig-ps-tear > span:last-child { right: -2px; border-right: 0; border-radius: 999px 0 0 999px; box-shadow: 2px 0 0 #F4F4F3; }
+
+.ig-ps-qr-area { padding: 6px 18px 22px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.ig-ps-qr { padding: 12px; background: #FFFFFF; border: 1px solid #ECECEA; border-radius: 18px; line-height: 0; }
+.ig-ps-qr canvas { display: block; width: 210px !important; height: 210px !important; }
+.ig-ps-qr.is-dim { opacity: 0.25; filter: grayscale(1); }
+.ig-ps-qr-title { display: inline-flex; align-items: center; gap: 6px; font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+.ig-ps-qr-text { font-size: 13px; color: #6B6B6B; max-width: 280px; }
+.ig-ps-code { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 4px; }
+.ig-ps-code > span { font-size: 12px; color: #6B6B6B; }
+.ig-ps-code > strong { padding: 6px 14px; background: #FFF8F3; border: 1px dashed #E8590C; border-radius: 10px; font-size: 20px; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; user-select: all; }
+
+.ig-ps-done { padding: 10px 18px 26px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.ig-ps-done-icon { width: 72px; height: 72px; border-radius: 999px; background: #E8590C; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; }
+.ig-ps-done strong { font-size: 20px; font-weight: 600; letter-spacing: -0.03em; }
+.ig-ps-done span:last-child { font-size: 13px; color: #6B6B6B; max-width: 280px; }
+
+/* Loading placeholders */
+.ig-ps-sk { display: inline-block; width: 90px; height: 14px; border-radius: 6px; background: #EFEFED; animation: igPsPulse 1.2s ease-in-out infinite; vertical-align: middle; }
+.ig-ps-sk.is-wide { width: 180px; }
+.ig-ps-sk.is-light { background: rgba(255, 255, 255, 0.28); height: 12px; }
+.ig-ps-sk.is-light.is-lg { height: 20px; margin-top: 4px; }
+@keyframes igPsPulse { 50% { opacity: 0.55; } }
+
+/* Notes and buttons */
+.ig-ps-note { display: flex; gap: 10px; padding: 12px 14px; background: #FFF8F3; border: 1px solid #FAD4BB; border-radius: 16px; font-size: 13px; color: #5A3A26; }
+.ig-ps-note svg { flex: none; margin-top: 1px; }
+.ig-ps-note button { padding: 0; border: 0; background: none; font: inherit; font-weight: 600; color: #C84B07; text-decoration: underline; cursor: pointer; }
+.ig-ps-btn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: 0 22px; background: #C84B07; color: #FFFFFF !important; border: 0; border-radius: 999px; font-size: 15px; font-weight: 600; text-decoration: none; }
+.ig-ps-btn.is-ghost { background: #FFFFFF; color: #111111 !important; border: 1px solid #E7E7E5; }
+.ig-ps-btn:focus-visible, .ig-ps-note button:focus-visible { outline: 3px solid rgba(232, 89, 12, 0.35); outline-offset: 2px; }
+
+/* Broken link */
+.ig-ps-empty { margin-top: 24px; padding: 28px 22px; background: #FFFFFF; border: 1px solid #ECECEA; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.ig-ps-empty-icon { width: 64px; height: 64px; border-radius: 999px; background: #F4F4F3; color: #3F3F3F; display: inline-flex; align-items: center; justify-content: center; }
+.ig-ps-empty h1 { font-family: inherit; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+.ig-ps-empty p { margin: 0; max-width: 300px; font-size: 14px; color: #5A5A5A; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-ps-ticket, .ig-ps-sk { animation: none; }
+}

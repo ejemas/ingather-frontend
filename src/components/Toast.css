@@ -1,275 +1,232 @@
-/* Toast Container - fixed position at top right */
+/* Toasts: a small dark pill at the top centre (Ingather redesign). */
 .toast-container {
     position: fixed;
     top: 24px;
-    right: 24px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 99999;
+    width: max-content;
+    max-width: calc(100vw - 32px);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    gap: 8px;
     pointer-events: none;
 }
 
-/* Toast Item */
 .toast-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 12px;
-    min-width: 320px;
-    max-width: 480px;
-    padding: 16px 20px;
-    border-radius: 12px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.95rem;
+    gap: 10px;
+    max-width: 560px;
+    padding: 10px 10px 10px 14px;
+    border-radius: 999px;
+    background: #111111;
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 13px;
     font-weight: 500;
-    color: #fff;
-    pointer-events: all;
-    position: relative;
-    overflow: hidden;
+    line-height: 1.4;
+    box-shadow: 0 12px 30px rgba(17, 17, 17, 0.25);
+    pointer-events: auto;
     opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.35s cubic-bezier(0.21, 1.02, 0.73, 1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(8px);
+    transform: translateY(-8px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .toast-item.toast-enter {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
 }
 
 .toast-item.toast-exit {
     opacity: 0;
-    transform: translateX(100%);
-    transition: all 0.3s cubic-bezier(0.4, 0, 1, 1);
+    transform: translateY(-8px);
 }
 
-/* Toast Types */
-.toast-success {
-    background: linear-gradient(135deg, #1a7a3a, #22a84d);
-    border-left: 4px solid #4ade80;
-}
-
-.toast-error {
-    background: linear-gradient(135deg, #b91c1c, #dc2626);
-    border-left: 4px solid #f87171;
-}
-
-.toast-info {
-    background: linear-gradient(135deg, #1e3a5f, #2563eb);
-    border-left: 4px solid #60a5fa;
-}
-
-.toast-warning {
-    background: linear-gradient(135deg, #92400e, #d97706);
-    border-left: 4px solid #fbbf24;
-}
-
-/* Toast Icon */
 .toast-icon {
-    font-size: 1.3rem;
-    flex-shrink: 0;
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #1F8A4C;
 }
 
-/* Toast Message */
+.toast-error .toast-icon { background: #D92D20; }
+.toast-warning .toast-icon { background: #DC8A0E; }
+.toast-info .toast-icon { background: #2563C9; }
+
 .toast-message {
-    flex: 1;
-    line-height: 1.4;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
-/* Toast Close Button */
 .toast-close {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 1.4rem;
-    cursor: pointer;
-    padding: 0 4px;
-    flex-shrink: 0;
-    transition: color 0.2s, transform 0.2s;
+    flex: none;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #2A2A2A;
+    color: #FFFFFF;
+    font-size: 15px;
     line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease;
 }
 
-.toast-close:hover {
-    color: #fff;
-    transform: scale(1.2);
+.toast-close:hover,
+.toast-close:focus-visible {
+    background: #3A3A3A;
+    outline: none;
 }
 
-/* Progress bar animation at bottom of toast */
-.toast-item::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    height: 3px;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.35);
-    border-radius: 0 0 12px 12px;
-    animation: toast-progress 4s linear forwards;
+html[data-theme="dark"] .toast-item {
+    background: #3A332D;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
-@keyframes toast-progress {
-    from {
-        width: 100%;
-    }
-
-    to {
-        width: 0%;
-    }
+html[data-theme="dark"] .toast-close {
+    background: rgba(255, 255, 255, 0.12);
 }
 
-/* Responsive */
-@media (max-width: 480px) {
+@media (max-width: 760px) {
     .toast-container {
-        top: 16px;
-        right: 16px;
-        left: 16px;
+        top: 76px;
     }
 
     .toast-item {
-        min-width: unset;
-        max-width: unset;
-        width: 100%;
+        gap: 8px;
+        padding: 8px 8px 8px 10px;
+        font-size: 12px;
+        border-radius: 22px;
     }
 }
 
-/* Confirm Dialog */
-.confirm-overlay {
+@media (prefers-reduced-motion: reduce) {
+    .toast-item,
+    .toast-item.toast-enter,
+    .toast-item.toast-exit {
+        transition: opacity 0.15s linear;
+        transform: none;
+    }
+}
+
+/* Confirm pop-up: matches the dashboard dialogs (Log out, End event). */
+.ig-cf-overlay {
     position: fixed;
     inset: 0;
     z-index: 99998;
     display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: rgba(17, 17, 17, 0.5);
+    backdrop-filter: blur(2px);
+    animation: igCfFade 0.14s ease both;
+}
+
+.ig-cf {
+    width: 100%;
+    max-width: 420px;
+    margin: auto 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    background: #FFFFFF;
+    color: #111111;
+    border-radius: 24px;
+    box-shadow: 0 30px 60px -20px rgba(17, 17, 17, 0.5);
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    text-align: left;
+    animation: igCfPop 0.16s ease both;
+}
+
+@keyframes igCfFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes igCfPop { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+.ig-cf-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 24px;
-    background: rgba(3, 5, 12, 0.68);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    animation: overlay-fade-in 0.2s ease;
+    background: #F4F4F3;
+    color: #111111;
 }
 
-@keyframes overlay-fade-in {
-    from {
-        opacity: 0;
-    }
+.ig-cf-icon.is-primary { background: #FFF1E7; color: #C84B07; }
+.ig-cf-icon.is-danger { background: #FEF3F2; color: #B42318; }
 
-    to {
-        opacity: 1;
-    }
-}
+.ig-cf:focus { outline: none; }
 
-.confirm-dialog {
-    width: min(480px, 100%);
-    padding: 24px;
-    border: 1px solid rgba(249, 109, 16, 0.34);
-    border-radius: 18px;
-    background: #0d0d10;
-    color: #ffffff;
-    text-align: left;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
-    animation: dialog-slide-in 0.3s cubic-bezier(0.21, 1.02, 0.73, 1);
-}
-
-@keyframes dialog-slide-in {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.confirm-kicker {
-    display: inline-flex;
-    margin-bottom: 10px;
-    color: #f96d10;
-    font-size: 0.72rem;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-}
-
-.confirm-dialog h2 {
-    margin: 0 0 10px;
-    color: #ffffff;
-    font-family: 'Poppins', sans-serif;
-    font-size: 1.35rem;
-    line-height: 1.2;
-}
-
-.confirm-message {
+.ig-cf h2 {
     margin: 0;
-    font-family: 'Poppins', sans-serif;
-    color: rgba(255, 255, 255, 0.76);
-    font-size: 0.94rem;
-    font-weight: 400;
-    line-height: 1.65;
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    color: inherit;
+    overflow-wrap: anywhere;
 }
 
-.confirm-actions {
+.ig-cf p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #5A5A5A;
+}
+
+.ig-cf-actions {
     display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
+    gap: 8px;
+    margin-top: 4px;
 }
 
-.confirm-btn {
-    min-height: 42px;
+.ig-cf-btn {
+    flex: 1;
+    min-height: 46px;
     padding: 0 18px;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    font-family: 'Poppins', sans-serif;
-    font-size: 0.84rem;
-    font-weight: 800;
+    border: 0;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
-.confirm-cancel {
-    border-color: rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.06);
-    color: #ffffff;
-}
+.ig-cf-btn:active { transform: scale(0.98); }
+.ig-cf-btn:focus-visible { outline: 3px solid rgba(232, 89, 12, 0.35); outline-offset: 2px; }
+.ig-cf-btn.is-ghost { background: #FFFFFF; color: #111111; border: 1px solid #ECECEA; }
+.ig-cf-btn.is-ghost:hover { background: #FAFAF9; }
+.ig-cf-btn.is-primary { background: #C84B07; color: #FFFFFF; }
+.ig-cf-btn.is-primary:hover { background: #B54306; }
+.ig-cf-btn.is-danger { background: #D92D20; color: #FFFFFF; }
+.ig-cf-btn.is-danger:hover { background: #B42318; }
+.ig-cf-btn.is-neutral { background: #111111; color: #FFFFFF; }
 
-.confirm-cancel:hover,
-.confirm-cancel:focus-visible {
-    border-color: rgba(249, 109, 16, 0.72);
-    background: rgba(249, 109, 16, 0.12);
-    outline: none;
-}
-
-.confirm-ok {
-    border-color: #f96d10;
-    background: #f96d10;
-    color: #ffffff;
-}
-
-.confirm-ok:hover,
-.confirm-ok:focus-visible {
-    background: #e8590c;
-    border-color: #e8590c;
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(249, 109, 16, 0.28);
-    outline: none;
-}
+html[data-theme="dark"] .ig-cf { background: #1E1A17; color: #F4F1EE; }
+html[data-theme="dark"] .ig-cf p { color: #B9B2AB; }
+html[data-theme="dark"] .ig-cf-icon { background: #131110; color: #F4F1EE; }
+html[data-theme="dark"] .ig-cf-icon.is-primary { background: #3A2414; color: #F59A5F; }
+html[data-theme="dark"] .ig-cf-icon.is-danger { background: #3A1A17; color: #F97066; }
+html[data-theme="dark"] .ig-cf-btn.is-ghost { background: #1E1A17; color: #F4F1EE; border-color: #2E2925; }
+html[data-theme="dark"] .ig-cf-btn.is-neutral { background: #3A332D; }
 
 @media (max-width: 480px) {
-    .confirm-overlay {
-        padding: 16px;
-    }
+    .ig-cf { padding: 22px 20px; }
+}
 
-    .confirm-dialog {
-        padding: 22px 20px;
-    }
-
-    .confirm-actions {
-        flex-direction: column-reverse;
-    }
-
-    .confirm-btn {
-        width: 100%;
-    }
+@media (prefers-reduced-motion: reduce) {
+    .ig-cf-overlay, .ig-cf { animation: none; }
 }

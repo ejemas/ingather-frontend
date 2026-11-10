@@ -1,7 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { resetPassword } from '../api/authService';
-import '../styles/Auth.css';
+import {
+  AccountLayout,
+  CodeInput,
+  Notice,
+  PasswordInput,
+  PasswordStrength,
+  passwordProblem
+} from '../components/AccountLayout';
 
 const OTP_LENGTH = 6;
 
@@ -17,7 +24,6 @@ function ResetPassword() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const inputRefs = useRef([]);
 
   useEffect(() => {
     if (!email) {
@@ -25,44 +31,15 @@ function ResetPassword() {
     }
   }, [email, navigate]);
 
-  const handleOtpChange = (index, value) => {
-    if (value && !/^\d$/.test(value)) return;
-
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
+  const handleOtpChange = (next) => {
+    setOtp(next);
     setError('');
-    setErrors({ ...errors, otp: '' });
-
-    if (value && index < OTP_LENGTH - 1) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handleKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePaste = (e) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim().slice(0, OTP_LENGTH);
-
-    if (/^\d{1,6}$/.test(pastedData)) {
-      const newOtp = Array(OTP_LENGTH).fill('');
-      pastedData.split('').forEach((char, i) => {
-        newOtp[i] = char;
-      });
-      setOtp(newOtp);
-      setErrors({ ...errors, otp: '' });
-      const focusIndex = Math.min(pastedData.length, OTP_LENGTH - 1);
-      inputRefs.current[focusIndex]?.focus();
-    }
+    if (errors.otp) setErrors({ ...errors, otp: '' });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     const otpCode = otp.join('');
     const newErrors = {};
 
@@ -70,10 +47,9 @@ function ResetPassword() {
       newErrors.otp = `Please enter the complete ${OTP_LENGTH}-digit code`;
     }
 
-    if (!newPassword) {
-      newErrors.newPassword = 'New password is required';
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
+    const pwProblem = passwordProblem(newPassword);
+    if (pwProblem) {
+      newErrors.newPassword = pwProblem;
     }
 
     if (newPassword !== confirmPassword) {
@@ -103,114 +79,75 @@ function ResetPassword() {
   };
 
   return (
-    <div className="auth-modern-page auth-recovery-page">
-      <div className="auth-modern-shell auth-recovery-shell">
-        <aside
-          className="auth-modern-panel auth-recovery-panel"
-          style={{
-            '--auth-panel-image': "url('/ingather-landing-hero.png')",
-            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
-          }}
-        >
-          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button">
-            <img src="/ingather-logo.png" alt="" />
-          </button>
-
-          <div className="auth-panel-content">
-            <span className="auth-panel-pill">New password</span>
-            <h1>Reset access without losing momentum.</h1>
-            <p>
-              Use the code from your email and set a fresh password for your
-              Ingather workspace.
+    <AccountLayout
+      pillTag="Reset password"
+      pillText="Check your email for a code"
+      titleStart="Create a new"
+      titleBox="password"
+      lead="Enter the 6-digit code we sent you, then choose a new password."
+      photo="/landing/account.jpg"
+      photoAlt="Developers with laptops listening at a tech session"
+      chip="Codes expire after 10 minutes"
+      panelTitle="Reset access without losing momentum."
+      panelText="Your events, attendees and reports are right where you left them."
+      tall
+    >
+      <form className="ig-wl-card ig-wl-form" onSubmit={handleSubmit} noValidate>
+        <div>
+          <CodeInput digits={otp} onChange={handleOtpChange} invalid={Boolean(errors.otp || error)} disabled={loading} />
+          {errors.otp ? (
+            <p className="ig-acct-code-note" style={{ marginTop: 8, color: '#B42318', fontWeight: 500 }}>{errors.otp}</p>
+          ) : (
+            <p className="ig-acct-code-note" style={{ marginTop: 8 }}>
+              If an account uses <strong>{email}</strong>, a code is on its way. You can paste the whole code.
             </p>
-          </div>
+          )}
+        </div>
 
-          <div className="auth-recovery-proof" aria-hidden="true">
-            <div>
-              <span>Protected</span>
-              <strong>OTP</strong>
-            </div>
-            <div>
-              <span>Next step</span>
-              <strong>Login</strong>
-            </div>
-          </div>
-        </aside>
+        <div className={`ig-wl-field ${errors.newPassword ? 'has-error' : ''}`}>
+          <label htmlFor="newPassword">New password</label>
+          <PasswordInput
+            id="newPassword"
+            name="newPassword"
+            value={newPassword}
+            onChange={(e) => { setNewPassword(e.target.value); setErrors({ ...errors, newPassword: '' }); }}
+            placeholder="At least 8 characters"
+            autoComplete="new-password"
+            invalid={Boolean(errors.newPassword)}
+          />
+          {errors.newPassword && <small>{errors.newPassword}</small>}
+        </div>
 
-        <main className="auth-modern-card auth-reset-card">
-          <div className="auth-modern-header">
-            <p className="auth-modern-kicker">Reset password</p>
-            <h2>Create a new password</h2>
-            <span>Enter the six-digit code and choose a new password.</span>
-          </div>
+        <PasswordStrength password={newPassword} />
 
-          <div className="auth-modern-note">
-            <span>Reset code sent to</span>
-            <strong>{email}</strong>
-          </div>
+        <div className={`ig-wl-field ${errors.confirmPassword ? 'has-error' : ''}`}>
+          <label htmlFor="confirmPassword">Confirm password</label>
+          <PasswordInput
+            id="confirmPassword"
+            name="confirmPassword"
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); setErrors({ ...errors, confirmPassword: '' }); }}
+            placeholder="Re-enter your password"
+            autoComplete="new-password"
+            invalid={Boolean(errors.confirmPassword)}
+          />
+          {errors.confirmPassword && <small>{errors.confirmPassword}</small>}
+        </div>
 
-          <form className="auth-modern-form" onSubmit={handleSubmit}>
-            <div className="auth-modern-field">
-              <label>Verification code</label>
-              <div className="otp-container otp-container-modern">
-                {otp.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(element) => { inputRefs.current[index] = element; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength="1"
-                    className="otp-input"
-                    value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(index, e)}
-                    onPaste={index === 0 ? handlePaste : undefined}
-                    autoFocus={index === 0}
-                    aria-label={`Digit ${index + 1}`}
-                  />
-                ))}
-              </div>
-              {errors.otp && <span className="error">{errors.otp}</span>}
-            </div>
+        {error && <Notice tone="error">{error}</Notice>}
+        {success && <Notice tone="success">{success}</Notice>}
 
-            <div className="auth-modern-field">
-              <label htmlFor="newPassword">New password</label>
-              <input
-                type="password"
-                id="newPassword"
-                value={newPassword}
-                onChange={(e) => { setNewPassword(e.target.value); setErrors({ ...errors, newPassword: '' }); }}
-                placeholder="Minimum 6 characters"
-              />
-              {errors.newPassword && <span className="error">{errors.newPassword}</span>}
-            </div>
-
-            <div className="auth-modern-field">
-              <label htmlFor="confirmPassword">Confirm password</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setErrors({ ...errors, confirmPassword: '' }); }}
-                placeholder="Re-enter your password"
-              />
-              {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
-            </div>
-
-            {error && <div className="auth-message auth-message-error">{error}</div>}
-            {success && <div className="auth-message auth-message-success">{success}</div>}
-
-            <button type="submit" className="auth-modern-submit" disabled={loading}>
-              {loading ? 'Resetting password...' : 'Reset password'}
-            </button>
-
-            <p className="auth-modern-switch">
-              <a href="/login">Back to login</a>
-            </p>
-          </form>
-        </main>
-      </div>
-    </div>
+        <button type="submit" className="ig-wl-submit" disabled={loading} aria-busy={loading}>
+          {loading ? (
+            <>
+              <span className="ig-wl-spinner" aria-hidden="true" />
+              Resetting password...
+            </>
+          ) : 'Reset password'}
+        </button>
+        <p className="ig-acct-center">Didn't get a code? <Link to="/forgot-password">Request a new one</Link></p>
+      </form>
+    </AccountLayout>
   );
 }
 

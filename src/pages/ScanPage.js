@@ -6,7 +6,8 @@ import { getProgramInfo, submitScan, submitFormData, submitFastTrackRsvp, submit
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { playSuccessSound, playErrorSound } from '../utils/scanSounds';
-import '../styles/ScanPage.css';
+import { formatTimeRange, weekdayShortDate } from '../utils/dashboardFormat';
+import '../styles/IgGuest.css';
 
 const INGATHER_PUBLIC_ORIGIN = 'https://ingather.app';
 
@@ -49,33 +50,6 @@ const getDeviceFingerprint = async () => {
     setCachedFingerprint(fallback);
     return fallback;
   }
-};
-
-const getShareLinks = (shareUrl, title) => {
-  const text = `View ${title || 'this event'} details on Ingather`;
-  const encodedUrl = encodeURIComponent(shareUrl);
-  const encodedText = encodeURIComponent(text);
-  const encodedTextWithUrl = encodeURIComponent(`${text} ${shareUrl}`);
-
-  return [
-    { key: 'whatsapp', label: 'WhatsApp', href: `https://wa.me/?text=${encodedTextWithUrl}` },
-    { key: 'facebook', label: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
-    { key: 'x', label: 'X', href: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
-    { key: 'telegram', label: 'Telegram', href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}` },
-    { key: 'linkedin', label: 'LinkedIn', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}` }
-  ];
-};
-
-const formatEventDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-};
-
-const formatEventTime = (startTime, endTime) => {
-  if (!startTime && !endTime) return '';
-  return [startTime, endTime].filter(Boolean).join(' - ');
 };
 
 const isValidCollectedEmail = (value) => {
@@ -183,166 +157,194 @@ const createPersonalizedFlyerFileName = (firstName, eventTitle) => (
   `${sanitizeDownloadPart(firstName, 'friend')}-${sanitizeDownloadPart(eventTitle, 'event')}-ingather-flyer.png`
 );
 
-function EventDetailsButton({ programData, onClick }) {
-  const personalized = isPersonalizedFlyer(programData);
-  if (!personalized && !programData?.flyerUrl) return null;
+/* ---------------- Guest check-in screens (redesign, Nov 2026) ---------------- */
 
+const guestInitials = (name) => String(name || 'Host').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join('').toUpperCase() || 'IG';
+const isSafeGuestImage = (value) => /^(https:\/\/|\/(?!\/)|data:image\/(png|jpe?g|webp|gif);base64,)/i.test(String(value || ''));
+
+const guestWhen = (programData) => {
+  const day = weekdayShortDate(programData?.date);
+  const time = formatTimeRange(programData?.startTime, programData?.endTime);
+  return [day, time].filter(Boolean).join(', ');
+};
+
+const GuestIcon = {
+  gift: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 010-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 010 5" /></svg>,
+  qr: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 14h3v3M21 14v.01M14 21h3M21 17v4" /></svg>,
+  check: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>,
+  alert: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5v.01" /></svg>,
+  closed: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M10 13.5l4 4M14 13.5l-4 4" /></svg>,
+  wifi: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 8.8a15 15 0 0120 0M5 12.6a10 10 0 0114 0M8.5 16.4a5 5 0 017 0M12 20h.01" /><path d="M3 3l18 18" /></svg>,
+  male: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="5" /><path d="M14 10l6-6M15 4h5v5" /></svg>,
+  female: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="5" /><path d="M12 14v8M9 19h6" /></svg>
+};
+
+function GuestHostChip({ name, logo }) {
+  const [failed, setFailed] = useState(false);
+  const showLogo = isSafeGuestImage(logo) && !failed;
   return (
-    <button type="button" className="event-details-trigger" onClick={onClick}>
-      <span className="event-details-trigger-icon">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="14" height="12" rx="2" />
-          <line x1="3" y1="8" x2="17" y2="8" />
-          <path d="M7 12h4" />
-        </svg>
-      </span>
-      <span>
-        <strong>{personalized ? 'View Personalized Flyer' : 'View Event Details'}</strong>
-        <small>{personalized ? 'Your custom encouragement card' : 'Flyer, date, and share link'}</small>
-      </span>
-      <svg className="event-details-trigger-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="5" y1="10" x2="15" y2="10" />
-        <polyline points="11,6 15,10 11,14" />
-      </svg>
-    </button>
+    <span className="ig-gs-host">
+      {showLogo ? <img src={logo} alt="" onError={() => setFailed(true)} /> : <span aria-hidden="true">{guestInitials(name)}</span>}
+      <span className="ig-gs-host-name">{name || 'Event host'}</span>
+    </span>
   );
 }
 
-function GenderIcon({ type }) {
-  if (type === 'female') {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M12 12v8" />
-        <path d="M8.5 16h7" />
-      </svg>
-    );
-  }
-
+function GuestHero({ programData }) {
+  const [flyerFailed, setFlyerFailed] = useState(false);
+  const flyer = isSafeGuestImage(programData?.flyerUrl) && !flyerFailed ? programData.flyerUrl : null;
+  const when = guestWhen(programData);
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="10" cy="14" r="4" />
-      <path d="M13 11l6-6" />
-      <path d="M15 5h4v4" />
-    </svg>
+    <header className="ig-gs-hero">
+      {flyer && <img className="ig-gs-hero-img" src={flyer} alt="" onError={() => setFlyerFailed(true)} />}
+      <span className="ig-gs-hero-shade" aria-hidden="true" />
+      <GuestHostChip name={programData?.churchName} logo={programData?.churchLogo} />
+      <span className="ig-gs-hero-text">
+        <h1>{programData?.title || 'Check-in'}</h1>
+        {when && <span>{when}</span>}
+      </span>
+    </header>
   );
 }
 
-function ScanFormShell({ badge, programData, helperText, mode, children }) {
+function GuestPowered() {
+  return <footer className="ig-gs-powered">Powered by <img src="/ingather-logo.png" alt="Ingather" /></footer>;
+}
+
+function GuestShell({ programData, children, center = false }) {
   return (
-    <div className="scan-page scan-form-page">
-      <div className={`scan-container scan-form-container ${mode ? `scan-form-container-${mode}` : ''}`}>
-        <section className="scan-figma-card">
-          <div className="scan-figma-pill">{badge}</div>
-          <header className="scan-figma-header">
-            <h1>{programData.churchName}</h1>
-            <h2>{programData.title}</h2>
-            <p>{helperText}</p>
-          </header>
-          {children}
-        </section>
+    <div className="ig-gs">
+      <div className={`ig-gs-wrap${center ? ' is-center' : ''}`}>
+        {programData && <GuestHero programData={programData} />}
+        <main className="ig-gs-main">{children}</main>
+        <GuestPowered />
       </div>
     </div>
   );
 }
 
-function ScanInputField({ label, error, ...inputProps }) {
+function GuestIntro({ tag, tagText, title, highlight, lead }) {
   return (
-    <div className="scan-figma-field">
-      <label htmlFor={inputProps.id}>{label}</label>
-      <input className={`scan-figma-input ${error ? 'has-error' : ''}`} {...inputProps} />
-      {error && <span className="scan-figma-error">{error}</span>}
+    <div className="ig-gs-intro">
+      <span className="ig-gs-tag"><em>{tag}</em>{tagText}</span>
+      <h2>{title} <span>{highlight}</span></h2>
+      {lead && <p>{lead}</p>}
     </div>
   );
 }
 
-function ScanSelectField({ label, error, children, ...selectProps }) {
+function GuestFinePrint({ host }) {
   return (
-    <div className="scan-figma-field">
-      <label htmlFor={selectProps.id}>{label}</label>
-      <span className="scan-figma-select-wrap">
-        <select className={`scan-figma-input ${error ? 'has-error' : ''}`} {...selectProps}>
-          {children}
-        </select>
-      </span>
-      {error && <span className="scan-figma-error">{error}</span>}
+    <p className="ig-gs-fine">
+      Your details are shared with {host || 'the organizer'}, the event host. See Ingather's <a href="/terms" target="_blank" rel="noopener noreferrer">Terms</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+    </p>
+  );
+}
+
+function GuestError({ id, text }) {
+  if (!text) return null;
+  return <span className="ig-gs-error" id={id} role="alert">{GuestIcon.alert}{text}</span>;
+}
+
+function GuestInput({ id, label, optional, error, ...inputProps }) {
+  const errorId = `${id}-error`;
+  return (
+    <div className={`ig-gs-field${error ? ' has-error' : ''}`}>
+      <label htmlFor={id}>{label}{optional && <em> (optional)</em>}</label>
+      <input id={id} className="ig-gs-input" aria-invalid={Boolean(error) || undefined} aria-describedby={error ? errorId : undefined} {...inputProps} />
+      <GuestError id={errorId} text={error} />
     </div>
   );
 }
 
-function ScanTextareaField({ label, error, ...textareaProps }) {
+function GuestTextarea({ id, label, error, ...props }) {
+  const errorId = `${id}-error`;
   return (
-    <div className="scan-figma-field scan-figma-field-wide">
-      <label htmlFor={textareaProps.id}>{label}</label>
-      <textarea className={`scan-figma-input scan-figma-textarea ${error ? 'has-error' : ''}`} {...textareaProps} />
-      {error && <span className="scan-figma-error">{error}</span>}
+    <div className={`ig-gs-field${error ? ' has-error' : ''}`}>
+      <label htmlFor={id}>{label}</label>
+      <textarea id={id} className="ig-gs-input ig-gs-textarea" aria-invalid={Boolean(error) || undefined} aria-describedby={error ? errorId : undefined} {...props} />
+      <GuestError id={errorId} text={error} />
     </div>
   );
 }
 
-function ScanCustomFields({ fields = [], values = {}, errors = {}, onChange }) {
-  if (!fields.length) return null;
+function GuestGender({ id, value, onChange, error, options, big = false, label = 'Gender' }) {
+  const errorId = `${id}-error`;
+  return (
+    <fieldset className={`ig-gs-field${error ? ' has-error' : ''}`} id={id} aria-describedby={error ? errorId : undefined}>
+      <legend>{label}</legend>
+      <div className={`ig-gs-pair${big ? ' is-big' : ''}`} role="radiogroup" aria-label={label}>
+        {options.map(([optionValue, optionLabel, icon]) => {
+          const on = value === optionValue;
+          return (
+            <button key={optionValue} type="button" role="radio" aria-checked={on} className={on ? 'is-on' : ''} onClick={() => onChange(optionValue)}>
+              {big && <span className="ig-gs-pair-icon">{icon}</span>}
+              <span className="ig-gs-pair-label"><span className="ig-gs-radio" aria-hidden="true" />{optionLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+      <GuestError id={errorId} text={error} />
+    </fieldset>
+  );
+}
 
+function GuestCheckRow({ id, title, sub, checked, onChange }) {
+  return (
+    <label className={`ig-gs-checkrow${checked ? ' is-on' : ''}`} htmlFor={id}>
+      <span><strong>{title}</strong>{sub && <span>{sub}</span>}</span>
+      <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span className="ig-gs-box" aria-hidden="true">{GuestIcon.check}</span>
+    </label>
+  );
+}
+
+function GuestQuestions({ fields = [], values = {}, errors = {}, onChange, idPrefix = 'q' }) {
   return fields.map((field) => {
     const value = values[field.id];
-    const label = `${field.label}${field.required ? ' *' : ''}`;
-
-    if (field.type === 'radio') {
+    const id = `${idPrefix}-${field.id}`;
+    const errorId = `${id}-error`;
+    const label = <>{field.label}{!field.required && <em> (optional)</em>}</>;
+    if (field.type === 'radio' || field.type === 'checkbox') {
+      const many = field.type === 'checkbox';
+      const selected = many ? (Array.isArray(value) ? value : []) : value;
       return (
-        <fieldset className="scan-figma-field scan-custom-choice-group" key={field.id}>
-          <legend>{label}</legend>
-          {field.options.map(option => (
-            <label className="scan-custom-choice" key={option}>
-              <input
-                type="radio"
-                name={field.id}
-                value={option}
-                checked={value === option}
-                onChange={(event) => onChange(field.id, event.target.value)}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
-          {errors[field.id] && <span className="scan-figma-error">{errors[field.id]}</span>}
+        <fieldset className={`ig-gs-field${errors[field.id] ? ' has-error' : ''}`} key={field.id} id={id} aria-describedby={errors[field.id] ? errorId : undefined}>
+          <legend>{label}{many && <span className="ig-gs-hint"> Pick any that apply</span>}</legend>
+          <div className="ig-gs-options">
+            {(field.options || []).map((option) => {
+              const on = many ? selected.includes(option) : selected === option;
+              return (
+                <label key={option} className={`ig-gs-option${on ? ' is-on' : ''}`}>
+                  <input
+                    type={many ? 'checkbox' : 'radio'}
+                    name={id}
+                    value={option}
+                    checked={on}
+                    onChange={(event) => onChange(field.id, many
+                      ? (event.target.checked ? [...selected, option] : selected.filter((item) => item !== option))
+                      : option)}
+                  />
+                  <span className={many ? 'ig-gs-box is-small' : 'ig-gs-radio'} aria-hidden="true">{many && GuestIcon.check}</span>
+                  <span>{option}</span>
+                </label>
+              );
+            })}
+          </div>
+          <GuestError id={errorId} text={errors[field.id]} />
         </fieldset>
       );
     }
-
-    if (field.type === 'checkbox') {
-      const selected = Array.isArray(value) ? value : [];
-      return (
-        <fieldset className="scan-figma-field scan-custom-choice-group" key={field.id}>
-          <legend>{label}</legend>
-          {field.options.map(option => (
-            <label className="scan-custom-choice" key={option}>
-              <input
-                type="checkbox"
-                value={option}
-                checked={selected.includes(option)}
-                onChange={(event) => {
-                  const next = event.target.checked
-                    ? [...selected, option]
-                    : selected.filter(item => item !== option);
-                  onChange(field.id, next);
-                }}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
-          {errors[field.id] && <span className="scan-figma-error">{errors[field.id]}</span>}
-        </fieldset>
-      );
-    }
-
     return (
-      <ScanInputField
+      <GuestInput
         key={field.id}
-        label={label}
+        id={id}
+        label={field.label}
+        optional={!field.required}
         type="text"
-        id={field.id}
         value={value || ''}
         onChange={(event) => onChange(field.id, event.target.value)}
-        placeholder="Type your answer"
+        placeholder="Your answer"
         maxLength={500}
         error={errors[field.id]}
       />
@@ -350,644 +352,542 @@ function ScanCustomFields({ fields = [], values = {}, errors = {}, onChange }) {
   });
 }
 
-function PersonalizedFlyerViewer({ programData, programId, attendeeName, personalizedMessage, onClose, standalone = false, toast }) {
-  const fallbackTemplateRef = useRef('');
-  const fallbackTemplateKeyRef = useRef('');
+function GuestStatus({ icon, tone = 'peach', title, text, callout, children }) {
+  return (
+    <section className="ig-gs-card ig-gs-status" aria-live="polite">
+      <span className={`ig-gs-status-icon is-${tone}`}>{icon}</span>
+      <h2>{title}</h2>
+      {text && <p>{text}</p>}
+      {callout && <div className="ig-gs-callout">{GuestIcon.alert}<span>{callout}</span></div>}
+      {children}
+    </section>
+  );
+}
 
-  if (!isPersonalizedFlyer(programData)) return null;
+// Moves the guest to the first answer that needs fixing.
+const focusFirstGuestError = (root) => {
+  if (!root) return;
+  const target = root.querySelector('[aria-invalid="true"], .has-error button, .has-error input');
+  if (!target) return;
+  if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  if (typeof target.focus === 'function') target.focus({ preventScroll: true });
+};
 
-  const config = programData.personalizedFlyerConfig || {};
+/* ---------------- After check-in (redesign, Nov 2026) ---------------- */
+
+const clockLabel = (date) => (date instanceof Date && !Number.isNaN(date.getTime())
+  ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  : '');
+
+const downloadBlobFile = (blob, fileName) => {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = fileName;
+  link.href = objectUrl;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+};
+
+// Shares a picture where the phone allows it, then falls back to sharing or copying the link.
+const shareWithFallback = async ({ file, title, text, url, toast }) => {
+  if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ title, text, files: [file] });
+      return;
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+    }
+  }
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text, url });
+      return;
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text} ${url}`.trim());
+    toast?.success('Link copied. Paste it in your status or chat.');
+  } catch (error) {
+    toast?.info('Save the picture, then post it from your gallery.');
+  }
+};
+
+const copyLinkWithToast = async (url, toast) => {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast?.success('Event link copied.');
+  } catch (error) {
+    toast?.info(url);
+  }
+};
+
+const roundedRectPath = (ctx, x, y, w, h, r) => {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
+
+const drawCoverImage = (ctx, img, x, y, w, h) => {
+  const ratio = Math.max(w / img.width, h / img.height);
+  const dw = img.width * ratio;
+  const dh = img.height * ratio;
+  ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
+};
+
+const fitFont = (ctx, text, maxWidth, weight, size, minSize) => {
+  let fontSize = size;
+  ctx.font = `${weight} ${fontSize}px Inter, Arial, sans-serif`;
+  while (ctx.measureText(text).width > maxWidth && fontSize > minSize) {
+    fontSize -= 2;
+    ctx.font = `${weight} ${fontSize}px Inter, Arial, sans-serif`;
+  }
+  return fontSize;
+};
+
+const getPersonalFlyerParts = (programData, attendeeName, personalizedMessage, fallbackTemplate) => {
+  const config = programData?.personalizedFlyerConfig || {};
   const firstName = getFirstName(attendeeName);
-  const fallbackTemplateKey = JSON.stringify([config.template || '', config.templates || []]);
-  if (!fallbackTemplateRef.current || fallbackTemplateKeyRef.current !== fallbackTemplateKey) {
-    fallbackTemplateRef.current = pickPersonalizedTemplate({ template: config.template, templates: config.templates });
-    fallbackTemplateKeyRef.current = fallbackTemplateKey;
-  }
-  const message = personalizeTemplate(personalizedMessage || fallbackTemplateRef.current, firstName);
-  const brandColor = config.brandColor || '#E8590C';
-  const configuredTextColor = config.textColor || '#111217';
-  const textColor = ['#fff', '#ffffff', 'white'].includes(String(configuredTextColor).trim().toLowerCase())
-    ? '#111217'
-    : configuredTextColor;
-  const logoUrl = config.logoUrl || programData.personalizedLogoUrl || programData.churchLogo;
-  const logoFallback = (programData.churchName || 'Ingather').slice(0, 2).toUpperCase();
-  const messageWithoutName = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
-  const motivationalWords = messageWithoutName.split(/\s+/).filter(Boolean);
-  const firstMessageLine = motivationalWords.slice(0, 5).join(' ') || messageWithoutName;
-  const secondMessageLine = motivationalWords.slice(5).join(' ');
-  const organizerName = programData.churchName || 'Ingather';
-  const eventTitle = programData.title || 'Ingather Event';
-  const eventDateText = formatEventDate(programData.date);
-  const eventTimeText = formatEventTime(programData.startTime, programData.endTime);
-  const eventScheduleText = [eventDateText, eventTimeText].filter(Boolean).join(' | ');
-  const eventShareId = programId || programData.id;
-  const shareUrl = eventShareId ? getEventDetailsUrl(eventShareId) : INGATHER_PUBLIC_ORIGIN;
-  const shareLinks = getShareLinks(shareUrl, eventTitle);
-  const flyerFileName = createPersonalizedFlyerFileName(firstName, eventTitle);
-
-  const renderFlyerCanvas = async () => {
-      const flyerSize = 800;
-      const pathThickness = 5;
-      const pathRadius = 55;
-      const logoSize = 96;
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width = flyerSize * scale;
-      canvas.height = flyerSize * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(scale, scale);
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, flyerSize, flyerSize);
-
-      ctx.strokeStyle = brandColor;
-      ctx.lineWidth = pathThickness;
-      ctx.lineCap = 'butt';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(102.5, 0);
-      ctx.lineTo(102.5, 400);
-      ctx.moveTo(102.5, 400);
-      ctx.lineTo(102.5, 650 - pathRadius);
-      ctx.quadraticCurveTo(102.5, 647.5, 100 + pathRadius, 647.5);
-      ctx.lineTo(600 - pathRadius, 647.5);
-      ctx.quadraticCurveTo(597.5, 647.5, 597.5, 650 - pathRadius);
-      ctx.lineTo(597.5, 400);
-      ctx.moveTo(350, 252.5);
-      ctx.lineTo(600 - pathRadius, 252.5);
-      ctx.quadraticCurveTo(597.5, 252.5, 597.5, 250 + pathRadius);
-      ctx.lineTo(597.5, 400);
-      ctx.stroke();
-
-      const logo = await loadCanvasImage(logoUrl).catch(() => null);
-      const drawLogoCircle = (x, y, size) => {
-        const cx = x + size / 2;
-        const cy = y + size / 2;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(cx, cy, size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill();
-        ctx.lineWidth = pathThickness;
-        ctx.strokeStyle = brandColor;
-        ctx.stroke();
-
-        if (logo) {
-          ctx.clip();
-          const ratio = logo.width / logo.height;
-          let drawWidth = size;
-          let drawHeight = size;
-          let dx = x;
-          let dy = y;
-          if (ratio > 1) {
-            drawWidth = size * ratio;
-            dx = cx - drawWidth / 2;
-          } else {
-            drawHeight = size / ratio;
-            dy = cy - drawHeight / 2;
-          }
-          ctx.drawImage(logo, dx, dy, drawWidth, drawHeight);
-        } else {
-          ctx.fillStyle = brandColor;
-          ctx.font = '600 16px Inter, Arial, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(logoFallback, cx, cy);
-        }
-        ctx.restore();
-      };
-
-      drawLogoCircle(520, 60, logoSize);
-      drawLogoCircle(254, 204.5, logoSize);
-
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-      const textLeft = 245;
-      const textRight = 585;
-      const firstLineY = 397;
-      const secondaryY = 427;
-      const displayName = `\u201c${firstName}`;
-      ctx.font = '800 42px Poppins, Arial, sans-serif';
-      let nameFontSize = 42;
-      while (ctx.measureText(displayName).width > 220 && nameFontSize > 30) {
-        nameFontSize -= 1;
-        ctx.font = `800 ${nameFontSize}px Poppins, Arial, sans-serif`;
-      }
-      ctx.fillStyle = brandColor;
-      ctx.fillText(displayName, textLeft, firstLineY);
-
-      const descriptionX = textLeft + ctx.measureText(displayName).width + 8;
-      ctx.font = '400 17px Inter, Arial, sans-serif';
-      ctx.fillStyle = textColor;
-      const words = messageWithoutName.split(/\s+/).filter(Boolean);
-      const firstLine = [];
-      let firstLineText = '';
-      while (words.length) {
-        const testLine = firstLineText ? `${firstLineText} ${words[0]}` : words[0];
-        if (ctx.measureText(testLine).width > Math.max(80, textRight - descriptionX) && firstLineText) break;
-        firstLine.push(words.shift());
-        firstLineText = firstLine.join(' ');
-      }
-      if (firstLineText) ctx.fillText(firstLineText, descriptionX, firstLineY);
-
-      const remainingLines = wrapWordsToCanvasLines(ctx, words, textRight - textLeft);
-      remainingLines.slice(0, 3).forEach((textLine, index) => {
-        ctx.fillText(textLine, textLeft + 2, secondaryY + index * 24);
-      });
-
-      const fitCanvasText = (text, maxWidth, fontWeight, initialSize, minSize = 18) => {
-        let fontSize = initialSize;
-        ctx.font = `${fontWeight} ${fontSize}px Inter, Arial, sans-serif`;
-        while (ctx.measureText(text).width > maxWidth && fontSize > minSize) {
-          fontSize -= 1;
-          ctx.font = `${fontWeight} ${fontSize}px Inter, Arial, sans-serif`;
-        }
-        return fontSize;
-      };
-
-      ctx.fillStyle = brandColor;
-      ctx.fillRect(0, 680, flyerSize, 112);
-      ctx.fillStyle = '#FFFFFF';
-      ctx.textBaseline = 'alphabetic';
-      ctx.textAlign = 'left';
-
-      const footerLeftX = 72;
-      const footerRightX = 704;
-      const footerLeftMax = 390;
-      const footerScheduleMax = 300;
-      const footerTopY = 724;
-      const footerTitleY = 765;
-
-      fitCanvasText(organizerName, footerLeftMax, '800', 28, 18);
-      ctx.fillText(organizerName, footerLeftX, footerTopY);
-
-      fitCanvasText(eventTitle, 620, '800', 28, 18);
-      ctx.fillText(eventTitle, footerLeftX, footerTitleY);
-
-      if (eventScheduleText) {
-        ctx.textAlign = 'right';
-        fitCanvasText(eventScheduleText, footerScheduleMax, '800', 24, 14);
-        ctx.fillText(eventScheduleText, footerRightX, footerTopY);
-      }
-
-      return canvas;
+  const message = personalizeTemplate(personalizedMessage || fallbackTemplate, firstName);
+  const rest = message.replace(new RegExp(`^${escapeRegExp(firstName)}[,\\s-]*`, 'i'), '').trim() || message;
+  const textColor = /^#?[0-9a-f]{6}$/i.test(String(config.textColor || '')) ? config.textColor : '#FFFFFF';
+  return {
+    firstName,
+    message,
+    rest,
+    brand: /^#?[0-9a-f]{6}$/i.test(String(config.brandColor || '')) ? config.brandColor : '#E8590C',
+    buttonText: textColor,
+    background: programData?.personalizedBackgroundUrl || '',
+    logo: config.logoUrl || programData?.personalizedLogoUrl || programData?.churchLogo || '',
+    host: programData?.churchName || 'Ingather',
+    title: programData?.title || 'our event',
+    date: weekdayShortDate(programData?.date)
   };
-
-  const createFlyerBlob = async () => {
-    const canvas = await renderFlyerCanvas();
-    return canvasToPngBlob(canvas);
-  };
-
-  const handleDownload = async () => {
-    try {
-      const blob = await createFlyerBlob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = flyerFileName;
-      link.href = objectUrl;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    } catch (error) {
-      toast?.error('Unable to download this flyer. Please try again.');
-    }
-  };
-
-  const handleShare = async () => {
-    const shareText = `${message} - ${eventTitle}`;
-    const shareData = {
-      title: 'My Ingather Flyer',
-      text: shareText,
-      url: shareUrl
-    };
-
-    let flyerFile = null;
-
-    try {
-      const blob = await createFlyerBlob();
-      flyerFile = new File([blob], flyerFileName, { type: 'image/png' });
-    } catch (error) {
-      flyerFile = null;
-    }
-
-    if (navigator.share && flyerFile && navigator.canShare?.({ files: [flyerFile] })) {
-      try {
-        await navigator.share({ ...shareData, files: [flyerFile] });
-        return;
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-      }
-    }
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-      toast?.success('Flyer message and event link copied.');
-    } catch (error) {
-      toast?.info('Download the flyer to share it on your socials.');
-    }
-  };
-
-  const content = (
-    <div className="personalized-viewer-card">
-      <div className="personalized-viewer-header">
-        <div>
-          <p className="personalized-viewer-kicker">{programData.churchName}</p>
-          <h2>Your Personalized Flyer</h2>
-        </div>
-        {!standalone && (
-          <button type="button" className="flyer-viewer-close" onClick={onClose} aria-label="Close personalized flyer">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-              <line x1="5" y1="5" x2="15" y2="15" />
-              <line x1="15" y1="5" x2="5" y2="15" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      <div
-        className="personalized-card-preview"
-        style={{
-          '--personalized-brand': brandColor,
-          '--personalized-text': textColor
-        }}
-      >
-        <div className="path-left-extension" aria-hidden="true" />
-        <div className="path-main-u" aria-hidden="true" />
-        <div className="path-top-hook" aria-hidden="true" />
-
-        <span className="logo-circle top-logo">
-          {logoUrl ? <img src={logoUrl} alt="" /> : <span>{logoFallback}</span>}
-        </span>
-        <span className="logo-circle inline-logo">
-          {logoUrl ? (
-            <img src={logoUrl} alt={`${programData.churchName || 'Organization'} logo`} />
-          ) : (
-            <span>{logoFallback}</span>
-          )}
-        </span>
-
-        <div className="personalized-text-content">
-          <div className="personalized-line-primary">
-            <span className="personalized-brand-name"><span>&ldquo;</span>{firstName}</span>
-            <span className="personalized-description">{firstMessageLine}</span>
-          </div>
-          {secondMessageLine && <div className="personalized-line-secondary">{secondMessageLine}</div>}
-        </div>
-
-        <div className="personalized-event-band">
-          <div className="personalized-event-band-left">
-            <strong>{organizerName}</strong>
-            <span>{eventTitle}</span>
-          </div>
-          {eventScheduleText && (
-            <div className="personalized-event-band-time">{eventScheduleText}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="personalized-actions">
-        <button type="button" className="flyer-share-primary" onClick={handleDownload}>
-          Download flyer
-        </button>
-        <button type="button" className="personalized-share-secondary" onClick={handleShare}>
-          Share flyer
-        </button>
-      </div>
-      <div className="personalized-social-panel">
-        <p>Share to socials</p>
-        <div className="flyer-share-links personalized-share-links">
-          {shareLinks.map(link => (
-            <a
-              key={link.key}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flyer-share-link"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (standalone) return content;
-
-  return (
-    <div className="flyer-viewer-overlay" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()}>
-        {content}
-      </div>
-    </div>
-  );
-}
-
-function FlyerDetailsViewer({ programData, programId, onClose, standalone = false, toast }) {
-  if (!programData?.flyerUrl) return null;
-
-  const shareUrl = getEventDetailsUrl(programId);
-  const shareLinks = getShareLinks(shareUrl, programData.title);
-
-  const handleShare = async () => {
-    const shareData = {
-      title: programData.title || 'Ingather Event',
-      text: `View ${programData.title || 'this event'} details on Ingather`,
-      url: shareUrl
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast?.success('Event link copied.');
-    } catch (error) {
-      window.open(shareLinks[0].href, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const dateText = formatEventDate(programData.date);
-  const timeText = formatEventTime(programData.startTime, programData.endTime);
-
-  const content = (
-    <div className="flyer-viewer-card">
-      <div className="flyer-viewer-header">
-        <div>
-          <p className="flyer-viewer-kicker">{programData.churchName}</p>
-          <h2>{programData.title}</h2>
-          {(dateText || timeText) && (
-            <div className="flyer-viewer-meta">
-              {dateText && <span>{dateText}</span>}
-              {timeText && <span>{timeText}</span>}
-            </div>
-          )}
-        </div>
-        {!standalone && (
-          <button type="button" className="flyer-viewer-close" onClick={onClose} aria-label="Close event details">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-              <line x1="5" y1="5" x2="15" y2="15" />
-              <line x1="15" y1="5" x2="5" y2="15" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      <div className="flyer-viewer-image-wrap">
-        <img src={programData.flyerUrl} alt={`${programData.title} event flyer`} />
-      </div>
-
-      <div className="flyer-share-panel">
-        <div className="flyer-share-copy">
-          <h3>Share this event</h3>
-          <p>Send the flyer and details to someone who may want to attend.</p>
-        </div>
-        <button type="button" className="flyer-share-primary" onClick={handleShare}>
-          Share event link
-        </button>
-        <div className="flyer-share-links">
-          {shareLinks.map(link => (
-            <a
-              key={link.key}
-              href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flyer-share-link"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  if (standalone) {
-    return content;
-  }
-
-  return (
-    <div className="flyer-viewer-overlay" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()}>
-        {content}
-      </div>
-    </div>
-  );
-}
-
-const groupSponsorsByTier = (sponsors = []) => {
-  const groups = [];
-  sponsors.forEach((sponsor) => {
-    const label = sponsor.tier || 'Featured Sponsors';
-    let group = groups.find(item => item.label === label);
-    if (!group) {
-      group = { label, sponsors: [] };
-      groups.push(group);
-    }
-    group.sponsors.push(sponsor);
-  });
-  return groups;
 };
 
-const isHeadlineSponsor = (sponsor) => /headline/i.test(sponsor?.tier || '');
+// Draws the guest's welcome flyer as a 1080 x 1350 picture (a good size for WhatsApp status).
+const drawPersonalFlyer = async (parts) => {
+  const W = 1080;
+  const H = 1350;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  try { if (document.fonts?.ready) await document.fonts.ready; } catch (error) { /* fonts are optional */ }
 
-const getSponsorFlyerUrl = (sponsor) => sponsor?.flyerUrl || sponsor?.flyer_url || '';
+  const [background, logo, ingatherLogo] = await Promise.all([
+    loadCanvasImage(parts.background).catch(() => null),
+    loadCanvasImage(parts.logo).catch(() => null),
+    loadCanvasImage('/ingather-logo.png').catch(() => null)
+  ]);
 
-function GiftBoxIcon({ className = '' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <rect x="3" y="7" width="18" height="4" rx="1.5" />
-      <line x1="12" y1="7" x2="12" y2="20" />
-      <path d="M12 7C10.4 4.4 8.2 3.7 7 4.9C5.7 6.2 7.1 8 12 7Z" />
-      <path d="M12 7c1.6-2.6 3.8-3.3 5-2.1C18.3 6.2 16.9 8 12 7Z" />
-    </svg>
-  );
-}
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, W, H);
 
-function WinnerConfetti() {
-  const pieces = [
-    ['left', '#E8590C'], ['left', '#16A34A'], ['left', '#F59E0B'], ['left', '#7C3AED'],
-    ['right', '#E8590C'], ['right', '#16A34A'], ['right', '#F59E0B'], ['right', '#2563EB'],
-    ['top', '#E8590C'], ['top', '#16A34A'], ['top', '#F59E0B'], ['top', '#EF4444']
-  ];
+  // Top: the organizer's picture, or their brand colour.
+  const topH = 560;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, topH);
+  ctx.clip();
+  ctx.fillStyle = parts.brand;
+  ctx.fillRect(0, 0, W, topH);
+  if (background) {
+    drawCoverImage(ctx, background, 0, 0, W, topH);
+    const shade = ctx.createLinearGradient(0, 0, 0, topH);
+    shade.addColorStop(0, 'rgba(0, 0, 0, 0.28)');
+    shade.addColorStop(0.45, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, W, topH);
+  }
+  ctx.restore();
 
-  return (
-    <div className="winner-confetti" aria-hidden="true">
-      {pieces.map(([origin, color], index) => (
-        <span
-          key={`${origin}-${index}`}
-          className={`winner-confetti-piece ${origin}`}
-          style={{
-            '--confetti-color': color,
-            '--confetti-index': index,
-            '--confetti-left': `${18 + (index * 5)}%`
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+  // Host chip.
+  ctx.font = '600 32px Inter, Arial, sans-serif';
+  const hostText = parts.host.length > 34 ? `${parts.host.slice(0, 33)}…` : parts.host;
+  const chipW = Math.min(W - 96, 58 + 22 + ctx.measureText(hostText).width + 30);
+  roundedRectPath(ctx, 48, 48, chipW, 72, 36);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(48 + 36, 84, 26, 0, Math.PI * 2);
+  ctx.fillStyle = '#111111';
+  ctx.fill();
+  if (logo) {
+    ctx.clip();
+    drawCoverImage(ctx, logo, 48 + 10, 58, 52, 52);
+  } else {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '700 20px Inter, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(guestInitials(parts.host), 48 + 36, 85);
+  }
+  ctx.restore();
+  ctx.fillStyle = '#111111';
+  ctx.font = '600 32px Inter, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(hostText, 48 + 80, 85);
 
-const getOrderedSponsors = (sponsors = []) => {
-  return [...sponsors].sort((first, second) => {
-    const firstIsHeadline = isHeadlineSponsor(first);
-    const secondIsHeadline = isHeadlineSponsor(second);
-    if (firstIsHeadline === secondIsHeadline) return 0;
-    return firstIsHeadline ? -1 : 1;
+  // Ticket tear line.
+  ctx.strokeStyle = parts.brand;
+  ctx.lineWidth = 6;
+  ctx.setLineDash([22, 14]);
+  ctx.beginPath();
+  ctx.moveTo(0, topH + 3);
+  ctx.lineTo(W, topH + 3);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const left = 80;
+  const maxW = W - left * 2;
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = parts.brand;
+  fitFont(ctx, `Welcome to ${parts.title}`, maxW, '600', 38, 26);
+  ctx.fillText(`Welcome to ${parts.title}`, left, topH + 104);
+
+  ctx.fillStyle = '#111111';
+  fitFont(ctx, `${parts.firstName},`, maxW, '800', 120, 72);
+  ctx.fillText(`${parts.firstName},`, left, topH + 238);
+
+  ctx.fillStyle = '#3F3F3F';
+  let messageSize = 56;
+  let lines = [];
+  do {
+    ctx.font = `600 ${messageSize}px Inter, Arial, sans-serif`;
+    lines = wrapWordsToCanvasLines(ctx, parts.rest.split(/\s+/).filter(Boolean), maxW);
+    if (lines.length <= 4) break;
+    messageSize -= 4;
+  } while (messageSize > 36);
+  lines.slice(0, 5).forEach((line, index) => {
+    ctx.fillText(line, left, topH + 330 + index * Math.round(messageSize * 1.24));
   });
+
+  // Footer: date and "Powered by Ingather".
+  ctx.fillStyle = '#ECECEA';
+  ctx.fillRect(left, H - 140, maxW, 3);
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#6B6B6B';
+  ctx.font = '500 32px Inter, Arial, sans-serif';
+  ctx.fillText(parts.date || parts.title, left, H - 72);
+  const logoH = 40;
+  const logoW = ingatherLogo ? (ingatherLogo.width / ingatherLogo.height) * logoH : 0;
+  const right = W - left;
+  if (ingatherLogo) ctx.drawImage(ingatherLogo, right - logoW, H - 72 - logoH / 2, logoW, logoH);
+  ctx.textAlign = 'right';
+  ctx.fillText(ingatherLogo ? 'Powered by' : 'Powered by Ingather', right - logoW - (ingatherLogo ? 14 : 0), H - 72);
+
+  // Brand frame.
+  ctx.strokeStyle = parts.brand;
+  ctx.lineWidth = 12;
+  ctx.strokeRect(6, 6, W - 12, H - 12);
+
+  return canvas;
 };
 
-function SponsorCarouselDots({ count, activeIndex = 0, onSelect }) {
-  if (count <= 1) return null;
+function usePersonalFlyer(programData, attendeeName, personalizedMessage, enabled) {
+  const fallbackRef = useRef('');
+  if (!fallbackRef.current) {
+    const config = programData?.personalizedFlyerConfig || {};
+    fallbackRef.current = pickPersonalizedTemplate({ template: config.template, templates: config.templates });
+  }
+  const parts = enabled ? getPersonalFlyerParts(programData, attendeeName, personalizedMessage, fallbackRef.current) : null;
+  const key = parts ? JSON.stringify(parts) : '';
+  const [state, setState] = useState({ key: '', url: '', blob: null, failed: false });
 
+  useEffect(() => {
+    if (!key) return undefined;
+    let alive = true;
+    const flyerParts = JSON.parse(key);
+    drawPersonalFlyer(flyerParts)
+      .then((canvas) => canvasToPngBlob(canvas))
+      .then((blob) => {
+        if (!alive) return;
+        setState((prev) => {
+          if (prev.url) URL.revokeObjectURL(prev.url);
+          return { key, url: URL.createObjectURL(blob), blob, failed: false };
+        });
+      })
+      .catch(() => { if (alive) setState({ key, url: '', blob: null, failed: true }); });
+    return () => { alive = false; };
+  }, [key]);
+
+  return { parts, ...state, ready: state.key === key && Boolean(state.blob) };
+}
+
+function PersonalFlyerPreview({ parts }) {
+  // Shown while the picture is being drawn, and if a phone can't draw it.
   return (
-    <div className="post-checkin-sponsor-dots" aria-label="Sponsor carousel position">
-      {Array.from({ length: count }).map((_, index) => (
-        <button
-          key={index}
-          type="button"
-          className={index === activeIndex ? 'active' : ''}
-          aria-label={`Show sponsor ${index + 1}`}
-          aria-current={index === activeIndex ? 'true' : undefined}
-          onClick={() => onSelect?.(index)}
-        />
-      ))}
+    <div className="ig-gs-pflyer" style={{ borderColor: parts.brand }}>
+      <div className="ig-gs-pflyer-top" style={{ background: parts.background && isSafeGuestImage(parts.background) ? `center / cover no-repeat url("${parts.background}")` : parts.brand }}>
+        <GuestHostChip name={parts.host} logo={parts.logo} />
+      </div>
+      <div className="ig-gs-pflyer-body" style={{ borderTopColor: parts.brand }}>
+        <span className="ig-gs-pflyer-kicker" style={{ color: parts.brand }}>Welcome to {parts.title}</span>
+        <strong>{parts.firstName},</strong>
+        <span className="ig-gs-pflyer-msg">{parts.rest}</span>
+        <span className="ig-gs-pflyer-foot"><span>{parts.date}</span><span className="ig-gs-pflyer-brand">Powered by <img src="/ingather-logo.png" alt="Ingather" /></span></span>
+      </div>
     </div>
   );
 }
 
-function SponsorCard({ sponsor, onSponsorClick, compact = false }) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const handleClick = () => onSponsorClick(sponsor);
-  const headline = isHeadlineSponsor(sponsor);
-  const flyerUrl = getSponsorFlyerUrl(sponsor);
-  const canShowFlyer = flyerUrl && !imageFailed;
+function FullScreenViewer({ title, subtitle, onClose, children }) {
+  const closeRef = useRef(null);
+  useEffect(() => {
+    const opener = document.activeElement;
+    closeRef.current?.focus();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener('keydown', onKey);
+      if (opener && typeof opener.focus === 'function') opener.focus();
+    };
+  }, [onClose]);
+  return (
+    <div className="ig-gs-viewer" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="ig-gs-viewer-inner">
+        <div className="ig-gs-viewer-head">
+          <span><strong>{title}</strong>{subtitle && <span>{subtitle}</span>}</span>
+          <button type="button" ref={closeRef} className="ig-gs-viewer-close" aria-label="Close" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const ViewerIcon = {
+  download: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>,
+  share: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>,
+  link: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" /></svg>,
+  whatsapp: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm0 18.2a8.2 8.2 0 01-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1112 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 01-3.3-2.9c-.3-.4.3-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 00-.7.3 3 3 0 00-.9 2.2 5.2 5.2 0 001.1 2.7 11.8 11.8 0 004.5 4c1.7.7 2.3.8 3.2.6a2.6 2.6 0 001.7-1.2 2.1 2.1 0 00.1-1.2c0-.1-.2-.2-.4-.3z" /></svg>
+};
+
+function ShareWithFriend({ shareUrl, title, toast }) {
+  const whatsapp = `https://wa.me/?text=${encodeURIComponent(`${title ? `${title}: ` : ''}${shareUrl}`)}`;
+  return (
+    <div className="ig-gs-viewer-share">
+      <span>Share this event with a friend</span>
+      <div>
+        <a href={whatsapp} target="_blank" rel="noopener noreferrer">{ViewerIcon.whatsapp}WhatsApp</a>
+        <button type="button" onClick={() => copyLinkWithToast(shareUrl, toast)}>{ViewerIcon.link}Copy link</button>
+      </div>
+    </div>
+  );
+}
+
+function PersonalFlyerSection({ programData, programId, attendeeName, personalizedMessage, toast, standalone = false }) {
+  const flyer = usePersonalFlyer(programData, attendeeName, personalizedMessage, true);
+  const [open, setOpen] = useState(false);
+  const { parts } = flyer;
+  const shareUrl = getEventDetailsUrl(programId || programData.id);
+  const fileName = createPersonalizedFlyerFileName(parts.firstName, parts.title);
+
+  const save = () => {
+    if (flyer.blob) downloadBlobFile(flyer.blob, fileName);
+    else toast?.error('Your flyer is still being made. Try again in a moment.');
+  };
+  const share = () => shareWithFallback({
+    file: flyer.blob ? new File([flyer.blob], fileName, { type: 'image/png' }) : null,
+    title: 'My welcome flyer',
+    text: `${parts.message} - ${parts.title}`,
+    url: shareUrl,
+    toast
+  });
+
+  const picture = flyer.url
+    ? <img className="ig-gs-pflyer-img" src={flyer.url} alt={`Welcome flyer for ${parts.firstName}`} />
+    : <PersonalFlyerPreview parts={parts} />;
 
   return (
-    <article className={`post-checkin-sponsor-card ${compact ? 'compact' : ''} ${headline ? 'is-headline' : ''}`}>
-      <button type="button" className="post-checkin-sponsor-image" onClick={handleClick}>
-        {headline && <span className="post-checkin-sponsor-badge">Headline Sponsor</span>}
-        {canShowFlyer ? (
-          <img
-            src={flyerUrl}
-            alt={`${sponsor.sponsorName} sponsor flyer`}
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <span className="post-checkin-sponsor-image-fallback">
-            Sponsor flyer unavailable
-          </span>
-        )}
+    <section className="ig-gs-after" aria-label="Your welcome flyer">
+      <div className="ig-gs-section-head"><strong>Made for you</strong><span>{standalone ? 'Welcome flyer' : 'Personal welcome flyer'}</span></div>
+      <button type="button" className="ig-gs-pflyer-open" onClick={() => setOpen(true)} aria-label="Open your welcome flyer">{picture}</button>
+      <div className="ig-gs-row">
+        <button type="button" className="ig-gs-btn" style={{ background: parts.brand, color: parts.buttonText }} onClick={save} disabled={!flyer.blob}>{ViewerIcon.download}{flyer.blob ? 'Save my flyer' : 'Making your flyer…'}</button>
+        <button type="button" className="ig-gs-btn is-ghost" onClick={share}>{ViewerIcon.share}Post to status</button>
+      </div>
+      {open && (
+        <FullScreenViewer title="Your welcome flyer" subtitle={`Made for you by ${parts.host}`} onClose={() => setOpen(false)}>
+          <div className="ig-gs-viewer-figure">{picture}</div>
+          <div className="ig-gs-row">
+            <button type="button" className="ig-gs-btn" onClick={save} disabled={!flyer.blob}>{ViewerIcon.download}Save image</button>
+            <button type="button" className="ig-gs-btn is-light" onClick={share}>{ViewerIcon.share}Share</button>
+          </div>
+          <ShareWithFriend shareUrl={shareUrl} title={parts.title} toast={toast} />
+        </FullScreenViewer>
+      )}
+    </section>
+  );
+}
+
+function EventFlyerSection({ programData, programId, toast, heading = true }) {
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (!programData?.flyerUrl || failed) return null;
+  const shareUrl = getEventDetailsUrl(programId || programData.id);
+  const fileName = `${sanitizeDownloadPart(programData.title, 'event')}-flyer.${/\.png(\?|$)/i.test(programData.flyerUrl) ? 'png' : 'jpg'}`;
+
+  const save = async () => {
+    try {
+      const response = await fetch(programData.flyerUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error('download failed');
+      downloadBlobFile(await response.blob(), fileName);
+    } catch (error) {
+      window.open(programData.flyerUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+  const share = () => shareWithFallback({
+    title: programData.title || 'Event',
+    text: `Join me at ${programData.title || 'this event'}`,
+    url: shareUrl,
+    toast
+  });
+
+  return (
+    <section className="ig-gs-after" aria-label="Event flyer">
+      {heading && <div className="ig-gs-section-head"><strong>Event flyer</strong><span>From {programData.churchName || 'the host'}</span></div>}
+      <button type="button" className="ig-gs-flyer-open" onClick={() => setOpen(true)} aria-label="Open the event flyer">
+        <img src={programData.flyerUrl} alt={`${programData.title || 'Event'} flyer`} onError={() => setFailed(true)} />
       </button>
-      <div className="post-checkin-sponsor-copy">
-        <div>
-          <p className="post-checkin-sponsor-kicker">Sponsored By</p>
-          <h3>{sponsor.sponsorName}</h3>
-          {sponsor.boothText && <span className="post-checkin-sponsor-booth">{sponsor.boothText}</span>}
-        </div>
-        <button type="button" className="post-checkin-sponsor-cta" onClick={handleClick}>
-          {sponsor.ctaText || 'Learn More'}
-        </button>
+      <div className="ig-gs-row">
+        <button type="button" className="ig-gs-btn" onClick={save}>{ViewerIcon.download}Save flyer</button>
+        <button type="button" className="ig-gs-btn is-ghost" onClick={share}>{ViewerIcon.share}Share</button>
       </div>
+      {open && (
+        <FullScreenViewer title={programData.title || 'Event flyer'} subtitle={guestWhen(programData)} onClose={() => setOpen(false)}>
+          <div className="ig-gs-viewer-figure is-flyer"><img src={programData.flyerUrl} alt={`${programData.title || 'Event'} flyer`} /></div>
+          <div className="ig-gs-row">
+            <button type="button" className="ig-gs-btn" onClick={save}>{ViewerIcon.download}Save image</button>
+            <button type="button" className="ig-gs-btn is-light" onClick={share}>{ViewerIcon.share}Share</button>
+          </div>
+          <ShareWithFriend shareUrl={shareUrl} title={programData.title} toast={toast} />
+        </FullScreenViewer>
+      )}
+    </section>
+  );
+}
+
+const getOrderedSponsors = (sponsors = []) => [...sponsors].sort((first, second) => {
+  const a = /headline/i.test(first?.tier || '');
+  const b = /headline/i.test(second?.tier || '');
+  if (a === b) return 0;
+  return a ? -1 : 1;
+});
+
+function SponsorCard({ sponsor, onSponsorClick, single = false }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const flyerUrl = sponsor?.flyerUrl || sponsor?.flyer_url || '';
+  const open = () => onSponsorClick(sponsor);
+  const hasLink = Boolean(sponsor?.ctaLink);
+  return (
+    <article className={`ig-gs-sponsor${single ? ' is-single' : ''}`}>
+      <button type="button" className="ig-gs-sponsor-img" onClick={open} disabled={!hasLink} aria-label={hasLink ? `Open ${sponsor.sponsorName}` : sponsor.sponsorName}>
+        {flyerUrl && !imageFailed
+          ? <img src={flyerUrl} alt="" onError={() => setImageFailed(true)} loading="lazy" />
+          : <span>{sponsor.sponsorName}</span>}
+        {sponsor.boothText && <em>{sponsor.boothText}</em>}
+      </button>
+      <span className="ig-gs-sponsor-name">
+        <span aria-hidden="true">{guestInitials(sponsor.sponsorName)}</span>
+        <span><strong>{sponsor.sponsorName}</strong>{sponsor.tier && <span>{sponsor.tier}</span>}</span>
+      </span>
+      {hasLink && <button type="button" className="ig-gs-btn is-ink" onClick={open}>{sponsor.ctaText || 'Learn more'}</button>}
     </article>
   );
 }
 
-function PostCheckInSponsors({ placement, onSponsorClick }) {
-  const carouselRef = useRef(null);
-  const [activeSponsorIndex, setActiveSponsorIndex] = useState(0);
-
-  const updateActiveSponsorIndex = () => {
-    const carousel = carouselRef.current;
-    if (!carousel) return;
-
-    const cards = Array.from(carousel.querySelectorAll('.post-checkin-sponsor-card'));
-    if (cards.length === 0) return;
-
-    const viewportCenter = carousel.scrollLeft + carousel.clientWidth / 2;
-    const closestIndex = cards.reduce((closest, card, index) => {
-      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-      const distance = Math.abs(cardCenter - viewportCenter);
-      return distance < closest.distance ? { index, distance } : closest;
-    }, { index: 0, distance: Number.POSITIVE_INFINITY }).index;
-
-    setActiveSponsorIndex(closestIndex);
-  };
-
-  const scrollToSponsor = (index) => {
-    const carousel = carouselRef.current;
-    const card = carousel?.querySelectorAll('.post-checkin-sponsor-card')?.[index];
-    if (!carousel || !card) return;
-
-    carousel.scrollTo({
-      left: card.offsetLeft - carousel.offsetLeft,
-      behavior: 'smooth'
-    });
-    setActiveSponsorIndex(index);
-  };
+function SponsorsSection({ placement, onSponsorClick }) {
+  const trackRef = useRef(null);
+  const [active, setActive] = useState(0);
+  const sponsors = placement?.mode === 'distribution'
+    ? (placement.sponsor ? [placement.sponsor] : [])
+    : getOrderedSponsors(placement?.sponsors || []);
 
   useEffect(() => {
-    updateActiveSponsorIndex();
-    const carousel = carouselRef.current;
-    if (!carousel) return;
-
-    carousel.addEventListener('scroll', updateActiveSponsorIndex, { passive: true });
-    window.addEventListener('resize', updateActiveSponsorIndex);
-
-    return () => {
-      carousel.removeEventListener('scroll', updateActiveSponsorIndex);
-      window.removeEventListener('resize', updateActiveSponsorIndex);
+    const track = trackRef.current;
+    if (!track || sponsors.length < 2) return undefined;
+    const onScroll = () => {
+      const cards = Array.from(track.children);
+      const center = track.scrollLeft + track.clientWidth / 2;
+      let best = 0;
+      let bestDistance = Infinity;
+      cards.forEach((card, index) => {
+        const distance = Math.abs(card.offsetLeft + card.offsetWidth / 2 - center);
+        if (distance < bestDistance) { bestDistance = distance; best = index; }
+      });
+      setActive(best);
     };
-  }, [placement]);
+    track.addEventListener('scroll', onScroll, { passive: true });
+    return () => track.removeEventListener('scroll', onScroll);
+  }, [sponsors.length]);
 
-  if (!placement) return null;
-
-  if (placement.mode === 'distribution' && placement.sponsor) {
-    return (
-      <section className="post-checkin-sponsors post-checkin-sponsors-single" aria-label="Event sponsor">
-        <div className="post-checkin-sponsors-header">
-          <span>MEET OUR SPONSORS</span>
-          <strong>Get familiar with our sponsors and visit their booth</strong>
-        </div>
-        <SponsorCard sponsor={placement.sponsor} onSponsorClick={onSponsorClick} compact />
-      </section>
-    );
-  }
-
-  const groups = groupSponsorsByTier(placement.sponsors || []);
-  if (groups.length === 0) return null;
-  const sponsors = getOrderedSponsors(groups.flatMap(group => group.sponsors));
+  if (sponsors.length === 0) return null;
+  const single = sponsors.length === 1;
+  const scrollTo = (index) => {
+    const card = trackRef.current?.children?.[index];
+    if (card && trackRef.current) trackRef.current.scrollTo({ left: card.offsetLeft - trackRef.current.offsetLeft, behavior: 'smooth' });
+    setActive(index);
+  };
 
   return (
-    <section className="post-checkin-sponsors" aria-label="Event sponsors">
-      <div className="post-checkin-sponsors-header">
-        <span>MEET OUR SPONSORS</span>
-        <strong>Get familiar with our sponsors and visit their booth</strong>
+    <section className="ig-gs-after" aria-label={single ? 'Event sponsor' : 'Event sponsors'}>
+      <div className="ig-gs-section-head"><strong>{single ? 'From our sponsor' : "Today's sponsors"}</strong>{!single && <span>Swipe for more</span>}</div>
+      <div className={`ig-gs-sponsors${single ? ' is-single' : ''}`} ref={trackRef}>
+        {sponsors.map((sponsor) => <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} single={single} />)}
       </div>
-      <div className="post-checkin-sponsor-carousel" ref={carouselRef}>
-        {sponsors.map(sponsor => (
-          <SponsorCard key={sponsor.id} sponsor={sponsor} onSponsorClick={onSponsorClick} />
-        ))}
-      </div>
-      <SponsorCarouselDots count={sponsors.length} activeIndex={activeSponsorIndex} onSelect={scrollToSponsor} />
+      {!single && (
+        <div className="ig-gs-dots">
+          {sponsors.map((sponsor, index) => (
+            <button key={sponsor.id} type="button" className={index === active ? 'is-on' : ''} aria-label={`Show sponsor ${index + 1}`} aria-current={index === active ? 'true' : undefined} onClick={() => scrollTo(index)} />
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+function GuestMiniHead({ programData }) {
+  const [failed, setFailed] = useState(false);
+  const flyer = isSafeGuestImage(programData?.flyerUrl) && !failed ? programData.flyerUrl : null;
+  return (
+    <header className="ig-gs-mini">
+      {flyer ? <img src={flyer} alt="" onError={() => setFailed(true)} /> : <span className="ig-gs-mini-thumb" aria-hidden="true">{guestInitials(programData?.title)}</span>}
+      <span><strong>{programData?.title}</strong><span>{programData?.churchName}</span></span>
+    </header>
+  );
+}
+
+function AfterShell({ programData, children }) {
+  return (
+    <div className="ig-gs">
+      <div className="ig-gs-wrap">
+        {programData && <GuestMiniHead programData={programData} />}
+        <main className="ig-gs-main">{children}</main>
+        <GuestPowered />
+      </div>
+    </div>
   );
 }
 
@@ -1008,6 +908,10 @@ function ScanPage() {
   const deviceFingerprintRef = useRef('');
   const scanSessionIdRef = useRef('');
   const scanSessionTokenRef = useRef('');
+  // Stops a second tap sending the same check-in twice while the first is still on its way.
+  const sendingRef = useRef(false);
+  // Set once this visit's guest is saved, so a late or repeated reply can't change the screen.
+  const checkedInRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [alreadyScanned, setAlreadyScanned] = useState(false);
   const [programData, setProgramData] = useState(null);
@@ -1016,7 +920,6 @@ function ScanPage() {
   const [fastTrackError, setFastTrackError] = useState('');
   const [submittingFastTrack, setSubmittingFastTrack] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [showFlyerDetails, setShowFlyerDetails] = useState(false);
   const [personalizedMessage, setPersonalizedMessage] = useState('');
   const [sponsorPlacement, setSponsorPlacement] = useState(null);
   const [showProxyPrompt, setShowProxyPrompt] = useState(false);
@@ -1061,6 +964,33 @@ function ScanPage() {
   const [formErrors, setFormErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  // 'notfound' when the link is wrong, 'network' when the page couldn't reach Ingather.
+  const [loadError, setLoadError] = useState(null);
+  const [checkedInAt, setCheckedInAt] = useState(null);
+  const formRef = useRef(null);
+  const proxyFormRef = useRef(null);
+  const formErrorCount = Object.values(formErrors).filter(Boolean).length;
+  const proxyErrorCount = Object.values(proxyFormErrors).filter(Boolean).length;
+
+  useEffect(() => {
+    if (formErrorCount > 0) focusFirstGuestError(formRef.current);
+  }, [formErrorCount]);
+
+  useEffect(() => {
+    if (proxyErrorCount > 0) focusFirstGuestError(proxyFormRef.current);
+  }, [proxyErrorCount]);
+
+  // Each new screen after check-in starts at the top.
+  useEffect(() => {
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0);
+  }, [result, showProxyPrompt, showProxyForm]);
+
+  // A page restored by the Back button still holds the old visit's scan. Reload so every visit gets its own.
+  useEffect(() => {
+    const onPageShow = (event) => { if (event.persisted) window.location.reload(); };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
 
   // Initialize on component mount
   // REPLACE YOUR useEffect WITH THIS:
@@ -1094,6 +1024,10 @@ function ScanPage() {
   //   console.log('Device fingerprint:', fingerprint);
 
   const initializeScan = async () => {
+    setLoadError(null);
+    scanSessionIdRef.current = '';
+    scanSessionTokenRef.current = '';
+    checkedInRef.current = false;
     try {
       setPersonalizedMessage('');
       const [fingerprint, programData] = await Promise.all([
@@ -1145,21 +1079,32 @@ function ScanPage() {
           // Device has already scanned this program
           setAlreadyScanned(true);
           playErrorSound();
+        } else if (/no longer active/i.test(scanError.response?.data?.error || '')) {
+          // The organizer ended the event between loading the page and scanning.
+          setProgramData((prev) => (prev ? { ...prev, isActive: false } : prev));
+        } else {
+          setLoadError('network');
         }
         setLoading(false); // Turn off loading on error
       }
 
     } catch (error) {
       console.error('Error in initializeScan:', error);
+      setLoadError(error.response?.status === 404 ? 'notfound' : 'network');
       setLoading(false);
     }
+  };
+
+  const retryCheckIn = () => {
+    setLoadError(null);
+    setLoading(true);
+    initializeScan();
   };
 
   const loadProgramDetailsOnly = async () => {
     try {
       const data = await getProgramInfo(programId);
       setProgramData(data);
-      setShowFlyerDetails(Boolean(data.flyerUrl));
     } catch (error) {
       console.error('Error loading event details:', error);
       toast.error('Unable to load event details.');
@@ -1175,11 +1120,8 @@ function ScanPage() {
       return;
     }
 
-    if (!gender) {
-      toast.warning('Please select your gender');
-      return;
-    }
-
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     setSubmittingGender(true);
 
     try {
@@ -1190,6 +1132,7 @@ function ScanPage() {
 
       setSubmittingGender(false);
       setShowGenderForm(false);
+      setCheckedInAt(new Date());
 
       if (isFirstTimer) {
         setResult('first-timer-message');
@@ -1199,66 +1142,12 @@ function ScanPage() {
       playSuccessSound();
     } catch (error) {
       console.error('Gender submit error:', error);
-      toast.error('Failed to submit. Please try again.');
+      toast.error(error.response ? (error.response.data?.error || 'We could not check you in. Please try again.') : 'No internet connection. Check your data or Wi-Fi, then try again.');
       setSubmittingGender(false);
+    } finally {
+      sendingRef.current = false;
       playErrorSound();
     }
-  };
-
-  const handleReset = () => {
-    console.log('Resetting...');
-    localStorage.removeItem('scannedPrograms');
-    setAlreadyScanned(false);
-    setShowFastTrackLookup(false);
-    setFastTrackEmail('');
-    setFastTrackError('');
-    setShowForm(false);
-    setShowProxyPrompt(false);
-    setShowProxyForm(false);
-    setProxyCount(0);
-    setPendingResult(null);
-    setResult(null);
-    setSponsorPlacement(null);
-    deviceFingerprintRef.current = '';
-    scanSessionIdRef.current = '';
-    scanSessionTokenRef.current = '';
-    setFormData({
-      fullName: '',
-      emailAddress: '',
-      school: '',
-      linkUrl: '',
-      textareaResponse: '',
-      address: '',
-      firstTimer: false,
-      phoneNumber: '',
-      department: '',
-      fellowship: '',
-      age: '',
-      sex: '',
-      customResponses: {}
-    });
-    setProxyFormData({
-      fullName: '',
-      emailAddress: '',
-      school: '',
-      linkUrl: '',
-      textareaResponse: '',
-      address: '',
-      firstTimer: false,
-      phoneNumber: '',
-      department: '',
-      fellowship: '',
-      age: '',
-      sex: '',
-      customResponses: {}
-    });
-    setProxyFormErrors({});
-    setLoading(true);
-
-    // Re-initialize
-    setTimeout(() => {
-      initializeScan();
-    }, 100);
   };
 
   const handleChange = (e) => {
@@ -1380,6 +1269,7 @@ function ScanPage() {
 
   const continueAfterMainCheckIn = (submittedFormData, response) => {
     const nextResult = getNextResult(submittedFormData, response);
+    setCheckedInAt(new Date());
 
     if (programData?.proxyCheckinEnabled) {
       setPendingResult(nextResult);
@@ -1414,6 +1304,8 @@ function ScanPage() {
       return;
     }
 
+    if (sendingRef.current || checkedInRef.current) return;
+    sendingRef.current = true;
     setSubmittingFastTrack(true);
     setFastTrackError('');
 
@@ -1439,6 +1331,7 @@ function ScanPage() {
       setFormData(attendeeFormData);
       setSponsorPlacement(response.sponsorPlacement || sponsorPlacement);
       setPersonalizedMessage(response.personalizedMessage || '');
+      checkedInRef.current = true;
       setShowFastTrackLookup(false);
       continueAfterMainCheckIn(attendeeFormData, response);
     } catch (error) {
@@ -1450,6 +1343,7 @@ function ScanPage() {
         setFastTrackError(payload.error || 'Unable to complete fast-track check-in');
       }
     } finally {
+      sendingRef.current = false;
       setSubmittingFastTrack(false);
     }
   };
@@ -1538,6 +1432,8 @@ function ScanPage() {
 
       const response = await submitProxyAttendee(programId, fingerprint, proxyFormData);
       const nextCount = response.proxyCount || proxyCount + 1;
+      const addedName = proxyFormData.fullName ? getFirstName(proxyFormData.fullName) : 'Your guest';
+      toast.success(`${addedName} is checked in.`);
       setProxyCount(nextCount);
       setProxyFormData(emptyProxyFormData());
       setProxyFormErrors({});
@@ -1568,6 +1464,8 @@ function ScanPage() {
       return;
     }
 
+    if (sendingRef.current || checkedInRef.current) return;
+    sendingRef.current = true;
     setSubmitting(true);
 
     try {
@@ -1580,36 +1478,32 @@ function ScanPage() {
       setPersonalizedMessage(response.personalizedMessage || '');
       console.log('Form submitted successfully:', response);
 
+      checkedInRef.current = true;
       continueAfterMainCheckIn(formData, response);
 
       setSubmitting(false);
       setShowForm(false);
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit form. Please try again.');
+      const payload = error.response?.data || {};
       setSubmitting(false);
+      if (checkedInRef.current) return;
+      // The server already has this visit's guest saved, so they are checked in. Show their success screen.
+      if (/already submitted/i.test(payload.error || '')) {
+        checkedInRef.current = true;
+        setShowForm(false);
+        continueAfterMainCheckIn(formData, {});
+        return;
+      }
+      if (payload.errors && Object.keys(payload.errors).length > 0) {
+        setFormErrors(payload.errors);
+        return;
+      }
+      toast.error(error.response ? (payload.error || 'We could not check you in. Please try again.') : 'No internet connection. Check your data or Wi-Fi, then tap Complete check-in again.');
+    } finally {
+      sendingRef.current = false;
     }
   };
-
-  const flyerDetailsOverlay = showFlyerDetails && !detailsOnly ? (
-    isPersonalizedFlyer(programData) ? (
-      <PersonalizedFlyerViewer
-        programData={programData}
-        programId={programId}
-        attendeeName={formData.fullName}
-        personalizedMessage={personalizedMessage}
-        onClose={() => setShowFlyerDetails(false)}
-        toast={toast}
-      />
-    ) : (
-      <FlyerDetailsViewer
-        programData={programData}
-        programId={programId}
-        onClose={() => setShowFlyerDetails(false)}
-        toast={toast}
-      />
-    )
-  ) : null;
 
   const handleSponsorClick = async (sponsor) => {
     if (!sponsor?.ctaLink) return;
@@ -1625,1128 +1519,393 @@ function ScanPage() {
     }
   };
 
-  const successActions = (
-    <>
-      <EventDetailsButton programData={programData} onClick={() => setShowFlyerDetails(true)} />
-      <PostCheckInSponsors placement={sponsorPlacement} onSponsorClick={handleSponsorClick} />
-    </>
-  );
-
-  const feedbackPageClass = 'scan-page scan-feedback-page';
+  const eventWord = (template?.event?.singular || 'Event').toLowerCase();
+  const eventWordPlural = (template?.event?.plural || 'Events').toLowerCase();
 
   // LOADING
   if (loading) {
     return (
-      <div className="scan-page">
-        <div className="scan-container">
-          <div className="spinner"></div>
-          <p className="loading-text">{detailsOnly ? 'Loading event details...' : 'Checking you in...'}</p>
+      <div className="ig-gs">
+        <div className="ig-gs-wrap is-center">
+          <main className="ig-gs-main ig-gs-loading" aria-busy="true">
+            <span className="ig-gs-spinner" aria-hidden="true" />
+            <strong>{detailsOnly ? `Loading ${eventWord} details…` : 'Checking you in…'}</strong>
+            {!detailsOnly && <span>This takes a second or two.</span>}
+          </main>
+          <GuestPowered />
         </div>
       </div>
     );
   }
 
-  if (detailsOnly) {
-    const hasEventDetails = isPersonalizedFlyer(programData) || Boolean(programData?.flyerUrl);
-
+  if (loadError === 'notfound') {
     return (
-      <div className={hasEventDetails ? 'scan-page' : feedbackPageClass}>
-        <div className="scan-container">
-          {isPersonalizedFlyer(programData) ? (
-            <PersonalizedFlyerViewer
-              programData={programData}
-              programId={programId}
-              attendeeName="Friend"
-              standalone
-              toast={toast}
-            />
-          ) : programData?.flyerUrl ? (
-            <FlyerDetailsViewer
-              programData={programData}
-              programId={programId}
-              standalone
-              toast={toast}
-            />
-          ) : (
-            <div className="modal-card">
-              <div className="modal-card-topbar orange"></div>
-              <div className="modal-card-body">
-                <div className="modal-icon-circle">
-                  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-                </div>
-                <h2>Event Details Unavailable</h2>
-                <p className="modal-subtitle">No flyer has been added for this event yet.</p>
-              </div>
+      <div className="ig-gs">
+        <div className="ig-gs-wrap is-center">
+          <main className="ig-gs-main">
+            <div className="ig-gs-qrart" aria-hidden="true"><span>QR</span></div>
+            <GuestIntro tag="Check-in" tagText="This check-in link is not active" title="This check-in link isn't" highlight="working" lead="Scan the QR code at the entrance again, or ask an usher to check you in." />
+            <div className="ig-gs-row">
+              <a className="ig-gs-btn" href="/discover">Find other {eventWordPlural}</a>
+              <a className="ig-gs-btn is-ghost" href="/">Back to home</a>
             </div>
-          )}
+          </main>
+          <GuestPowered />
         </div>
       </div>
+    );
+  }
+
+  if (loadError === 'network' && !alreadyScanned) {
+    return (
+      <GuestShell programData={programData} center>
+        <GuestStatus
+          icon={GuestIcon.wifi}
+          tone="grey"
+          title="We couldn't reach Ingather"
+          text="Check your mobile data or Wi-Fi, then try again. If it keeps happening, ask an usher to check you in."
+        >
+          <button type="button" className="ig-gs-btn" onClick={retryCheckIn}>Try again</button>
+        </GuestStatus>
+      </GuestShell>
+    );
+  }
+
+  if (detailsOnly) {
+    if (!programData) {
+      return (
+        <GuestShell center>
+          <GuestStatus icon={GuestIcon.wifi} tone="grey" title={`We couldn't load this ${eventWord}`} text="Check your internet connection and open the link again." />
+        </GuestShell>
+      );
+    }
+    const shareUrl = getEventDetailsUrl(programId);
+    return (
+      <GuestShell programData={programData}>
+        {programData.flyerUrl ? (
+          <EventFlyerSection programData={programData} programId={programId} toast={toast} heading={false} />
+        ) : (
+          <GuestStatus icon={GuestIcon.closed} tone="grey" title={programData.title} text={[guestWhen(programData), programData.churchName ? `Hosted by ${programData.churchName}` : ''].filter(Boolean).join('. ')} />
+        )}
+        <div className="ig-gs-share-card"><ShareWithFriend shareUrl={shareUrl} title={programData.title} toast={toast} /></div>
+      </GuestShell>
     );
   }
 
   // ALREADY SCANNED
   if (alreadyScanned) {
+    const canShowDetails = Boolean(programData?.flyerUrl);
     return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <div className="modal-card-topbar orange"></div>
-            <div className="modal-card-body">
-              <div className="modal-icon-circle">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
-              </div>
-              <h2>Already Checked In</h2>
-              <p className="modal-subtitle">{template.scan.alreadyScanned}</p>
-              <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">If you believe this is an error, please contact an usher</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <GuestShell programData={programData} center>
+        <GuestStatus
+          icon={GuestIcon.check}
+          title="You're already checked in"
+          text={`This phone has already been used to check in for this ${eventWord}. Each phone checks in once.`}
+          callout="Checking in for someone else, or think this is a mistake? Speak to an usher at the entrance."
+        >
+        </GuestStatus>
+        {canShowDetails && <EventFlyerSection programData={programData} programId={programId} toast={toast} />}
+      </GuestShell>
     );
   }
 
   // GENDER SELECTION FORM (Count-Only Mode)
   if (showGenderForm && programData) {
     return (
-      <ScanFormShell
-        badge="Check-in"
-        programData={programData}
-        helperText="Please provide a few quick details to complete your check-in."
-        mode="count"
-      >
-        <div className="scan-figma-form scan-count-form">
-          <div className="scan-figma-field">
-            <label>Select Your Gender *</label>
-            <div className="scan-gender-grid" role="radiogroup" aria-label="Select your gender">
-              <button
-                type="button"
-                className={`scan-gender-card ${gender === 'male' ? 'selected' : ''}`}
-                onClick={() => setGender('male')}
-                aria-pressed={gender === 'male'}
-              >
-                <span className="scan-gender-icon scan-gender-icon-male">
-                  <GenderIcon type="male" />
-                </span>
-                <strong>Male</strong>
-              </button>
-
-              <button
-                type="button"
-                className={`scan-gender-card ${gender === 'female' ? 'selected' : ''}`}
-                onClick={() => setGender('female')}
-                aria-pressed={gender === 'female'}
-              >
-                <span className="scan-gender-icon scan-gender-icon-female">
-                  <GenderIcon type="female" />
-                </span>
-                <strong>Female</strong>
-              </button>
-            </div>
-          </div>
-
-          <label className={`scan-figma-checkbox ${isFirstTimer ? 'checked' : ''}`}>
-            <input
-              type="checkbox"
-              checked={isFirstTimer}
-              onChange={(e) => setIsFirstTimer(e.target.checked)}
-            />
-            <span className="scan-checkbox-box" aria-hidden="true"></span>
-            <span>I am a first-timer</span>
-          </label>
-
-          <button
-            type="button"
-            className="scan-figma-submit"
-            onClick={handleGenderSubmit}
-            disabled={submittingGender || !gender}
-          >
-            {submittingGender ? 'Submitting...' : 'Submit'}
+      <GuestShell programData={programData}>
+        <GuestIntro tag="Check-in" tagText="Two taps and you're in" title="Quick" highlight="check-in" lead="Your scan is recorded. Two quick details help the organizer plan." />
+        <section className="ig-gs-card">
+          <GuestGender
+            id="ig-gs-count-gender"
+            big
+            value={gender}
+            onChange={setGender}
+            options={[['male', 'Male', GuestIcon.male], ['female', 'Female', GuestIcon.female]]}
+          />
+          <GuestCheckRow id="ig-gs-count-first" title="I'm a first-timer" checked={isFirstTimer} onChange={setIsFirstTimer} />
+          <button type="button" className="ig-gs-btn" onClick={handleGenderSubmit} disabled={submittingGender || !gender}>
+            {submittingGender ? 'Checking you in…' : 'Complete check-in'}
           </button>
-        </div>
-      </ScanFormShell>
-    );
-  }
-
-  if (!ScanFormShell && showGenderForm && programData) {
-    return (
-      <div className="scan-page">
-        <div className="scan-container">
-          <div className="form-header scan-form-hero">
-            <div className="scan-hero-badge">Check-in recorded</div>
-            <h1>{programData.churchName}</h1>
-            <h2>{programData.title}</h2>
-            <p>Please provide a few quick details to complete your check-in.</p>
-          </div>
-
-          <div className="gender-form scan-form-card" style={{
-            background: 'rgba(235, 235, 211, 0.05)',
-            padding: '30px',
-            borderRadius: '16px',
-            marginTop: '20px'
-          }}>
-            <div className="form-group">
-              <label className="scan-field-heading" style={{
-                fontSize: '1.1rem',
-                fontWeight: '600',
-                marginBottom: '15px',
-                display: 'block',
-                color: 'var(--color-beige)'
-              }}>
-                Select Your Gender *
-              </label>
-
-              <div className="scan-choice-grid" style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
-                <label className={`scan-choice-card male-choice ${gender === 'male' ? 'selected' : ''}`} style={{
-                  flex: 1,
-                  padding: '20px',
-                  background: gender === 'male' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
-                  border: `2px solid ${gender === 'male' ? 'var(--color-pumpkin)' : 'rgba(235, 235, 211, 0.2)'}`,
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  fontSize: '1rem',
-                  color: gender === 'male' ? 'var(--color-beige)' : 'rgba(235, 235, 211, 0.7)'
-                }}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="male"
-                    checked={gender === 'male'}
-                    onChange={(e) => setGender(e.target.value)}
-                    style={{ display: 'none' }}
-                  />
-                  👨 Male
-                </label>
-
-                <label className={`scan-choice-card female-choice ${gender === 'female' ? 'selected' : ''}`} style={{
-                  flex: 1,
-                  padding: '20px',
-                  background: gender === 'female' ? 'var(--gradient-primary)' : 'rgba(235, 235, 211, 0.1)',
-                  border: `2px solid ${gender === 'female' ? 'var(--color-pumpkin)' : 'rgba(235, 235, 211, 0.2)'}`,
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  textAlign: 'center',
-                  fontWeight: '600',
-                  fontSize: '1rem',
-                  color: gender === 'female' ? 'var(--color-beige)' : 'rgba(235, 235, 211, 0.7)'
-                }}>
-                  <input
-                    type="radio"
-                    name="gender"
-                    value="female"
-                    checked={gender === 'female'}
-                    onChange={(e) => setGender(e.target.value)}
-                    style={{ display: 'none' }}
-                  />
-                  👩 Female
-                </label>
-              </div>
-            </div>
-
-            <div className="form-group checkbox-group">
-              <label className="checkbox-label scan-checkbox-card" style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '15px',
-                background: 'rgba(235, 235, 211, 0.05)',
-                borderRadius: '12px',
-                cursor: 'pointer'
-              }}>
-                <input
-                  type="checkbox"
-                  checked={isFirstTimer}
-                  onChange={(e) => setIsFirstTimer(e.target.checked)}
-                  style={{
-                    width: '24px',
-                    height: '24px',
-                    accentColor: 'var(--color-pumpkin)',
-                    cursor: 'pointer'
-                  }}
-                />
-                <span style={{ fontSize: '1rem', fontWeight: '500' }}>
-                  ⭐ I am a first-timer
-                </span>
-              </label>
-            </div>
-
-            <button
-              className="btn btn-primary btn-full"
-              onClick={handleGenderSubmit}
-              disabled={submittingGender || !gender}
-              style={{ marginTop: '25px' }}
-            >
-              {submittingGender ? 'Submitting...' : 'Submit'}
-            </button>
-
-
-          </div>
-        </div>
-      </div>
-    );
-
-
-
-  }
-
-  if (showProxyPrompt && programData && !result) {
-    const remaining = Math.max(0, 3 - proxyCount);
-
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card scan-proxy-card">
-            <div className="modal-card-topbar orange"></div>
-            <div className="modal-card-body">
-              <div className="modal-icon-circle">
-                <svg viewBox="0 0 24 24"><path d="M16 11a4 4 0 10-8 0" /><path d="M4 20a6 6 0 0116 0" /><path d="M19 8v6" /><path d="M16 11h6" /></svg>
-              </div>
-              <p className="scan-proxy-eyebrow">Guest check-in</p>
-              <h2>Scan for your fellow attendee?</h2>
-              <p className="modal-subtitle">
-                You can add up to {remaining} more {remaining === 1 ? 'attendee' : 'attendees'} from this device.
-              </p>
-              {proxyCount > 0 && (
-                <span className="scan-proxy-progress">{proxyCount} of 3 guests added</span>
-              )}
-              <div className="scan-proxy-actions">
-                <button type="button" className="scan-proxy-primary" onClick={startProxyForm}>
-                  Yes, add attendee
-                </button>
-                <button type="button" className="scan-proxy-secondary" onClick={continueToPendingResult}>
-                  No, continue
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        {flyerDetailsOverlay}
-      </div>
-    );
-  }
-
-  if (showProxyForm && programData && !result) {
-    return (
-      <ScanFormShell
-        badge={`Guest ${proxyCount + 1} of 3`}
-        programData={programData}
-        helperText="Enter your fellow attendee's details to check them in."
-        mode="collect"
-      >
-        <form className="scan-figma-form" onSubmit={handleProxySubmit}>
-          <div className="scan-figma-fields">
-            {programData.dataFields.fullName && (
-              <ScanInputField
-                label="Full Name *"
-                type="text"
-                id="proxyFullName"
-                name="fullName"
-                value={proxyFormData.fullName}
-                onChange={handleProxyChange}
-                placeholder="John Doe"
-                error={proxyFormErrors.fullName}
-              />
-            )}
-
-            {programData.dataFields.emailAddress && (
-              <ScanInputField
-                label="Email Address *"
-                type="email"
-                id="proxyEmailAddress"
-                name="emailAddress"
-                value={proxyFormData.emailAddress}
-                onChange={handleProxyChange}
-                placeholder="name@example.com"
-                error={proxyFormErrors.emailAddress}
-              />
-            )}
-
-            {programData.dataFields.school && (
-              <ScanInputField
-                label="School *"
-                type="text"
-                id="proxySchool"
-                name="school"
-                value={proxyFormData.school}
-                onChange={handleProxyChange}
-                placeholder="School name"
-                error={proxyFormErrors.school}
-              />
-            )}
-
-            {programData.dataFields.link && (
-              <ScanInputField
-                label="Link *"
-                type="url"
-                id="proxyLinkUrl"
-                name="linkUrl"
-                value={proxyFormData.linkUrl}
-                onChange={handleProxyChange}
-                placeholder="https://github.com/yourname"
-                error={proxyFormErrors.linkUrl}
-              />
-            )}
-
-            {programData.dataFields.textarea && (
-              <ScanTextareaField
-                label={`${programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *`}
-                id="proxyTextareaResponse"
-                name="textareaResponse"
-                value={proxyFormData.textareaResponse}
-                onChange={handleProxyChange}
-                placeholder="Write the response here"
-                rows={4}
-                maxLength={5000}
-                error={proxyFormErrors.textareaResponse}
-              />
-            )}
-
-            {programData.dataFields.phoneNumber && (
-              <ScanInputField
-                label="Phone Number *"
-                type="tel"
-                id="proxyPhoneNumber"
-                name="phoneNumber"
-                value={proxyFormData.phoneNumber}
-                onChange={handleProxyChange}
-                placeholder="+234 800 000 0000"
-                error={proxyFormErrors.phoneNumber}
-              />
-            )}
-
-            {programData.dataFields.address && (
-              <ScanInputField
-                label="Address *"
-                type="text"
-                id="proxyAddress"
-                name="address"
-                value={proxyFormData.address}
-                onChange={handleProxyChange}
-                placeholder="Address"
-                error={proxyFormErrors.address}
-              />
-            )}
-
-            {programData.dataFields.department && (
-              <ScanInputField
-                label="Department *"
-                type="text"
-                id="proxyDepartment"
-                name="department"
-                value={proxyFormData.department}
-                onChange={handleProxyChange}
-                placeholder="e.g., Product, Marketing, Community"
-                error={proxyFormErrors.department}
-              />
-            )}
-
-            {programData.dataFields.fellowship && (
-              <ScanInputField
-                label="Group"
-                type="text"
-                id="proxyFellowship"
-                name="fellowship"
-                value={proxyFormData.fellowship}
-                onChange={handleProxyChange}
-                placeholder="Group or community"
-              />
-            )}
-
-            {programData.dataFields.age && (
-              <ScanInputField
-                label="Age"
-                type="number"
-                id="proxyAge"
-                name="age"
-                value={proxyFormData.age}
-                onChange={handleProxyChange}
-                placeholder="25"
-                min="1"
-                max="120"
-              />
-            )}
-
-            {programData.dataFields.sex && (
-              <ScanSelectField
-                label="Gender *"
-                id="proxySex"
-                name="sex"
-                value={proxyFormData.sex}
-                onChange={handleProxyChange}
-                error={proxyFormErrors.sex}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </ScanSelectField>
-            )}
-
-            {programData.dataFields.firstTimer && (
-              <label className={`scan-figma-checkbox ${proxyFormData.firstTimer ? 'checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  name="firstTimer"
-                  checked={proxyFormData.firstTimer}
-                  onChange={handleProxyChange}
-                />
-                <span className="scan-checkbox-box" aria-hidden="true"></span>
-                <span>This attendee is a first-timer</span>
-              </label>
-            )}
-            <ScanCustomFields
-              fields={programData.customFormSchema || []}
-              values={proxyFormData.customResponses || {}}
-              errors={proxyFormErrors}
-              onChange={handleProxyCustomResponseChange}
-            />
-          </div>
-
-          <button type="submit" className="scan-figma-submit" disabled={submittingProxy}>
-            {submittingProxy ? 'Adding attendee...' : 'Add attendee'}
-          </button>
-        </form>
-      </ScanFormShell>
+          {!gender && <p className="ig-gs-hint-line">Choose Male or Female to continue.</p>}
+          <GuestFinePrint host={programData.churchName} />
+        </section>
+      </GuestShell>
     );
   }
 
   if (showFastTrackLookup && programData && !result) {
     return (
-      <ScanFormShell
-        badge="Fast-track"
-        programData={programData}
-        helperText="If you already RSVP'd, enter your email to complete check-in instantly."
-        mode="collect"
-      >
-        <form className="scan-figma-form scan-fast-track-form" onSubmit={handleFastTrackSubmit}>
-          <div className="scan-figma-fields">
-            <ScanInputField
-              label="Email Address *"
-              type="email"
-              id="fastTrackEmail"
-              name="fastTrackEmail"
-              value={fastTrackEmail}
-              onChange={(event) => {
-                setFastTrackEmail(event.target.value);
-                if (fastTrackError) setFastTrackError('');
-              }}
-              placeholder="name@example.com"
-              error={fastTrackError}
-            />
-          </div>
-
-          <div className="scan-fast-track-actions">
-            <button type="submit" className="scan-figma-submit" disabled={submittingFastTrack}>
-              {submittingFastTrack ? 'Checking RSVP...' : 'Check in fast'}
-            </button>
-            <button type="button" className="scan-fast-track-secondary" onClick={revealWalkInForm} disabled={submittingFastTrack}>
-              I did not RSVP
-            </button>
-          </div>
+      <GuestShell programData={programData}>
+        <GuestIntro tag="Fast-track" tagText="For guests who RSVP'd" title="Already" highlight="registered?" lead="Enter the email you used to RSVP and you're checked in instantly. No form to fill." />
+        <form className="ig-gs-card" onSubmit={handleFastTrackSubmit} noValidate>
+          <GuestInput
+            id="fastTrackEmail"
+            label="Email address"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            value={fastTrackEmail}
+            onChange={(event) => {
+              setFastTrackEmail(event.target.value);
+              if (fastTrackError) setFastTrackError('');
+            }}
+            placeholder="name@example.com"
+            error={fastTrackError}
+          />
+          <button type="submit" className="ig-gs-btn" disabled={submittingFastTrack}>
+            {submittingFastTrack ? 'Finding your RSVP…' : 'Check in fast'}
+          </button>
+          <button type="button" className="ig-gs-btn is-ghost" onClick={revealWalkInForm} disabled={submittingFastTrack}>I didn't RSVP</button>
+          <GuestFinePrint host={programData.churchName} />
         </form>
-      </ScanFormShell>
+        <div className="ig-gs-note">{GuestIcon.qr}<span>Have your QR pass from the RSVP email? Show it to an usher at the door instead.</span></div>
+      </GuestShell>
     );
   }
 
   // SHOW FORM
   if (showForm && programData && !result) {
+    const fields = programData.dataFields || {};
+    const text = (name, label, extra = {}) => (
+      <GuestInput
+        id={name}
+        name={name}
+        label={label}
+        value={formData[name] || ''}
+        onChange={handleChange}
+        error={formErrors[name]}
+        {...extra}
+      />
+    );
     return (
-      <ScanFormShell
-        badge="Welcome"
-        programData={programData}
-        helperText={programData.giftingEnabled
-          ? template.scan.giftHelper
-          : 'Fill in your details to complete your check-in.'}
-        mode="collect"
-      >
-        <form className="scan-figma-form" onSubmit={handleSubmit}>
-          <div className="scan-figma-fields">
-            {programData.dataFields.fullName && (
-              <ScanInputField
-                label="Full Name *"
-                type="text"
-                id="fullName"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="John Doe"
-                error={formErrors.fullName}
-              />
-            )}
-
-            {programData.dataFields.emailAddress && (
-              <ScanInputField
-                label="Email Address *"
-                type="email"
-                id="emailAddress"
-                name="emailAddress"
-                value={formData.emailAddress}
-                onChange={handleChange}
-                placeholder="name@example.com"
-                error={formErrors.emailAddress}
-              />
-            )}
-
-            {programData.dataFields.school && (
-              <ScanInputField
-                label="School *"
-                type="text"
-                id="school"
-                name="school"
-                value={formData.school}
-                onChange={handleChange}
-                placeholder="Your school"
-                error={formErrors.school}
-              />
-            )}
-
-            {programData.dataFields.link && (
-              <ScanInputField
-                label="Link *"
-                type="url"
-                id="linkUrl"
-                name="linkUrl"
-                value={formData.linkUrl}
-                onChange={handleChange}
-                placeholder="https://github.com/yourname"
-                error={formErrors.linkUrl}
-              />
-            )}
-
-            {programData.dataFields.textarea && (
-              <ScanTextareaField
-                label={`${programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *`}
-                id="textareaResponse"
-                name="textareaResponse"
-                value={formData.textareaResponse}
-                onChange={handleChange}
-                placeholder="Write your response here"
-                rows={4}
-                maxLength={5000}
-                error={formErrors.textareaResponse}
-              />
-            )}
-
-            {programData.dataFields.phoneNumber && (
-              <ScanInputField
-                label="Phone Number *"
-                type="tel"
-                id="phoneNumber"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                placeholder="+234 800 000 0000"
-                error={formErrors.phoneNumber}
-              />
-            )}
-
-            {programData.dataFields.address && (
-              <ScanInputField
-                label="Address *"
-                type="text"
-                id="address"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="Your address"
-                error={formErrors.address}
-              />
-            )}
-
-            {programData.dataFields.department && (
-              <ScanInputField
-                label="Department *"
-                type="text"
-                id="department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                placeholder="e.g., Product, Marketing, Community"
-                error={formErrors.department}
-              />
-            )}
-
-            {programData.dataFields.fellowship && (
-              <ScanInputField
-                label="Group"
-                type="text"
-                id="fellowship"
-                name="fellowship"
-                value={formData.fellowship}
-                onChange={handleChange}
-                placeholder="Your group or community"
-              />
-            )}
-
-            {programData.dataFields.age && (
-              <ScanInputField
-                label="Age"
-                type="number"
-                id="age"
-                name="age"
-                value={formData.age}
-                onChange={handleChange}
-                placeholder="25"
-                min="1"
-                max="120"
-              />
-            )}
-
-            {programData.dataFields.sex && (
-              <ScanSelectField
-                label="Gender *"
-                id="sex"
-                name="sex"
-                value={formData.sex}
-                onChange={handleChange}
-                error={formErrors.sex}
-              >
-                <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-              </ScanSelectField>
-            )}
-
-            {programData.dataFields.firstTimer && (
-              <label className={`scan-figma-checkbox ${formData.firstTimer ? 'checked' : ''}`}>
-                <input
-                  type="checkbox"
-                  name="firstTimer"
-                  checked={formData.firstTimer}
-                  onChange={handleChange}
-                />
-                <span className="scan-checkbox-box" aria-hidden="true"></span>
-                <span>I am a first-timer</span>
-              </label>
-            )}
-            <ScanCustomFields
-              fields={programData.customFormSchema || []}
-              values={formData.customResponses || {}}
-              errors={formErrors}
-              onChange={handleCustomResponseChange}
+      <GuestShell programData={programData}>
+        <GuestIntro tag="Check-in" tagText="Takes about a minute" title="Welcome! Tell us" highlight="who you are" />
+        {programData.giftingEnabled && (
+          <div className="ig-gs-gift"><span>{GuestIcon.gift}</span>{template.scan.giftHelper}</div>
+        )}
+        <form className="ig-gs-card" onSubmit={handleSubmit} noValidate ref={formRef}>
+          {fields.fullName && text('fullName', 'Full name', { type: 'text', autoComplete: 'name', placeholder: 'John Doe', maxLength: 255 })}
+          {fields.emailAddress && text('emailAddress', 'Email address', { type: 'email', inputMode: 'email', autoComplete: 'email', autoCapitalize: 'none', placeholder: 'name@example.com', maxLength: 255 })}
+          {fields.phoneNumber && text('phoneNumber', 'Phone number', { type: 'tel', inputMode: 'tel', autoComplete: 'tel', placeholder: '+234 800 000 0000', maxLength: 40 })}
+          {fields.sex && (
+            <GuestGender
+              id="sex"
+              value={formData.sex}
+              onChange={(value) => handleChange({ target: { name: 'sex', value, type: 'radio' } })}
+              error={formErrors.sex}
+              options={[['Male', 'Male'], ['Female', 'Female']]}
             />
-          </div>
-
-          <button
-            type="submit"
-            className="scan-figma-submit"
-            disabled={submitting}
-          >
-            {submitting ? 'Submitting...' : 'Submit'}
+          )}
+          {fields.school && text('school', 'School', { type: 'text', placeholder: 'Your school', maxLength: 255 })}
+          {fields.department && text('department', 'Department', { type: 'text', placeholder: 'Your department or unit', maxLength: 255 })}
+          {fields.address && text('address', 'Address', { type: 'text', autoComplete: 'street-address', placeholder: 'Where you are coming from', maxLength: 500 })}
+          {fields.link && text('linkUrl', 'Link', { type: 'url', inputMode: 'url', autoCapitalize: 'none', placeholder: 'https://', maxLength: 500 })}
+          {fields.textarea && (
+            <GuestTextarea
+              id="textareaResponse"
+              name="textareaResponse"
+              label={programData.dataFieldConfig?.textareaLabel || 'Additional Response'}
+              value={formData.textareaResponse}
+              onChange={handleChange}
+              placeholder="Type your answer"
+              rows={3}
+              maxLength={5000}
+              error={formErrors.textareaResponse}
+            />
+          )}
+          <GuestQuestions
+            fields={programData.customFormSchema || []}
+            values={formData.customResponses || {}}
+            errors={formErrors}
+            onChange={handleCustomResponseChange}
+          />
+          {fields.fellowship && text('fellowship', 'Group', { type: 'text', placeholder: 'Your group or community', maxLength: 255, optional: true })}
+          {fields.age && text('age', 'Age', { type: 'number', inputMode: 'numeric', placeholder: 'e.g. 24', min: 1, max: 120, optional: true })}
+          {fields.firstTimer && (
+            <GuestCheckRow
+              id="firstTimer"
+              title="I'm a first-timer"
+              sub={`First time at one of our ${eventWordPlural}`}
+              checked={Boolean(formData.firstTimer)}
+              onChange={(checked) => handleChange({ target: { name: 'firstTimer', type: 'checkbox', checked } })}
+            />
+          )}
+          {formErrorCount > 0 && (
+            <p className="ig-gs-summary" role="alert">{formErrorCount === 1 ? 'One answer needs a look before you can check in.' : `${formErrorCount} answers need a look before you can check in.`}</p>
+          )}
+          <button type="submit" className="ig-gs-btn" disabled={submitting}>
+            {submitting ? 'Checking you in…' : 'Complete check-in'}
           </button>
+          <GuestFinePrint host={programData.churchName} />
         </form>
-      </ScanFormShell>
+      </GuestShell>
     );
   }
 
-  if (!ScanFormShell && showForm && programData && !result) {
+  if (showProxyPrompt && programData && !result) {
+    const remaining = Math.max(0, 3 - proxyCount);
+    const hostName = getFirstName(formData.fullName);
     return (
-      <div className="scan-page">
-        <div className="scan-container">
-          <div className="form-header scan-form-hero">
-            <div className="scan-hero-badge">Welcome</div>
-            <h1>{programData.churchName}</h1>
-            <h2>{programData.title}</h2>
-            {programData.giftingEnabled && (
-              <div className="incentive-banner">
-                Fill this form for a chance to win a special gift from the organizer!
-              </div>
-            )}
-          </div>
+      <AfterShell programData={programData}>
+        <section className="ig-gs-card ig-gs-status ig-gs-proxy">
+          <span className="ig-gs-proxy-avatars" aria-hidden="true"><span>{guestInitials(formData.fullName || 'You').slice(0, 1)}</span><span>+</span></span>
+          <span className="ig-gs-proxy-kicker">{proxyCount > 0 ? `${proxyCount === 1 ? 'Guest' : 'Guests'} checked in` : "You're checked in"}</span>
+          <h2>{proxyCount > 0 ? 'Anyone else with you?' : 'Checking in someone with you?'}</h2>
+          <p>Family or friends without a phone can check in from yours. You can add up to <strong>{remaining} more</strong>.</p>
+          <span className="ig-gs-proxy-steps" aria-hidden="true">{[0, 1, 2].map((i) => <span key={i} className={i < proxyCount ? 'is-on' : ''} />)}</span>
+          <span className="ig-gs-proxy-count">{proxyCount} of 3 guests added</span>
+          <button type="button" className="ig-gs-btn" onClick={startProxyForm}>{proxyCount > 0 ? 'Add another guest' : 'Yes, add a guest'}</button>
+          <button type="button" className="ig-gs-btn is-ghost" onClick={continueToPendingResult}>{proxyCount > 0 ? "No, I'm done" : 'No, continue'}</button>
+          {hostName && proxyCount === 0 && <span className="ig-gs-proxy-note">Checked in as {formData.fullName}</span>}
+        </section>
+      </AfterShell>
+    );
+  }
 
-          <form className="attendee-form" onSubmit={handleSubmit}>
-            {programData.dataFields.fullName && (
-              <div className="form-group">
-                <label htmlFor="fullName">Full Name *</label>
-                <input
-                  type="text"
-                  id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  placeholder="John Doe"
-                />
-                {formErrors.fullName && <span className="error">{formErrors.fullName}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.emailAddress && (
-              <div className="form-group">
-                <label htmlFor="emailAddress">Email Address *</label>
-                <input
-                  type="email"
-                  id="emailAddress"
-                  name="emailAddress"
-                  value={formData.emailAddress}
-                  onChange={handleChange}
-                  placeholder="name@example.com"
-                />
-                {formErrors.emailAddress && <span className="error">{formErrors.emailAddress}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.school && (
-              <div className="form-group">
-                <label htmlFor="school">School *</label>
-                <input
-                  type="text"
-                  id="school"
-                  name="school"
-                  value={formData.school}
-                  onChange={handleChange}
-                  placeholder="Your school"
-                />
-                {formErrors.school && <span className="error">{formErrors.school}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.link && (
-              <div className="form-group">
-                <label htmlFor="linkUrl">Link *</label>
-                <input
-                  type="url"
-                  id="linkUrl"
-                  name="linkUrl"
-                  value={formData.linkUrl}
-                  onChange={handleChange}
-                  placeholder="https://github.com/yourname"
-                />
-                {formErrors.linkUrl && <span className="error">{formErrors.linkUrl}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.textarea && (
-              <div className="form-group">
-                <label htmlFor="textareaResponse">{programData.dataFieldConfig?.textareaLabel || 'Additional Response'} *</label>
-                <textarea
-                  id="textareaResponse"
-                  name="textareaResponse"
-                  value={formData.textareaResponse}
-                  onChange={handleChange}
-                  placeholder="Write your response here"
-                  rows="4"
-                  maxLength="5000"
-                />
-                {formErrors.textareaResponse && <span className="error">{formErrors.textareaResponse}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.phoneNumber && (
-              <div className="form-group">
-                <label htmlFor="phoneNumber">Phone Number *</label>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
-                  onChange={handleChange}
-                  placeholder="+234 800 000 0000"
-                />
-                {formErrors.phoneNumber && <span className="error">{formErrors.phoneNumber}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.address && (
-              <div className="form-group">
-                <label htmlFor="address">Address *</label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  placeholder="Your address"
-                />
-                {formErrors.address && <span className="error">{formErrors.address}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.department && (
-              <div className="form-group">
-                <label htmlFor="department">Department *</label>
-                <input
-                  type="text"
-                  id="department"
-                  name="department"
-                  value={formData.department}
-                  onChange={handleChange}
-                  placeholder="e.g., Product, Marketing, Community"
-                />
-                {formErrors.department && <span className="error">{formErrors.department}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.fellowship && (
-              <div className="form-group">
-                <label htmlFor="fellowship">Group</label>
-                <input
-                  type="text"
-                  id="fellowship"
-                  name="fellowship"
-                  value={formData.fellowship}
-                  onChange={handleChange}
-                  placeholder="Your group or community"
-                />
-              </div>
-            )}
-
-            {programData.dataFields.age && (
-              <div className="form-group">
-                <label htmlFor="age">Age</label>
-                <input
-                  type="number"
-                  id="age"
-                  name="age"
-                  value={formData.age}
-                  onChange={handleChange}
-                  placeholder="25"
-                  min="1"
-                  max="120"
-                />
-              </div>
-            )}
-
-            {programData.dataFields.sex && (
-              <div className="form-group">
-                <label htmlFor="sex">Gender *</label>
-                <select
-                  id="sex"
-                  name="sex"
-                  value={formData.sex}
-                  onChange={handleChange}
-                >
-                  <option value="">Select Gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-                {formErrors.sex && <span className="error">{formErrors.sex}</span>}
-              </div>
-            )}
-
-            {programData.dataFields.firstTimer && (
-              <div className="form-group checkbox-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    name="firstTimer"
-                    checked={formData.firstTimer}
-                    onChange={handleChange}
-                  />
-                  <span>I am a first-timer</span>
-                </label>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-full"
-              disabled={submitting}
-            >
-              {submitting ? 'Submitting...' : 'Submit'}
-            </button>
-          </form>
-        </div>
-      </div>
+  if (showProxyForm && programData && !result) {
+    const fields = programData.dataFields || {};
+    const hostFirst = formData.fullName ? getFirstName(formData.fullName) : '';
+    const text = (name, label, extra = {}) => (
+      <GuestInput
+        id={`proxy-${name}`}
+        name={name}
+        label={label}
+        value={proxyFormData[name] || ''}
+        onChange={handleProxyChange}
+        error={proxyFormErrors[name]}
+        {...extra}
+      />
+    );
+    return (
+      <AfterShell programData={programData}>
+        <GuestIntro tag={`Guest ${proxyCount + 1} of 3`} tagText={hostFirst ? `Added by ${hostFirst}` : 'Added from your phone'} title="Add your" highlight="guest" lead="Same form you just filled. Enter their details, not yours." />
+        {programData.giftingEnabled && (
+          <div className="ig-gs-gift"><span>{GuestIcon.gift}</span>Your guest gets their own chance to win the organizer's gift.</div>
+        )}
+        <form className="ig-gs-card" onSubmit={handleProxySubmit} noValidate ref={proxyFormRef}>
+          {fields.fullName && text('fullName', "Guest's full name", { type: 'text', placeholder: 'Their full name', maxLength: 255, autoComplete: 'off' })}
+          {fields.emailAddress && text('emailAddress', "Guest's email address", { type: 'email', inputMode: 'email', autoCapitalize: 'none', autoComplete: 'off', placeholder: 'name@example.com', maxLength: 255 })}
+          {fields.phoneNumber && text('phoneNumber', "Guest's phone number", { type: 'tel', inputMode: 'tel', autoComplete: 'off', placeholder: '+234 800 000 0000', maxLength: 40 })}
+          {fields.sex && (
+            <GuestGender
+              id="proxy-sex"
+              value={proxyFormData.sex}
+              onChange={(value) => handleProxyChange({ target: { name: 'sex', value, type: 'radio' } })}
+              error={proxyFormErrors.sex}
+              options={[['Male', 'Male'], ['Female', 'Female']]}
+            />
+          )}
+          {fields.school && text('school', 'School', { type: 'text', placeholder: 'Their school', maxLength: 255 })}
+          {fields.department && text('department', 'Department', { type: 'text', placeholder: 'Their department or unit', maxLength: 255 })}
+          {fields.address && text('address', 'Address', { type: 'text', placeholder: 'Where they are coming from', maxLength: 500 })}
+          {fields.link && text('linkUrl', 'Link', { type: 'url', inputMode: 'url', autoCapitalize: 'none', placeholder: 'https://', maxLength: 500 })}
+          {fields.textarea && (
+            <GuestTextarea
+              id="proxy-textareaResponse"
+              name="textareaResponse"
+              label={programData.dataFieldConfig?.textareaLabel || 'Additional Response'}
+              value={proxyFormData.textareaResponse}
+              onChange={handleProxyChange}
+              placeholder="Their answer"
+              rows={3}
+              maxLength={5000}
+              error={proxyFormErrors.textareaResponse}
+            />
+          )}
+          <GuestQuestions
+            idPrefix="proxy-q"
+            fields={programData.customFormSchema || []}
+            values={proxyFormData.customResponses || {}}
+            errors={proxyFormErrors}
+            onChange={handleProxyCustomResponseChange}
+          />
+          {fields.fellowship && text('fellowship', 'Group', { type: 'text', placeholder: 'Their group or community', maxLength: 255, optional: true })}
+          {fields.age && text('age', 'Age', { type: 'number', inputMode: 'numeric', placeholder: 'e.g. 24', min: 1, max: 120, optional: true })}
+          {fields.firstTimer && (
+            <GuestCheckRow
+              id="proxy-firstTimer"
+              title="They're a first-timer"
+              sub={`First time at one of our ${eventWordPlural}`}
+              checked={Boolean(proxyFormData.firstTimer)}
+              onChange={(checked) => handleProxyChange({ target: { name: 'firstTimer', type: 'checkbox', checked } })}
+            />
+          )}
+          {proxyErrorCount > 0 && (
+            <p className="ig-gs-summary" role="alert">{proxyErrorCount === 1 ? 'One answer needs a look.' : `${proxyErrorCount} answers need a look.`}</p>
+          )}
+          <button type="submit" className="ig-gs-btn" disabled={submittingProxy}>{submittingProxy ? 'Checking them in…' : 'Check in guest'}</button>
+          <button type="button" className="ig-gs-btn is-text" onClick={() => { setShowProxyForm(false); setProxyFormErrors({}); setShowProxyPrompt(true); }} disabled={submittingProxy}>Cancel</button>
+          <p className="ig-gs-fine">Only add someone who has agreed to share these details. They go to {programData.churchName || 'the organizer'}, the event host.</p>
+        </form>
+      </AfterShell>
     );
   }
 
   // RESULT SCREENS
-  if (result === 'winner') {
+  if (result && programData) {
+    const firstName = formData.fullName ? getFirstName(formData.fullName) : '';
+    const isWinner = result === 'winner' || result === 'first-timer-winner';
+    const isFirstTimer = result === 'first-timer-winner' || result === 'first-timer-message';
+    const personal = isPersonalizedFlyer(programData);
+    const timeText = clockLabel(checkedInAt);
+
     return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <WinnerConfetti />
-            <div className="modal-card-topbar green"></div>
-            <div className="modal-card-body">
-              <div className="modal-icon-circle dark">
-                <GiftBoxIcon />
-              </div>
-              <h2>Congratulations !</h2>
-              <p className="modal-subtitle">You have been selected to receive a gift from the organizer. Thank you for joining us today.</p>
-              <div className="modal-callout-action">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">Please proceed to the ushering stand to collect your gift.</span>
-                <GiftBoxIcon className="callout-gift-icon" />
-              </div>
-              {successActions}
-            </div>
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
+      <AfterShell programData={programData}>
+        {isWinner ? (
+          <>
+            <section className="ig-gs-winner" aria-live="polite">
+              <span className="ig-gs-winner-tag">You're checked in</span>
+              <span className="ig-gs-winner-icon" aria-hidden="true">{GuestIcon.gift}</span>
+              <h2>{firstName ? `You won a gift, ${firstName}!` : 'You won a gift!'}</h2>
+              <p>You were picked at random to receive a gift from the organizer.</p>
+            </section>
+            <section className="ig-gs-card ig-gs-collect">
+              <strong>How to collect it</strong>
+              <ol>
+                <li><span>1</span>{isFirstTimer ? 'Stay after the event, then go to the ushering stand.' : 'Go to the ushering stand.'}</li>
+                <li><span>2</span>Show this screen. Keep it open.</li>
+              </ol>
+              <div className="ig-gs-collect-row"><span>Checked in</span><strong>{[formData.fullName, timeText].filter(Boolean).join(', ')}</strong></div>
+              {isFirstTimer && <span className="ig-gs-pill">First-timer</span>}
+            </section>
+          </>
+        ) : (
+          <section className="ig-gs-done" aria-live="polite">
+            <span className="ig-gs-done-icon" aria-hidden="true">{GuestIcon.check}</span>
+            <span className="ig-gs-done-text">
+              <h2>{firstName ? <>You're in,<br />{firstName}</> : "You're checked in"}</h2>
+              {timeText && <span>Checked in at {timeText}</span>}
+            </span>
+            {isFirstTimer && <span className="ig-gs-pill">First-timer</span>}
+          </section>
+        )}
+
+        {result === 'no-win' && <p className="ig-gs-soft-note">{template.scan.noWin}</p>}
+        {result === 'first-timer-message' && <p className="ig-gs-soft-note">Welcome! We're glad you came. Please stay after the {eventWord} so the team can say hello.</p>}
+
+        {personal && (
+          <PersonalFlyerSection programData={programData} programId={programId} attendeeName={formData.fullName} personalizedMessage={personalizedMessage} toast={toast} />
+        )}
+        {!personal && <EventFlyerSection programData={programData} programId={programId} toast={toast} />}
+        <SponsorsSection placement={sponsorPlacement} onSponsorClick={handleSponsorClick} />
+      </AfterShell>
     );
   }
 
-  if (result === 'no-win') {
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <div className="modal-card-topbar orange"></div>
-            <div className="modal-card-body">
-              <div className="modal-decorative-dots">
-                <span className="dot dot-1"></span>
-                <span className="dot dot-2"></span>
-                <span className="dot dot-3"></span>
-                <span className="dot dot-4"></span>
-                <span className="dot dot-5"></span>
-                <span className="dot dot-6"></span>
-                <span className="dot dot-7"></span>
-                <div className="dot-icon-circle">
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
-                </div>
-              </div>
-              <h2>Thank You!</h2>
-              <p className="modal-subtitle">Your Information has been submitted successfully</p>
-              <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">{template.scan.noWin}</span>
-              </div>
-              {successActions}
-            </div>
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
-    );
-  }
-
-  // FIRST-TIMER WINNER (Gifting Enabled + First Timer + Winner)
-  if (result === 'first-timer-winner') {
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <WinnerConfetti />
-            <div className="modal-card-topbar green"></div>
-            <div className="modal-card-body">
-              <div className="modal-icon-circle dark">
-                <GiftBoxIcon />
-              </div>
-              <h2>Welcome &amp; Congratulations !</h2>
-              <p className="modal-subtitle">Welcome first-timer! You have been selected to receive a gift from the organizer.</p>
-              <div className="modal-callout-action">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">Please wait after the event. We look forward to connecting with you.</span>
-                <GiftBoxIcon className="callout-gift-icon" />
-              </div>
-              {successActions}
-            </div>
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
-    );
-  }
-
-  // FIRST-TIMER MESSAGE (Count-Only or Collect-Data without winning)
-  if (result === 'first-timer-message') {
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <div className="modal-card-topbar orange"></div>
-            <div className="modal-card-body">
-              <div className="modal-decorative-dots">
-                <span className="dot dot-1"></span>
-                <span className="dot dot-2"></span>
-                <span className="dot dot-3"></span>
-                <span className="dot dot-4"></span>
-                <span className="dot dot-5"></span>
-                <span className="dot dot-6"></span>
-                <span className="dot dot-7"></span>
-                <div className="dot-icon-circle">
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
-                </div>
-              </div>
-              <h2>Welcome First-Timer</h2>
-              <p className="modal-subtitle">Thank you for joining us today we look forward to connecting with you.</p>
-              <div className="modal-callout">
-                <svg className="callout-diamond" viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="2" transform="rotate(45 10 10)" /></svg>
-                <span className="callout-text">Please wait after the event so the team can connect with you.</span>
-              </div>
-              {successActions}
-            </div>
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
-    );
-  }
-
-  // COUNT-ONLY SUCCESS
-  if (result === 'count-only-success') {
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="modal-card">
-            <div className="modal-card-topbar orange"></div>
-            <div className="modal-card-body">
-              <div className="modal-decorative-dots">
-                <span className="dot dot-1"></span>
-                <span className="dot dot-2"></span>
-                <span className="dot dot-3"></span>
-                <span className="dot dot-4"></span>
-                <span className="dot dot-5"></span>
-                <span className="dot dot-6"></span>
-                <span className="dot dot-7"></span>
-                <div className="dot-icon-circle">
-                  <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /><polyline points="16 6 9 13" /></svg>
-                </div>
-              </div>
-              <h2>Thank You!</h2>
-              <p className="modal-subtitle">{template.scan.success}</p>
-              {successActions}
-            </div>
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
-    );
-  }
-
-  // NO-GIFTING SUCCESS (Collect Data mode without gifting)
-  if (result === 'no-gifting') {
-    return (
-      <div className={feedbackPageClass}>
-        <div className="scan-container">
-          <div className="message-card success">
-            <div className="message-icon">✅</div>
-            <h2>Thank You!</h2>
-            <p>Your information has been submitted successfully.</p>
-            <p className="sub-message">Thank you for joining us today. Enjoy the rest of the event!</p>
-            {successActions}
-          </div>
-          {flyerDetailsOverlay}
-        </div>
-      </div>
-    );
-  }
-
+  // CHECK-IN CLOSED
   return (
-    <div className={feedbackPageClass}>
-      <div className="scan-container">
-        <div className="modal-card">
-          <div className="modal-card-topbar red"></div>
-          <div className="modal-card-body">
-            <div className="modal-closed-icon">
-              <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </div>
-            <h2>{template.scan.closedTitle}</h2>
-            <p className="modal-subtitle">{template.scan.closedBody}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <GuestShell programData={programData} center>
+      <GuestStatus
+        icon={GuestIcon.closed}
+        tone="grey"
+        title="Check-in has closed"
+        text={`This ${eventWord} may have ended, or the organizer has stopped taking check-ins.`}
+      >
+        <a className="ig-gs-btn" href="/discover">Find other {eventWordPlural}</a>
+      </GuestStatus>
+    </GuestShell>
   );
-
-
 }
 
 export default ScanPage;

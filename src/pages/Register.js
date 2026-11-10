@@ -5,27 +5,64 @@ import { validateInvite } from '../api/waitlistService';
 import { useToast } from '../components/Toast';
 import { SIGNUP_INTENT_STORAGE_KEY } from '../components/SignupIntentModal';
 import { DEFAULT_EVENT_TEMPLATE, EVENT_TEMPLATE_STORAGE_KEY, getEventTemplate } from '../config/eventTemplates';
-import '../styles/Auth.css';
-
-const PasswordVisibilityIcon = ({ visible }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    {visible ? (
-      <>
-        <path d="M3 3l18 18" />
-        <path d="M10.6 10.6a2 2 0 002.8 2.8" />
-        <path d="M9.9 5.1A10.9 10.9 0 0112 5c5 0 8.5 4 10 7a13.4 13.4 0 01-3 4.1" />
-        <path d="M6.6 6.6A13.8 13.8 0 002 12c1.5 3 5 7 10 7 1.5 0 2.9-.4 4.1-1" />
-      </>
-    ) : (
-      <>
-        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-        <circle cx="12" cy="12" r="3" />
-      </>
-    )}
-  </svg>
-);
+import {
+  AccountLayout,
+  CheckIcon,
+  LockIcon,
+  PasswordInput,
+  PasswordStrength,
+  passwordProblem
+} from '../components/AccountLayout';
 
 const INVITE_ONLY_MODE = process.env.REACT_APP_INVITE_ONLY_MODE !== 'false';
+const LOGO_MAX_SIDE = 512;
+const LOGO_MAX_BYTES = 240 * 1024;
+
+const dataUrlBytes = (dataUrl) => Math.ceil(((dataUrl.split(',')[1] || '').length * 3) / 4);
+
+// Shrinks the chosen logo in the browser so it uploads quickly (max 512px, about 240KB)
+const prepareLogo = (file) => new Promise((resolve, reject) => {
+  if (!file || !/^image\/(png|jpe?g|webp)$/i.test(file.type)) {
+    reject(new Error('Choose a PNG, JPG or WebP image.'));
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    reject(new Error('That image is too large. Choose one under 10MB.'));
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => reject(new Error('We could not read that image.'));
+  reader.onload = () => {
+    const image = new Image();
+    image.onerror = () => reject(new Error('We could not read that image.'));
+    image.onload = () => {
+      const scale = Math.min(1, LOGO_MAX_SIDE / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      let output = canvas.toDataURL('image/png');
+      if (dataUrlBytes(output) > LOGO_MAX_BYTES) {
+        const flat = document.createElement('canvas');
+        flat.width = canvas.width;
+        flat.height = canvas.height;
+        const flatCtx = flat.getContext('2d');
+        flatCtx.fillStyle = '#FFFFFF';
+        flatCtx.fillRect(0, 0, flat.width, flat.height);
+        flatCtx.drawImage(canvas, 0, 0);
+        output = flat.toDataURL('image/jpeg', 0.85);
+      }
+      if (dataUrlBytes(output) > LOGO_MAX_BYTES) {
+        reject(new Error('That image is still too large. Try a simpler logo.'));
+        return;
+      }
+      resolve(output);
+    };
+    image.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+});
 
 function Register() {
   const navigate = useNavigate();
@@ -51,19 +88,17 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    location: '',
-    logo: null
+    location: ''
   });
 
   const [errors, setErrors] = useState({});
-  const [logoPreview, setLogoPreview] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [logoDataUrl, setLogoDataUrl] = useState('');
+  const [logoError, setLogoError] = useState('');
   const [inviteStatus, setInviteStatus] = useState(inviteToken ? 'loading' : 'missing');
   const [inviteLead, setInviteLead] = useState(null);
   const [inviteError, setInviteError] = useState('');
   const inviteUnlocked = !INVITE_ONLY_MODE || inviteStatus === 'valid';
-  const inviteLocked = !inviteUnlocked;
   const hasValidInvite = inviteStatus === 'valid';
 
   useEffect(() => {
@@ -131,21 +166,6 @@ function Register() {
     }
   };
 
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData({
-        ...formData,
-        logo: file
-      });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -163,10 +183,9 @@ function Register() {
       newErrors.email = 'Email is invalid';
     }
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    const pwProblem = passwordProblem(formData.password);
+    if (pwProblem) {
+      newErrors.password = pwProblem;
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -182,6 +201,7 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
 
     const newErrors = validateForm();
 
@@ -190,105 +210,154 @@ function Register() {
       return;
     }
 
+    setSubmitting(true);
     try {
-      await register({
+      const response = await register({
         ...formData,
+        logoDataUrl: logoDataUrl || undefined,
         organizationType: signupIntent === 'church' ? 'church' : undefined,
         inviteToken: inviteToken || undefined
       });
 
-      toast.success('Registration successful! Please check your email for the verification code.');
-      navigate('/verify-email', { state: { email: formData.email } });
+      if (response?.emailSent === false) {
+        toast.error("Workspace created, but we couldn't send your code. Press Resend code on the next page.");
+      } else {
+        toast.success('Workspace created. Check your email for the verification code.');
+      }
+      navigate('/verify-email', { state: { email: response?.email || formData.email } });
     } catch (error) {
       console.error('Registration error:', error);
+      if (error.response?.data?.requiresVerification) {
+        toast.error(error.response.data.error);
+        navigate('/verify-email', { state: { email: error.response.data.email || formData.email } });
+        return;
+      }
       const errorMessage = error.response?.data?.error || 'Registration failed. Please try again.';
       toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const handleLogoChange = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setLogoError('');
+    try {
+      setLogoDataUrl(await prepareLogo(file));
+    } catch (error) {
+      setLogoDataUrl('');
+      setLogoError(error.message);
+    }
+  };
+
+  const fieldClass = (name) => `ig-wl-field ${errors[name] ? 'has-error' : ''}`;
+
+  /* Invite link missing, expired or already used */
+  if (INVITE_ONLY_MODE && (inviteStatus === 'invalid' || inviteStatus === 'missing')) {
+    const missing = inviteStatus === 'missing';
+    return (
+      <AccountLayout
+        pillTag="Invite-only"
+        pillText="Access opens in phases"
+        titleStart={missing ? 'You need an' : "This link didn't"}
+        titleBox={missing ? 'invite' : 'work'}
+        lead={missing
+          ? 'Ingather is currently invite-only. Join the waitlist and we will email your invite.'
+          : 'Ingather is currently invite-only, and this invite link is no longer valid.'}
+        photo="/landing/cta.jpg"
+        photoAlt="Guests mingling at an evening event under string lights"
+        chip="Private rollout"
+        panelTitle="We are opening access in phases."
+        panelText="So every team gets a smooth first event on Ingather."
+        navLabel="Join Waitlist"
+        navTo="/waitlist"
+      >
+        <div className="ig-wl-card ig-acct-state" role="status">
+          <span className="ig-acct-state-icon"><LockIcon /></span>
+          <h2>{missing ? 'Ingather is invite-only for now' : 'This invite link has expired'}</h2>
+          <p>
+            {missing
+              ? 'Create your workspace from the invite link in your email. No invite yet? Join the waitlist and we will send one when your spot opens.'
+              : 'Invite links last 14 days and work once. If you already created your workspace, log in. Otherwise, join the waitlist again and we will send a fresh invite.'}
+          </p>
+          {!missing && inviteError && inviteError !== 'This invite link is invalid or has expired.' && (
+            <p className="ig-acct-code-note">{inviteError}</p>
+          )}
+          <div className="ig-acct-state-ctas">
+            <Link to="/waitlist" className="ig-acct-btn-primary">Join the Waitlist</Link>
+            <Link to="/login" className="ig-acct-btn-light">Log in</Link>
+          </div>
+        </div>
+      </AccountLayout>
+    );
+  }
+
+  const workspaceWord = (template.organization.workspaceLabel || 'Workspace').toLowerCase();
+
   return (
-    <div className="auth-modern-page auth-register-page">
-      <div className="auth-modern-shell auth-modern-shell-wide">
-        <aside
-          className="auth-modern-panel auth-register-panel"
-          style={{
-            '--auth-panel-image': "url('/ingather-landing-hero.png')",
-            '--auth-panel-image-modern': "image-set(url('/ingather-landing-hero.avif') type('image/avif'), url('/ingather-landing-hero.webp') type('image/webp'), url('/ingather-landing-hero.png') type('image/png'))"
-          }}
-        >
-          <button className="auth-modern-brand" onClick={() => window.location.href = '/'} type="button" aria-label="Ingather home">
-            <img src="/ingather-logo.png" alt="Ingather" />
-          </button>
-
-          <div className="auth-panel-content">
-            <span className="auth-panel-pill">Start in minutes</span>
-            <h1>Give your organization a cleaner way to welcome people.</h1>
-            <p>
-              Create events, collect attendee information, prevent duplicate scans,
-              and keep attendance records organized from day one.
-            </p>
-          </div>
-
-          <div className="auth-register-highlights" aria-hidden="true">
-            <div><strong>QR</strong><span>Fast check-in</span></div>
-            <div><strong>Live</strong><span>Event insights</span></div>
-            <div><strong>Free</strong><span>No card needed</span></div>
-          </div>
-        </aside>
-
-        <main className={`auth-modern-card auth-register-card ${inviteLocked ? 'auth-invite-only-card' : ''}`}>
-          <div className="auth-modern-header">
-            <p className="auth-modern-kicker">Create account</p>
-            <h2>Set up your {template.organization.workspaceLabel.toLowerCase()}</h2>
-            <span>
-              {inviteUnlocked
-                ? 'Your invite is ready. Complete your workspace setup to continue.'
-                : 'Tell us about your organization so Ingather can prepare your dashboard.'}
-            </span>
-          </div>
-
-          {inviteUnlocked && INVITE_ONLY_MODE && (
-            <div className="auth-invite-banner" role="status">
-              <strong>Invite verified</strong>
-              <span>{inviteLead?.email} can now create an Ingather workspace.</span>
+    <AccountLayout
+      pillTag={hasValidInvite ? 'Invite accepted' : 'Create account'}
+      pillText={`Set up your ${workspaceWord}`}
+      titleStart={hasValidInvite ? "You're in. Let's set up your" : "Let's set up your"}
+      titleBox={workspaceWord}
+      lead="Add your organization details and choose a password. You can change most of this later in Settings."
+      photo="/landing/gathering.jpg"
+      photoAlt="Guests in traditional attire seated under a decorated canopy at an outdoor gathering"
+      chip="Private rollout access"
+      panelTitle="Give your organization a cleaner way to welcome people."
+      panelText="RSVP pages, QR check-in and live attendance, ready for your first event."
+      tall
+    >
+      {!inviteUnlocked ? (
+        <div className="ig-wl-card" role="status" aria-live="polite">
+          <div className="ig-acct-checking"><span className="ig-acct-spin" aria-hidden="true" />Checking your invite...</div>
+          <div className="ig-acct-skeleton" aria-hidden="true"><span /><span /><span /></div>
+        </div>
+      ) : (
+        <form className="ig-wl-card ig-wl-form" onSubmit={handleSubmit} noValidate>
+          {hasValidInvite && INVITE_ONLY_MODE && (
+            <div className="ig-acct-invite-ok" role="status">
+              <span className="ig-acct-invite-ok-icon"><CheckIcon /></span>
+              <span>
+                <strong>Your invite is ready</strong>
+                <span>{inviteLead?.email} can now create an Ingather workspace.</span>
+              </span>
             </div>
           )}
 
-          <form
-            className={`auth-modern-form ${inviteLocked ? 'auth-invite-locked-form' : ''}`}
-            onSubmit={inviteLocked ? (event) => event.preventDefault() : handleSubmit}
-            aria-hidden={inviteLocked ? 'true' : undefined}
-          >
-            <div className="auth-modern-grid">
-              <div className="auth-modern-field">
-                <label htmlFor="churchName">{template.organization.nameLabel}</label>
-                <input
-                  type="text"
-                  id="churchName"
-                  name="churchName"
-                  value={formData.churchName}
-                  onChange={handleChange}
-                  placeholder={signupIntent === 'church' ? 'e.g., Grace Assembly' : 'e.g., Ingather Labs'}
-                />
-                {errors.churchName && <span className="error">{errors.churchName}</span>}
-              </div>
-
-              <div className="auth-modern-field">
-                <label htmlFor="branchName">{template.organization.branchLabel}</label>
-                <input
-                  type="text"
-                  id="branchName"
-                  name="branchName"
-                  value={formData.branchName}
-                  onChange={handleChange}
-                  placeholder={signupIntent === 'church' ? 'e.g., Lekki Branch' : 'e.g., Lagos Team'}
-                />
-                {errors.branchName && <span className="error">{errors.branchName}</span>}
-              </div>
+          <div className="ig-wl-row">
+            <div className={fieldClass('churchName')}>
+              <label htmlFor="churchName">{template.organization.nameLabel}</label>
+              <input
+                type="text"
+                id="churchName"
+                name="churchName"
+                value={formData.churchName}
+                onChange={handleChange}
+                placeholder={signupIntent === 'church' ? 'e.g., Grace Assembly' : 'e.g., Ingather Labs'}
+                autoComplete="organization"
+              />
+              {errors.churchName && <small>{errors.churchName}</small>}
             </div>
+            <div className={fieldClass('branchName')}>
+              <label htmlFor="branchName">{template.organization.branchLabel}</label>
+              <input
+                type="text"
+                id="branchName"
+                name="branchName"
+                value={formData.branchName}
+                onChange={handleChange}
+                placeholder={signupIntent === 'church' ? 'e.g., Lekki Branch' : 'e.g., Lagos Team'}
+              />
+              {errors.branchName && <small>{errors.branchName}</small>}
+            </div>
+          </div>
 
-            <div className="auth-modern-field">
-              <label htmlFor="email">Email address</label>
+          <div className="ig-wl-row">
+            <div className={fieldClass('email')}>
+              <label htmlFor="email">Email address {hasValidInvite && <em>(from your invite)</em>}</label>
               <input
                 type="email"
                 id="email"
@@ -297,11 +366,12 @@ function Register() {
                 onChange={hasValidInvite ? undefined : handleChange}
                 placeholder="admin@organization.com"
                 readOnly={hasValidInvite}
+                className={hasValidInvite ? 'ig-acct-readonly' : ''}
+                autoComplete="email"
               />
-              {errors.email && <span className="error">{errors.email}</span>}
+              {errors.email && <small>{errors.email}</small>}
             </div>
-
-            <div className="auth-modern-field">
+            <div className={fieldClass('location')}>
               <label htmlFor="location">Location or address</label>
               <input
                 type="text"
@@ -310,109 +380,82 @@ function Register() {
                 value={formData.location}
                 onChange={handleChange}
                 placeholder="e.g., Lagos, Nigeria"
+                autoComplete="address-level2"
               />
-              {errors.location && <span className="error">{errors.location}</span>}
+              {errors.location && <small>{errors.location}</small>}
             </div>
+          </div>
 
-            <div className="auth-modern-upload">
-              <input
-                type="file"
-                id="logo"
-                accept="image/*"
-                onChange={handleLogoUpload}
-              />
-              <label htmlFor="logo">
-                <span className="auth-upload-avatar">
-                  {logoPreview ? (
-                    <img src={logoPreview} alt="Logo preview" />
-                  ) : (
-                    <img src="/ingather-logo.png" alt="" />
-                  )}
-                </span>
-                <span>
-                  <strong>{logoPreview ? 'Logo selected' : 'Add organization logo'}</strong>
-                  <small>Optional, JPG or PNG</small>
-                </span>
-              </label>
-            </div>
-
-            <div className="auth-modern-grid">
-              <div className="auth-modern-field">
-                <label htmlFor="password">Password</label>
-                <div className="auth-password-control">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Minimum 6 characters"
-                  />
-                  <button
-                    type="button"
-                    className="auth-password-toggle"
-                    onClick={() => setShowPassword(prev => !prev)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showPassword}
-                  >
-                    <PasswordVisibilityIcon visible={showPassword} />
-                  </button>
-                </div>
-                {errors.password && <span className="error">{errors.password}</span>}
-              </div>
-
-              <div className="auth-modern-field">
-                <label htmlFor="confirmPassword">Confirm password</label>
-                <div className="auth-password-control">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Re-enter password"
-                  />
-                  <button
-                    type="button"
-                    className="auth-password-toggle"
-                    onClick={() => setShowConfirmPassword(prev => !prev)}
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showConfirmPassword}
-                  >
-                    <PasswordVisibilityIcon visible={showConfirmPassword} />
-                  </button>
-                </div>
-                {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
-              </div>
-            </div>
-
-            <button type="submit" className="auth-modern-submit">
-              Create Account
-            </button>
-
-            <p className="auth-modern-switch">
-              Already have an account?
-              <a href="/login"> Login here</a>
-            </p>
-          </form>
-
-          {inviteLocked && (
-            <div className="auth-invite-overlay" role="status" aria-live="polite">
-              <p className="auth-modern-kicker">Private rollout</p>
-              <h3>
-                {inviteStatus === 'loading'
-                  ? 'Checking your invite...'
-                  : 'Ingather is currently Invite-Only.'}
-              </h3>
-              <span>
-                {inviteError || 'We are rolling out access in phases to ensure the highest quality experience.'}
+          <div className="ig-wl-field">
+            <label className="ig-acct-logo">
+              <span className="ig-acct-logo-thumb">
+                {logoDataUrl ? (
+                  <img src={logoDataUrl} alt="Your logo" />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" /></svg>
+                )}
               </span>
-              <Link to="/waitlist" className="auth-invite-cta">Join the waitlist</Link>
+              <span className="ig-acct-logo-text">
+                <strong>{logoDataUrl ? 'Logo added' : 'Add organization logo'}</strong>
+                {logoDataUrl ? 'Tap to choose a different one.' : 'PNG or JPG. Optional, you can add it later.'}
+              </span>
+              {logoDataUrl && (
+                <button
+                  type="button"
+                  className="ig-acct-logo-remove"
+                  onClick={(event) => { event.preventDefault(); setLogoDataUrl(''); }}
+                >
+                  Remove
+                </button>
+              )}
+              <input type="file" accept="image/png, image/jpeg, image/webp" onChange={handleLogoChange} />
+            </label>
+            {logoError && <small>{logoError}</small>}
+          </div>
+
+          <div className="ig-wl-row">
+            <div className={fieldClass('password')}>
+              <label htmlFor="password">Password</label>
+              <PasswordInput
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="8+ characters"
+                autoComplete="new-password"
+                invalid={Boolean(errors.password)}
+              />
+              {errors.password && <small>{errors.password}</small>}
             </div>
-          )}
-        </main>
-      </div>
-    </div>
+            <div className={fieldClass('confirmPassword')}>
+              <label htmlFor="confirmPassword">Confirm password</label>
+              <PasswordInput
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re-enter password"
+                autoComplete="new-password"
+                invalid={Boolean(errors.confirmPassword)}
+              />
+              {errors.confirmPassword && <small>{errors.confirmPassword}</small>}
+            </div>
+          </div>
+
+          <PasswordStrength password={formData.password} />
+
+          <button type="submit" className="ig-wl-submit" disabled={submitting} aria-busy={submitting}>
+            {submitting ? (
+              <>
+                <span className="ig-wl-spinner" aria-hidden="true" />
+                Creating workspace...
+              </>
+            ) : 'Create workspace'}
+          </button>
+          <p className="ig-wl-already">Already have an account? <Link to="/login">Log in</Link></p>
+        </form>
+      )}
+    </AccountLayout>
   );
 }
 

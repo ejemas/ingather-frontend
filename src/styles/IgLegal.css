@@ -1,0 +1,80 @@
+/* Legal pages (Privacy, Terms, Contact) and the not-found page. Builds on IgWaitlist.css. */
+
+.ig-lg-hero { padding: 56px var(--ig-padx) 32px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; }
+.ig-lg-tabs { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 4px; background: #F0F0EE; border-radius: 999px; }
+.ig-lg-tabs a { min-height: 38px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ig-text) !important; }
+.ig-lg-tabs a.is-on { background: #FFFFFF; color: var(--ig-ink) !important; font-weight: 600; box-shadow: 0 2px 8px -2px rgba(17, 17, 17, 0.2); }
+.ig-lg-hero h1 { font-weight: 600; font-size: 52px; line-height: 1.1; letter-spacing: -0.045em; color: #1A1A1A; }
+.ig-lg-hero > p { max-width: 560px; font-size: 16px; color: #5A5A5A; }
+.ig-lg-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; font-size: 13px; color: var(--ig-muted); }
+.ig-lg-meta > span { padding: 4px 12px; border-radius: 999px; background: #FFFFFF; border: 1px solid var(--ig-line); }
+
+.ig-lg-doc { padding: 8px var(--ig-padx) 72px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
+.ig-lg-toc { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.ig-lg-toc > span { padding: 0 12px 8px; font-size: 12px; font-weight: 600; color: var(--ig-muted); text-transform: none; }
+.ig-lg-toc a { display: block; padding: 6px 12px; border-radius: 10px; color: #5A5A5A !important; }
+.ig-lg-toc a:hover { color: var(--ig-ink) !important; }
+.ig-lg-toc a.is-on { background: #FFFFFF; color: var(--ig-ink) !important; font-weight: 600; box-shadow: inset 2px 0 0 var(--ig-orange); }
+.ig-lg-article { background: #FFFFFF; border: 1px solid var(--ig-line); border-radius: 24px; padding: 8px 32px; }
+.ig-lg-article section { padding: 24px 0; border-bottom: 1px solid var(--ig-line-2); scroll-margin-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+.ig-lg-article section:last-child { border-bottom: 0; }
+.ig-lg-article h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--ig-ink); }
+.ig-lg-article p { font-size: 15px; color: var(--ig-text); }
+.ig-lg-article ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.ig-lg-article li { display: flex; gap: 10px; font-size: 15px; color: var(--ig-text); }
+.ig-lg-article li strong { color: var(--ig-ink); }
+.ig-lg-tick { flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 999px; background: var(--ig-peach); color: var(--ig-orange); display: inline-flex; align-items: center; justify-content: center; }
+
+.ig-lg-contact { padding: 8px var(--ig-padx) 72px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+.ig-lg-cards { display: flex; flex-direction: column; gap: 12px; }
+.ig-lg-card { display: flex; flex-direction: column; gap: 4px; padding: 20px; background: #FFFFFF; border: 1px solid var(--ig-line); border-radius: 20px; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+a.ig-lg-card:hover { border-color: var(--ig-peach-line); box-shadow: 0 10px 24px -16px rgba(200, 75, 7, 0.4); }
+.ig-lg-card-icon { width: 40px; height: 40px; margin-bottom: 6px; border-radius: 12px; background: var(--ig-peach); color: var(--ig-orange); display: inline-flex; align-items: center; justify-content: center; }
+.ig-lg-card strong { font-size: 16px; }
+.ig-lg-card > span:not(.ig-lg-card-icon) { font-size: 14px; color: var(--ig-muted); }
+.ig-lg-card .ig-lg-card-mail { margin-top: 4px; font-weight: 600; color: var(--ig-orange-deep); }
+.ig-lg-form { display: flex; flex-direction: column; gap: 14px; padding: 24px; background: #FFFFFF; border: 1px solid var(--ig-line); border-radius: 24px; }
+.ig-lg-form h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.ig-lg-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ig-lg-form label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ig-text); }
+.ig-lg-form input, .ig-lg-form select, .ig-lg-form textarea { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #E2E2E0; border-radius: 14px; background: #FFFFFF; font: inherit; font-size: 16px; font-weight: 400; color: var(--ig-ink); outline: none; }
+.ig-lg-form textarea { padding: 12px 14px; resize: vertical; }
+.ig-lg-form input:focus, .ig-lg-form select:focus, .ig-lg-form textarea:focus { border-color: var(--ig-orange); box-shadow: 0 0 0 4px rgba(232, 89, 12, 0.14); }
+.ig-lg-form button { min-height: 50px; border: 0; border-radius: 999px; background: var(--ig-orange-deep); color: #FFFFFF; font-size: 15px; font-weight: 600; cursor: pointer; }
+.ig-lg-form button:disabled { background: #E7B79A; cursor: default; }
+.ig-lg-form > p { font-size: 13px; color: var(--ig-muted); }
+.ig-lg-error { font-size: 13px; font-weight: 500; color: #B42318; }
+.ig-lg-footlinks { display: inline-flex; flex-wrap: wrap; gap: 16px; }
+.ig-lg-footlinks a:hover, .ig-wl-foot a:hover { color: var(--ig-ink); }
+
+/* Not found */
+.ig-nf-main { min-height: 640px; padding: 56px var(--ig-padx) 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 16px; }
+.ig-nf-art { position: relative; width: 420px; max-width: 100%; height: 220px; border-radius: 24px; overflow: hidden; background: #2B2420; }
+.ig-nf-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.6; }
+.ig-nf-art::after { content: ""; position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); }
+.ig-nf-art span { position: absolute; z-index: 1; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 96px; font-weight: 700; letter-spacing: -0.06em; line-height: 1; color: #FFFFFF; }
+.ig-nf .ig-wl-pill { align-self: center; }
+.ig-nf-main h1 { max-width: 560px; font-weight: 600; font-size: 48px; line-height: 1.1; letter-spacing: -0.045em; color: #1A1A1A; }
+.ig-nf-main > p { max-width: 440px; font-size: 16px; color: #5A5A5A; }
+.ig-nf-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
+.ig-nf-btn { min-height: 48px; display: inline-flex; align-items: center; padding: 0 22px; border-radius: 999px; background: var(--ig-orange-deep); color: #FFFFFF !important; font-size: 15px; font-weight: 600; }
+.ig-nf-btn.is-ghost { background: #FFFFFF; color: var(--ig-ink) !important; border: 1px solid #E7E7E5; }
+
+@media (max-width: 900px) {
+  .ig-lg-doc { grid-template-columns: minmax(0, 1fr); }
+  .ig-lg-toc { display: none; }
+  .ig-lg-contact { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .ig-lg-hero { padding: 36px var(--ig-padx) 24px; }
+  .ig-lg-hero h1 { font-size: 34px; }
+  .ig-lg-article { padding: 4px 18px; border-radius: 20px; }
+  .ig-lg-form { padding: 18px; }
+  .ig-lg-form-row { grid-template-columns: 1fr; }
+  .ig-nf-main { min-height: 0; padding: 36px var(--ig-padx) 48px; }
+  .ig-nf-art { height: 180px; }
+  .ig-nf-art span { font-size: 64px; }
+  .ig-nf-main h1 { font-size: 30px; }
+  .ig-nf-actions { width: 100%; }
+  .ig-nf-btn { flex: 1 1 160px; justify-content: center; }
+}

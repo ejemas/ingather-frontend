@@ -1,0 +1,75 @@
+/* First-visit "What do you mostly run?" pop-up. Sits inside the dashboard shell (.ig-db), so it follows Day/Night. */
+
+.ig-ob-overlay {
+  position: fixed; inset: 0; z-index: 70;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px;
+  overflow-y: auto; overscroll-behavior: contain;
+  background: rgba(17, 17, 17, 0.5);
+  backdrop-filter: blur(2px);
+  animation: igObFade 0.16s ease both;
+}
+.ig-ob {
+  width: 100%; max-width: 760px; margin: auto 0;
+  background: var(--db-card, #FFFFFF);
+  color: var(--db-ink, #111111);
+  border-radius: 28px;
+  padding: 30px;
+  display: flex; flex-direction: column; gap: 18px;
+  box-shadow: 0 30px 60px -20px rgba(17, 17, 17, 0.5);
+  animation: igObPop 0.2s ease both;
+}
+@keyframes igObFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes igObPop { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
+
+.ig-ob:focus { outline: none; }
+.ig-ob-head h2, .ig-ob-head p { font-family: inherit; }
+.ig-ob-head { display: flex; flex-direction: column; gap: 6px; }
+.ig-ob-pill { align-self: flex-start; padding: 2px 10px; background: var(--db-ink-btn, #111111); color: #FFFFFF; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.ig-ob-head h2 { margin: 0; font-size: 30px; font-weight: 600; letter-spacing: -0.035em; line-height: 1.15; }
+.ig-ob-head p { margin: 0; font-size: 14px; color: var(--db-text-2, #5A5A5A); }
+
+.ig-ob-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ig-ob-option {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px;
+  background: var(--db-card, #FFFFFF);
+  border: 1px solid var(--db-line, #E7E7E5);
+  border-radius: 16px;
+  font: inherit; text-align: left; color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+.ig-ob-option:hover:not(:disabled) { border-color: var(--db-peach-line, #FAD4BB); box-shadow: 0 10px 22px -18px rgba(200, 75, 7, 0.55); }
+.ig-ob-option:focus-visible { outline: 3px solid rgba(232, 89, 12, 0.35); outline-offset: 2px; }
+.ig-ob-option:disabled { cursor: default; }
+.ig-ob-option.is-saving { background: var(--db-peach-soft, #FFF8F3); border: 2px solid #E8590C; padding: 13px; }
+.ig-ob-option.is-muted { opacity: 0.5; }
+.ig-ob-option-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ig-ob-option-top strong { font-size: 14px; font-weight: 600; }
+.ig-ob-dot { flex: none; width: 18px; height: 18px; border-radius: 999px; border: 2px solid #C9C9C7; }
+.ig-ob-option:hover:not(:disabled) .ig-ob-dot { border-color: #E8590C; }
+.ig-ob-option.is-saving .ig-ob-dot { border: 2.5px solid #FAD4BB; border-top-color: #E8590C; animation: igObSpin 0.8s linear infinite; }
+@keyframes igObSpin { to { transform: rotate(360deg); } }
+.ig-ob-option-copy { font-size: 12px; line-height: 1.45; color: var(--db-muted, #6B6B6B); }
+.ig-ob-option-words { font-size: 12px; font-weight: 600; color: #8A8A8A; }
+.ig-ob-option.is-saving .ig-ob-option-words { color: #C84B07; }
+
+.ig-ob-error { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--db-danger-bg, #FEF3F2); border: 1px solid #FECDCA; border-radius: 12px; font-size: 13px; color: var(--db-danger, #B42318); }
+.ig-ob-foot { font-size: 12px; color: #8A8A8A; }
+
+html[data-theme="dark"] .ig-ob-option.is-saving { background: #3A2414; }
+html[data-theme="dark"] .ig-ob-error { border-color: #5A2520; }
+
+@media (max-width: 760px) {
+  .ig-ob-overlay { padding: 16px; }
+  .ig-ob { border-radius: 24px; padding: 22px 18px 28px; }
+  .ig-ob-head h2 { font-size: 24px; }
+  .ig-ob-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ig-ob-overlay, .ig-ob { animation: none; }
+  .ig-ob-option.is-saving .ig-ob-dot { animation: none; }
+}
+html[data-theme="dark"] .ig-ob-option-words, html[data-theme="dark"] .ig-ob-foot { color: var(--db-muted); }
+html[data-theme="dark"] .ig-ob-dot { border-color: #5E5852; }

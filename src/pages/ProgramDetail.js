@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { useParams } from 'react-router-dom';
-import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, stopProgram as stopProgramAPI, markWinnerGifted, addManualAttendee, checkInRsvpQr, getRsvpScannerLink, updateStrictDeviceFingerprinting } from '../api/programService';
-import InfoTooltip from '../components/InfoTooltip';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { getProgramById, getAttendees, getAttendanceData, getProgramDetailBootstrap, getSponsorAnalytics, getDashboardBootstrap, stopProgram as stopProgramAPI, deleteProgram, markWinnerGifted, addManualAttendee, getRsvpScannerLink, updateStrictDeviceFingerprinting } from '../api/programService';
+import IgDashShell, { DashIcon, DashDialog, InfoTip as InfoButton } from '../components/IgDashShell';
 import { useToast } from '../components/Toast';
 import { useEventTemplate } from '../context/EventTemplateContext';
 import { formatCustomAnswer } from '../utils/customFields';
-import { isSoundMuted, toggleSoundMuted, playSuccessSound, playErrorSound } from '../utils/scanSounds';
-import '../styles/Dashboard.css';
-import '../styles/ProgramDetail.css';
+import { formatNumber, formatTime, formatTimeRange, fullDate, initialsOf, localToday, parseDateOnly, weekdayShortDate } from '../utils/dashboardFormat';
 
 const QRCodeCanvas = React.lazy(() => (
   import('qrcode.react').then(module => ({ default: module.QRCodeCanvas }))
@@ -64,298 +61,152 @@ const validateCustomFieldResponses = (fields = [], responses = {}) => {
   return errors;
 };
 
-/* ============================================
-   SVG ICON COMPONENTS
-   ============================================ */
-const Icons = {
-  logo: (
-    <img src="/ingather-logo.png" alt="Ingather" className="sidebar-logo-img" />
-  ),
-  collapse: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="14" height="14" rx="2" /><line x1="9" y1="3" x2="9" y2="17" /></svg>),
-  dashboard: (<svg viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1" fill="currentColor" /><rect x="11" y="3" width="6" height="6" rx="1" fill="currentColor" /><rect x="3" y="11" width="6" height="6" rx="1" fill="currentColor" /><rect x="11" y="11" width="6" height="6" rx="1" fill="currentColor" /></svg>),
-  createProgram: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="7" /><line x1="10" y1="7" x2="10" y2="13" /><line x1="7" y1="10" x2="13" y2="10" /></svg>),
-  allPrograms: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="14" height="12" rx="2" /><line x1="3" y1="8" x2="17" y2="8" /><line x1="7" y1="4" x2="7" y2="8" /><line x1="13" y1="4" x2="13" y2="8" /></svg>),
-  settings: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" /><circle cx="12" cy="12" r="3" /></svg>),
-  notification: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2a5 5 0 015 5c0 4 2 5 2 5H3s2-1 2-5a5 5 0 015-5z" /><path d="M8.5 17a1.5 1.5 0 003 0" /></svg>),
-  logout: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>),
-  chevronRight: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,4 10,8 6,12" /></svg>),
-  sun: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="10" r="3.5" /><line x1="10" y1="2" x2="10" y2="4" /><line x1="10" y1="16" x2="10" y2="18" /><line x1="2" y1="10" x2="4" y2="10" /><line x1="16" y1="10" x2="18" y2="10" /><line x1="4.2" y1="4.2" x2="5.6" y2="5.6" /><line x1="14.4" y1="14.4" x2="15.8" y2="15.8" /><line x1="4.2" y1="15.8" x2="5.6" y2="14.4" /><line x1="14.4" y1="5.6" x2="15.8" y2="4.2" /></svg>),
-  moon: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 10.5A7 7 0 119.5 3a5.5 5.5 0 007.5 7.5z" /></svg>),
-  gear: (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2h.2a2 2 0 0 1 2 1.75l.16 1.28a7.6 7.6 0 0 1 1.22.7l1.2-.5a2 2 0 0 1 2.46.78l.1.18a2 2 0 0 1-.35 2.55l-1.03.79c.03.23.04.47.04.71s-.01.48-.04.71l1.03.79a2 2 0 0 1 .35 2.55l-.1.18a2 2 0 0 1-2.46.78l-1.2-.5c-.38.27-.79.5-1.22.7l-.16 1.28a2 2 0 0 1-2 1.75H12a2 2 0 0 1-2-1.75l-.16-1.28a7.6 7.6 0 0 1-1.22-.7l-1.2.5a2 2 0 0 1-2.46-.78l-.1-.18a2 2 0 0 1 .35-2.55l1.03-.79a6.62 6.62 0 0 1 0-1.42l-1.03-.79a2 2 0 0 1-.35-2.55l.1-.18a2 2 0 0 1 2.46-.78l1.2.5c.38-.27.79-.5 1.22-.7L10 3.75A2 2 0 0 1 12 2Z" /><circle cx="12" cy="12" r="3" /></svg>),
-  chevronDown: (<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,5 7,9 11,5" /></svg>),
-  calendar: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5" /><line x1="2" y1="7" x2="14" y2="7" /><line x1="5.5" y1="1.5" x2="5.5" y2="4.5" /><line x1="10.5" y1="1.5" x2="10.5" y2="4.5" /></svg>),
-  clock: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6.5" /><polyline points="8,4.5 8,8 10.5,9.5" /></svg>),
-  arrowLeft: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="17" y1="10" x2="3" y2="10" /><polyline points="9,4 3,10 9,16" /></svg>),
-  arrowRight: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="8" x2="13" y2="8" /><polyline points="9,4 13,8 9,12" /></svg>),
-  arrowLeftSmall: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="13" y1="8" x2="3" y2="8" /><polyline points="7,4 3,8 7,12" /></svg>),
-  download: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3" /><polyline points="5,7 8,10 11,7" /><line x1="8" y1="10" x2="8" y2="2" /></svg>),
-  printer: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="4,6 4,1 12,1 12,6" /><path d="M4 12H2.5A1.5 1.5 0 011 10.5V7.5A1.5 1.5 0 012.5 6h11A1.5 1.5 0 0115 7.5v3A1.5 1.5 0 0113.5 12H12" /><rect x="4" y="10" width="8" height="5" rx="0.5" /></svg>),
-  search: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="5" /><line x1="14" y1="14" x2="10.8" y2="10.8" /></svg>),
-  info: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6" /><line x1="8" y1="10.5" x2="8" y2="7.5" /><circle cx="8" cy="5.5" r="0.5" fill="currentColor" stroke="none" /></svg>),
-  people: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="7" r="3" /><path d="M1 17v-1a4 4 0 014-4h4a4 4 0 014 4v1" /><circle cx="15" cy="7" r="2" /><path d="M15 12h1a3 3 0 013 3v1" /></svg>),
-  male: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="12" r="5" /><line x1="12" y1="3" x2="17" y2="3" /><line x1="17" y1="3" x2="17" y2="8" /><line x1="12" y1="8" x2="17" y2="3" /></svg>),
-  female: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="5" /><line x1="10" y1="12" x2="10" y2="19" /><line x1="7" y1="16" x2="13" y2="16" /></svg>),
-  star: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
-  exportIcon: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 10v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3" /><polyline points="11,5 8,2 5,5" /><line x1="8" y1="2" x2="8" y2="10" /></svg>),
-  copy: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="5" width="7" height="8" rx="1.2" /><path d="M3 10.5V3.8C3 3.36 3.36 3 3.8 3h6.7" /></svg>),
-  plus: (<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="3" x2="8" y2="13" /><line x1="3" y1="8" x2="13" y2="8" /></svg>),
-  formDoc: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 3h8l4 4v10a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" /><polyline points="12,3 12,7 16,7" /><line x1="6" y1="10" x2="14" y2="10" /><line x1="6" y1="13" x2="14" y2="13" /><line x1="6" y1="16" x2="10" y2="16" /></svg>),
-  starOutline: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 2l2.4 5 5.6.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.6-.8L10 2z" /></svg>),
-  giftBox: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="9" width="16" height="9" rx="1" /><rect x="3" y="5" width="14" height="4" rx="1" /><line x1="10" y1="5" x2="10" y2="18" /><path d="M10 5C10 3 8 1 6 3s2 2 4 2" /><path d="M10 5c0-2 2-4 4-2s-2 2-4 2" /></svg>),
-  checkDouble: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="2,10 6,14 14,6" /><polyline points="6,10 10,14 18,6" /></svg>),
-  maleSymbol: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="12" r="5" /><line x1="12" y1="3" x2="17" y2="3" /><line x1="17" y1="3" x2="17" y2="8" /><line x1="12" y1="8" x2="17" y2="3" /></svg>),
-  femaleSymbol: (<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="5" /><line x1="10" y1="12" x2="10" y2="19" /><line x1="7" y1="16" x2="13" y2="16" /></svg>),
+const Icon = {
+  back: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>,
+  more: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>,
+  pencil: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>,
+  copy: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 012-2h10" /></svg>,
+  download: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" /></svg>,
+  upload: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20V8M7 13l5-5 5 5M5 4h14" /></svg>,
+  print: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 9V3h10v6" /><rect x="3" y="9" width="18" height="8" rx="2" /><path d="M7 14h10v7H7z" /></svg>,
+  stop: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><rect x="9" y="9" width="6" height="6" rx="1" /></svg>,
+  people: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0113 0" /><path d="M16 4.6a3.5 3.5 0 010 6.8M18.5 20a6.5 6.5 0 00-3-5.5" /></svg>,
+  form: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h4" /></svg>,
+  firstTimer: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4" /><path d="M3 20a7 7 0 0114 0M19 8v6M16 11h6" /></svg>,
+  person: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M5 21a7 7 0 0114 0" /></svg>,
+  male: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="6" /><path d="M14.5 9.5L20 4M15 4h5v5" /></svg>,
+  female: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6" /><path d="M12 15v7M9 19h6" /></svg>,
+  gift: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1" /><path d="M12 8v13M5 12v9h14v-9M7.5 8a2.5 2.5 0 010-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 010 5" /></svg>,
+  phone: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="3" /><path d="M11 18h2" /></svg>,
+  screen: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg>,
+  up: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>,
+  trend: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" /></svg>,
+  award: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6" /><path d="M8.5 14L7 22l5-3 5 3-1.5-8" /></svg>,
+  clock: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>,
+  scan: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3M7 12h10" /></svg>,
+  search: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>,
+  warn: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z" /><path d="M12 10v4M12 17.5v.01" /></svg>
 };
 
-/* ============================================
-   CUSTOM BAR CHART (Dynamic Y-Axis + Hover Tooltip)
-   ============================================ */
-function AttendanceBarChart({ data }) {
-  const containerRef = useRef(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+const ATTENDEE_SOURCES = [['all', 'All'], ['rsvp', 'Pre-Registered'], ['walk_in', 'Walk-In'], ['manual', 'Manual'], ['proxy', 'Proxy']];
+const SOURCE_LABEL = { rsvp: 'Pre-Registered', walk_in: 'Walk-In', manual: 'Manual', proxy: 'Proxy' };
 
+const registrationTypeOf = (attendee) => (
+  attendee.registrationType
+    || (attendee.proxyHostFingerprint ? 'proxy' : attendee.deviceFingerprint?.startsWith?.('manual-') ? 'manual' : 'walk_in')
+);
+const getAttendeeSourceLabel = (attendee) => SOURCE_LABEL[registrationTypeOf(attendee)] || 'Walk-In';
+const formatAttendanceMode = (mode) => {
+  if (mode === 'virtual') return 'Virtual';
+  if (mode === 'physical') return 'Physical';
+  return '-';
+};
+
+const percentOf = (part, whole) => (whole > 0 ? `${Math.round((part / whole) * 100)}%` : '0%');
+const plural = (n, one, many) => `${formatNumber(n)} ${n === 1 ? one : many}`;
+
+// When the event starts, in the organizer's own time zone.
+const eventStart = (program) => {
+  const day = parseDateOnly(program?.date);
+  const time = /^(\d{1,2}):(\d{2})/.exec(String(program?.startTime || ''));
+  if (!day) return null;
+  return new Date(day.year, day.month, day.day, time ? Number(time[1]) : 0, time ? Number(time[2]) : 0);
+};
+
+// Events end on their own 12 hours after their end time (the server does this too).
+// An end time earlier than the start time means the event runs past midnight.
+const AUTO_END_HOURS = 12;
+const autoEndAt = (program) => {
+  const day = parseDateOnly(program?.date);
+  const start = /^(\d{1,2}):(\d{2})/.exec(String(program?.startTime || ''));
+  const end = /^(\d{1,2}):(\d{2})/.exec(String(program?.endTime || ''));
+  if (!day || !end) return null;
+  const at = new Date(day.year, day.month, day.day, Number(end[1]), Number(end[2]));
+  if (start && Number(end[1]) * 60 + Number(end[2]) <= Number(start[1]) * 60 + Number(start[2])) at.setDate(at.getDate() + 1);
+  at.setHours(at.getHours() + AUTO_END_HOURS);
+  return at;
+};
+const autoEndLabel = (at) => `${at.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}, ${formatTime(`${at.getHours()}:${String(at.getMinutes()).padStart(2, '0')}`)}`;
+
+const eventPhase = (program, now) => {
+  if (!program?.isActive) return 'ended';
+  const closes = autoEndAt(program);
+  if (closes && now >= closes.getTime()) return 'ended';
+  const start = eventStart(program);
+  return start && now < start.getTime() ? 'upcoming' : 'live';
+};
+
+const startsLabel = (program, now) => {
+  const start = eventStart(program);
+  const time = formatTime(program.startTime);
+  if (!start) return `Starts at ${time}`;
+  const today = new Date(now);
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (sameDay(start, today)) return `Starts today at ${time}`;
+  if (sameDay(start, tomorrow)) return `Starts tomorrow at ${time}`;
+  return `Starts ${weekdayShortDate(program.date)} at ${time}`;
+};
+
+const countdownParts = (ms) => {
+  const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  return { days, hours, minutes };
+};
+
+const countdownWords = ({ days, hours, minutes }) => {
+  if (days > 0) return [plural(days, 'day', 'days'), hours > 0 ? plural(hours, 'hour', 'hours') : ''].filter(Boolean).join(' ');
+  if (hours > 0) return [plural(hours, 'hour', 'hours'), minutes > 0 ? plural(minutes, 'minute', 'minutes') : ''].filter(Boolean).join(' ');
+  return minutes <= 1 ? 'a minute' : plural(minutes, 'minute', 'minutes');
+};
+
+const shortTime = (value) => {
+  const t = /^(\d{1,2}):(\d{2})/.exec(String(value || ''));
+  if (!t) return value;
+  return `${Number(t[1]) % 12 || 12}:${t[2]}`;
+};
+
+const addHalfHour = (value) => {
+  const t = /^(\d{1,2}):(\d{2})/.exec(String(value || ''));
+  if (!t) return value;
+  const total = Number(t[1]) * 60 + Number(t[2]) + 30;
+  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+};
+
+const clockTime = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '-';
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+};
+
+const niceMax = (value) => {
+  if (value <= 4) return 4;
+  const steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+  const step = steps.find((s) => s * 4 >= value) || Math.ceil(value / 4);
+  return step * 4;
+};
+
+const shortLink = (url) => String(url || '').replace(/^https?:\/\//, '');
+
+const useCompact = () => {
+  const query = '(max-width: 640px)';
+  const [compact, setCompact] = useState(() => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(query).matches : false));
   useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) setContainerWidth(containerRef.current.offsetWidth);
+    if (!window.matchMedia) return undefined;
+    const list = window.matchMedia(query);
+    const onChange = () => setCompact(list.matches);
+    if (list.addEventListener) list.addEventListener('change', onChange);
+    else list.addListener(onChange);
+    return () => {
+      if (list.removeEventListener) list.removeEventListener('change', onChange);
+      else list.removeListener(onChange);
     };
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    if (containerRef.current) observer.observe(containerRef.current);
-    return () => observer.disconnect();
   }, []);
+  return compact;
+};
 
-  // — Dynamic max value & Y-ticks based on real data —
-  const rawMax = data.length > 0
-    ? Math.max(...data.map(d => d.scans || 0))
-    : 0;
-
-  // Returns a "nice" max divisible by 4 (for clean tick spacing)
-  const getNiceMax = (val) => {
-    if (val <= 4) return 4;          // ticks: 1, 2, 3, 4
-    if (val <= 8) return 8;          // ticks: 2, 4, 6, 8
-    if (val <= 12) return 12;        // ticks: 3, 6, 9, 12
-    if (val <= 20) return 20;        // ticks: 5, 10, 15, 20
-    if (val <= 40) return 40;        // ticks: 10, 20, 30, 40
-    if (val <= 100) return Math.ceil(val / 20) * 20;
-    if (val <= 500) return Math.ceil(val / 100) * 100;
-    if (val <= 2000) return Math.ceil(val / 500) * 500;
-    return Math.ceil(val / 1000) * 1000;
-  };
-
-  const maxValue = getNiceMax(rawMax);
-  const tickCount = 4;
-  const tickStep = maxValue / tickCount;
-  const yTicks = Array.from({ length: tickCount }, (_, i) => Math.round(tickStep * (i + 1)));
-
-  const paddingLeft = 50;
-  const paddingRight = 16;
-  const paddingTop = 12;
-  const paddingBottom = 36;
-  const chartHeight = 280;
-  const plotHeight = chartHeight - paddingTop - paddingBottom;
-  const plotWidth = containerWidth - paddingLeft - paddingRight;
-  const barWidth = Math.min(42, plotWidth / (data.length || 1) - 10);
-  const colCount = data.length;
-  const colSpacing = colCount > 0 ? plotWidth / colCount : 0;
-  const barRadius = 6;
-
-  const getY = (val) => paddingTop + plotHeight - (val / maxValue) * plotHeight;
-  const baseline = paddingTop + plotHeight;
-
-  const roundedTopRect = (x, y, w, h, r) => {
-    if (h <= 0) return '';
-    const cr = Math.min(r, w / 2, h);
-    const bottom = y + h;
-    return `M${x},${bottom} L${x},${y + cr} Q${x},${y} ${x + cr},${y} L${x + w - cr},${y} Q${x + w},${y} ${x + w},${y + cr} L${x + w},${bottom} Z`;
-  };
-
-  // Format time: "13:00" → "01:00"
-  const formatTimeLabel = (time) => {
-    if (!time) return '--:--';
-    const [h, m] = time.split(':').map(Number);
-    const hour12 = h % 12 || 12;
-    const mm = (m || 0).toString().padStart(2, '0');
-    return `${hour12.toString().padStart(2, '0')}:${mm}`;
-  };
-
-  // Empty state
-  if (!data || data.length === 0) {
-    return (
-      <div ref={containerRef} className="custom-bar-chart" style={{ width: '100%', height: '100%' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          height: chartHeight, color: 'var(--text-tertiary)', fontSize: '14px'
-        }}>
-          No attendance data yet
-        </div>
-      </div>
-    );
-  }
-
-  // Tooltip position
-  const getTooltipPos = (index) => {
-    const colCenter = paddingLeft + colSpacing * index + colSpacing / 2;
-    const val = data[index]?.scans || 0;
-    const barTopY = getY(Math.min(val, maxValue));
-    return { x: colCenter, y: barTopY - 10 };
-  };
-
-  return (
-    <div ref={containerRef} className="custom-bar-chart" style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {containerWidth > 0 && (
-        <>
-          <svg
-            width={containerWidth}
-            height={chartHeight}
-            viewBox={`0 0 ${containerWidth} ${chartHeight}`}
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-            {/* Gradient definition for orange bars */}
-            <defs>
-              <linearGradient id="barGradPD" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#E8590C" />
-                <stop offset="100%" stopColor="#FFB380" />
-              </linearGradient>
-            </defs>
-
-            {/* Horizontal grid lines */}
-            {yTicks.map(t => (
-              <line key={t} x1={paddingLeft} y1={getY(t)} x2={containerWidth - paddingRight} y2={getY(t)} stroke="var(--border-color)" strokeWidth="1" />
-            ))}
-            <line x1={paddingLeft} y1={baseline} x2={containerWidth - paddingRight} y2={baseline} stroke="var(--border-color)" strokeWidth="1" />
-
-            {/* Y-axis labels */}
-            {yTicks.map(t => (
-              <text key={t} x={paddingLeft - 12} y={getY(t) + 4} textAnchor="end" fontSize="12" fill="var(--text-tertiary)" fontFamily="Inter, sans-serif" fontWeight="500">
-                {t >= 1000 ? `${(t / 1000).toFixed(t % 1000 === 0 ? 0 : 1)}k` : t.toLocaleString()}
-              </text>
-            ))}
-
-            {/* Bars */}
-            {data.map((d, i) => {
-              const colCenter = paddingLeft + colSpacing * i + colSpacing / 2;
-              const barX = colCenter - barWidth / 2;
-              const isHovered = hoveredIndex === i;
-              // Grey bar always reaches full height
-              const greyH = plotHeight;
-              const greyY = baseline - greyH;
-              // Orange bar proportional to scans
-              const scans = Math.min(d.scans || 0, maxValue);
-              const orangeH = (scans / maxValue) * plotHeight;
-              const orangeY = baseline - orangeH;
-              return (
-                <g key={i}>
-                  <path d={roundedTopRect(barX, greyY, barWidth, greyH, barRadius)} fill="var(--chart-bar-bg)" opacity={isHovered ? 0.7 : 1} />
-                  {orangeH > 0 && (
-                    <path
-                      d={roundedTopRect(barX, orangeY, barWidth, orangeH, barRadius)}
-                      fill="url(#barGradPD)"
-                      opacity={isHovered ? 1 : 0.85}
-                      style={{ transition: 'all 0.3s ease' }}
-                    />
-                  )}
-                  {/* Invisible hit-area for hover */}
-                  <rect
-                    x={colCenter - colSpacing / 2}
-                    y={paddingTop}
-                    width={colSpacing}
-                    height={plotHeight + paddingBottom}
-                    fill="transparent"
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredIndex(i)}
-                    onMouseLeave={() => setHoveredIndex(null)}
-                  />
-                </g>
-              );
-            })}
-
-            {/* X-axis time labels */}
-            {data.map((d, i) => {
-              const colCenter = paddingLeft + colSpacing * i + colSpacing / 2;
-              return (
-                <text
-                  key={i}
-                  x={colCenter}
-                  y={chartHeight - 8}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill={hoveredIndex === i ? 'var(--text-primary)' : 'var(--text-tertiary)'}
-                  fontWeight={hoveredIndex === i ? '600' : '500'}
-                  fontFamily="Inter, sans-serif"
-                  style={{ transition: 'all 0.2s ease' }}
-                >
-                  {formatTimeLabel(d.time)}
-                </text>
-              );
-            })}
-          </svg>
-
-          {/* Floating tooltip */}
-          {hoveredIndex !== null && data[hoveredIndex] && (() => {
-            const pos = getTooltipPos(hoveredIndex);
-            const d = data[hoveredIndex];
-            return (
-              <div
-                className="chart-tooltip"
-                style={{
-                  position: 'absolute',
-                  left: pos.x,
-                  top: pos.y,
-                  transform: 'translate(-50%, -100%)',
-                  background: 'var(--tooltip-bg, #1a1a2e)',
-                  color: 'var(--tooltip-text, #fff)',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: '500',
-                  whiteSpace: 'nowrap',
-                  pointerEvents: 'none',
-                  zIndex: 10,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-                  transition: 'opacity 0.15s ease, top 0.15s ease, left 0.15s ease',
-                  opacity: 1,
-                }}
-              >
-                <div style={{ fontSize: '15px', fontWeight: '700', color: '#FF8C42' }}>
-                  {(d.scans || 0).toLocaleString()} {d.scans === 1 ? 'scan' : 'scans'}
-                </div>
-                <div style={{ fontSize: '11px', opacity: 0.7, marginTop: '2px' }}>
-                  {formatTimeLabel(d.time)} — {formatTimeLabel(
-                    (() => {
-                      const [h, m] = d.time.split(':').map(Number);
-                      const totalMin = h * 60 + m + 30;
-                      return `${Math.floor(totalMin / 60).toString().padStart(2, '0')}:${(totalMin % 60).toString().padStart(2, '0')}`;
-                    })()
-                  )}
-                </div>
-                {/* Tooltip arrow */}
-                <div style={{
-                  position: 'absolute',
-                  left: '50%',
-                  bottom: '-6px',
-                  transform: 'translateX(-50%)',
-                  width: 0,
-                  height: 0,
-                  borderLeft: '6px solid transparent',
-                  borderRight: '6px solid transparent',
-                  borderTop: '6px solid var(--tooltip-bg, #1a1a2e)',
-                }} />
-              </div>
-            );
-          })()}
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ============================================
-   CHART DATA UTILITIES
-   Generate a skeleton of all 30-min slots and merge
-   with backend buckets (Phase 3 of the implementation).
-   ============================================ */
 function generateChartSkeleton(startTime, endTime) {
   const slots = [];
   const [sh, sm] = startTime.split(':').map(Number);
@@ -391,513 +242,581 @@ function mergeChartData(buckets, startTime, endTime, scanRangeStart, scanRangeEn
   }));
 }
 
-function SponsorEngagementCard({ analytics }) {
-  const sponsors = analytics?.sponsors || [];
-  const todayClicks = analytics?.todayClicks || 0;
-  const totalClicks = analytics?.totalClicks || 0;
-  const topSponsor = analytics?.topSponsor;
-
+function StatCard({ icon, tone, label, value, sub, info }) {
   return (
-    <div className="pd-sponsor-engagement-card">
-      <div className="pd-sponsor-card-header">
-        <div>
-          <span className="pd-sponsor-kicker">Sponsor ROI</span>
-          <h3>Sponsor Engagement</h3>
-        </div>
-        <span className="pd-sponsor-count">{sponsors.length} active</span>
+    <div className="ig-ed-stat">
+      <div className="ig-ed-stat-head">
+        <span className={`ig-ed-stat-icon is-${tone}`}>{icon}</span>
+        <span className="ig-ed-stat-label">{label}</span>
+        {info}
       </div>
-
-      {sponsors.length === 0 ? (
-        <div className="pd-sponsor-empty">
-          <strong>No sponsor clicks yet.</strong>
-          <span>Add sponsors to this program to track post-check-in ROI.</span>
-        </div>
-      ) : (
-        <>
-          <p className="pd-sponsor-roi-line">
-            Your sponsor's link was clicked <strong>{todayClicks.toLocaleString()}</strong> times today.
-          </p>
-          <div className="pd-sponsor-metrics">
-            <div>
-              <span>Total clicks</span>
-              <strong>{totalClicks.toLocaleString()}</strong>
-            </div>
-            <div>
-              <span>Top sponsor</span>
-              <strong>{topSponsor?.sponsorName || '-'}</strong>
-            </div>
-          </div>
-          <div className="pd-sponsor-list">
-            {sponsors.slice(0, 4).map(sponsor => (
-              <div className="pd-sponsor-row" key={sponsor.id}>
-                <span>{sponsor.sponsorName}</span>
-                <strong>{sponsor.clickCount.toLocaleString()} clicks</strong>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <div className="ig-ed-stat-num"><strong>{formatNumber(value)}</strong>{sub && <span>{sub}</span>}</div>
     </div>
   );
 }
 
-function ManualAttendeeModal({
-  program,
-  template,
-  formData,
-  errors,
-  submitting,
-  onChange,
-  onCustomChange,
-  onClose,
-  onSubmit
-}) {
-  const dataFields = program?.dataFields || {};
-  const customFields = program?.customFormSchema || [];
-  const fieldLabels = {
-    fullName: 'Full Name',
-    emailAddress: 'Email Address',
-    school: 'School',
-    link: 'Link',
-    phoneNumber: 'Phone Number',
-    textarea: program?.dataFieldConfig?.textareaLabel || 'Additional Response',
-    address: 'Address',
-    department: 'Department',
-    fellowship: 'Group',
-    age: 'Age',
-    sex: 'Gender',
-    firstTimer: 'First Timer'
-  };
+function Sparkline({ data }) {
+  let running = 0;
+  const points = data.map((slot) => { running += slot.scans || 0; return running; });
+  if (points.length < 2 || running === 0) return null;
+  const w = 300;
+  const h = 40;
+  const path = points.map((v, i) => `${i === 0 ? 'M' : 'L'}${((i / (points.length - 1)) * w).toFixed(1)} ${(h - 2 - (v / running) * (h - 6)).toFixed(1)}`).join(' ');
+  return (
+    <svg className="ig-ed-spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <path d={path} fill="none" stroke="#E8590C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function AttendanceChart({ data, phase, compact }) {
+  const perPage = compact ? 5 : 8;
+  const pages = Math.max(1, Math.ceil(data.length / perPage));
+  const total = data.reduce((sum, slot) => sum + (slot.scans || 0), 0);
+  const peak = data.reduce((best, slot) => ((slot.scans || 0) > (best?.scans || 0) ? slot : best), null);
+  const peakIndex = peak ? data.indexOf(peak) : 0;
+  const [page, setPage] = useState(() => Math.floor(peakIndex / perPage));
+  const [hovered, setHovered] = useState(null);
+  const [pinned, setPinned] = useState(null);
+  const active = hovered || pinned;
+  useEffect(() => {
+    setPage((p) => Math.min(p, pages - 1));
+  }, [pages]);
+  useEffect(() => { setPinned(null); setHovered(null); }, [page]);
+
+  const from = Math.max(0, Math.min(page * perPage, data.length - perPage));
+  const shown = data.slice(from, from + perPage);
+  const top = niceMax(Math.max(...shown.map((slot) => slot.scans || 0), 0));
+  const ticks = [0, 1, 2, 3, 4].map((i) => (top / 4) * i);
+  const empty = total === 0;
 
   return (
-    <div className="pd-modal-overlay pd-manual-entry-overlay" role="presentation" onMouseDown={onClose}>
-      <section
-        className="pd-manual-modal pd-manual-entry-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manual-attendee-title"
-        aria-describedby="manual-attendee-description"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="pd-manual-modal-header">
-          <div>
-            <span className="pd-manual-kicker">Manual check-in</span>
-            <h3 id="manual-attendee-title">Add {template.attendee.singular.toLowerCase()} manually</h3>
-            <p id="manual-attendee-description">Use this when someone checks in without a smartphone.</p>
-          </div>
-          <button type="button" className="pd-modal-close" onClick={onClose} aria-label="Close manual entry modal">×</button>
+    <section className="ig-db-card ig-ed-chart" aria-label="Attendance over time">
+      <div className="ig-ed-card-head">
+        <span className="ig-db-card-title"><strong>Attendance Over Time</strong><span>Check-ins every 30 minutes</span></span>
+        {!empty && peak && (
+          <span className="ig-ed-peak">
+            <span className="ig-ed-peak-icon">{Icon.trend}</span>
+            <span><span>Busiest 30 minutes</span><strong>{formatTimeRange(peak.time, addHalfHour(peak.time))} · {formatNumber(peak.scans)} in</strong></span>
+          </span>
+        )}
+      </div>
+      <div className="ig-ed-plot">
+        <div className="ig-ed-yaxis" aria-hidden="true">
+          {ticks.map((t) => <span key={t} style={{ bottom: `${(t / top) * 100}%` }}>{formatNumber(t)}</span>)}
         </div>
-
-        <form className="pd-manual-form" onSubmit={onSubmit}>
-          <div className="pd-manual-grid">
-            {dataFields.fullName && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.fullName}</span>
-                <input name="fullName" value={formData.fullName} onChange={onChange} placeholder="Enter full name" />
-                {errors.fullName && <small>{errors.fullName}</small>}
-              </label>
-            )}
-
-            {dataFields.emailAddress && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.emailAddress}</span>
-                <input type="email" name="emailAddress" value={formData.emailAddress} onChange={onChange} placeholder="name@example.com" />
-                {errors.emailAddress && <small>{errors.emailAddress}</small>}
-              </label>
-            )}
-
-            {dataFields.school && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.school}</span>
-                <input name="school" value={formData.school} onChange={onChange} placeholder="Enter school" />
-                {errors.school && <small>{errors.school}</small>}
-              </label>
-            )}
-
-            {dataFields.link && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.link}</span>
-                <input type="url" name="linkUrl" value={formData.linkUrl} onChange={onChange} placeholder="https://github.com/attendee" />
-                {errors.linkUrl && <small>{errors.linkUrl}</small>}
-              </label>
-            )}
-
-            {dataFields.textarea && (
-              <label className="pd-manual-field pd-manual-field-wide">
-                <span>{fieldLabels.textarea}</span>
-                <textarea name="textareaResponse" value={formData.textareaResponse} onChange={onChange} placeholder="Enter response" rows="4" maxLength="5000" />
-                {errors.textareaResponse && <small>{errors.textareaResponse}</small>}
-              </label>
-            )}
-
-            {dataFields.phoneNumber && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.phoneNumber}</span>
-                <input name="phoneNumber" value={formData.phoneNumber} onChange={onChange} placeholder="Enter phone number" />
-                {errors.phoneNumber && <small>{errors.phoneNumber}</small>}
-              </label>
-            )}
-
-            {dataFields.address && (
-              <label className="pd-manual-field pd-manual-field-wide">
-                <span>{fieldLabels.address}</span>
-                <textarea name="address" value={formData.address} onChange={onChange} placeholder="Enter address" rows="3" />
-                {errors.address && <small>{errors.address}</small>}
-              </label>
-            )}
-
-            {dataFields.department && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.department}</span>
-                <input name="department" value={formData.department} onChange={onChange} placeholder="Enter department" />
-                {errors.department && <small>{errors.department}</small>}
-              </label>
-            )}
-
-            {dataFields.fellowship && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.fellowship}</span>
-                <input name="fellowship" value={formData.fellowship} onChange={onChange} placeholder="Enter group" />
-              </label>
-            )}
-
-            {dataFields.age && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.age}</span>
-                <input type="number" min="0" max="130" name="age" value={formData.age} onChange={onChange} placeholder="Enter age" />
-                {errors.age && <small>{errors.age}</small>}
-              </label>
-            )}
-
-            {dataFields.sex && (
-              <label className="pd-manual-field">
-                <span>{fieldLabels.sex}</span>
-                <select name="sex" value={formData.sex} onChange={onChange}>
-                  <option value="">Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                </select>
-                {errors.sex && <small>{errors.sex}</small>}
-              </label>
-            )}
-
-            {dataFields.firstTimer && (
-              <label className="pd-manual-check">
-                <input type="checkbox" name="firstTimer" checked={formData.firstTimer} onChange={onChange} />
-                <span>Mark as first timer</span>
-              </label>
-            )}
-
-            {customFields.map(field => {
-              const errorKey = getCustomFieldErrorKey(field.id);
-              const value = formData.customResponses?.[field.id];
-
-              if (field.type === 'radio') {
-                return (
-                  <fieldset className="pd-manual-field pd-manual-custom-choice" key={field.id}>
-                    <legend>{field.label}{field.required ? ' *' : ''}</legend>
-                    <div className="pd-manual-choice-list">
-                      {field.options.map(option => (
-                        <label key={option} className="pd-manual-choice">
-                          <input
-                            type="radio"
-                            name={`custom-${field.id}`}
-                            value={option}
-                            checked={value === option}
-                            onChange={() => onCustomChange(field.id, option)}
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {errors[errorKey] && <small>{errors[errorKey]}</small>}
-                  </fieldset>
-                );
-              }
-
-              if (field.type === 'checkbox') {
-                const selectedOptions = Array.isArray(value) ? value : [];
-                return (
-                  <fieldset className="pd-manual-field pd-manual-custom-choice" key={field.id}>
-                    <legend>{field.label}{field.required ? ' *' : ''}</legend>
-                    <div className="pd-manual-choice-list">
-                      {field.options.map(option => (
-                        <label key={option} className="pd-manual-choice">
-                          <input
-                            type="checkbox"
-                            checked={selectedOptions.includes(option)}
-                            onChange={(event) => {
-                              const nextValue = event.target.checked
-                                ? [...selectedOptions, option]
-                                : selectedOptions.filter(item => item !== option);
-                              onCustomChange(field.id, nextValue);
-                            }}
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                    {errors[errorKey] && <small>{errors[errorKey]}</small>}
-                  </fieldset>
-                );
-              }
-
+        <div className="ig-ed-grid" role="img" aria-label={empty ? 'No check-ins yet' : `Check-ins per 30 minutes, highest ${formatNumber(peak?.scans || 0)}`}>
+          {ticks.slice(1).map((t) => <span key={t} className="ig-ed-gridline" style={{ bottom: `${(t / top) * 100}%` }} />)}
+          {empty && (
+            <span className="ig-ed-wait"><span className={`ig-ed-wait-dot${phase === 'upcoming' ? ' is-blue' : ''}`} />{phase === 'upcoming' ? 'Check-ins show here as guests arrive' : phase === 'ended' ? 'No one checked in at this event' : 'Check-ins show here as guests scan in'}</span>
+          )}
+          <div className="ig-ed-bars" onMouseLeave={() => setHovered(null)}>
+            {shown.map((slot, i) => {
+              const scans = slot.scans || 0;
+              const h = empty ? 100 : Math.round((scans / top) * 1000) / 10;
+              const barH = empty ? 100 : Math.max(scans > 0 ? 2 : 0, h);
+              const isPeak = !empty && peak && slot.time === peak.time;
+              const on = active === slot.time;
+              const range = formatTimeRange(slot.time, addHalfHour(slot.time));
+              const edge = i === 0 ? ' is-first' : i === shown.length - 1 ? ' is-last' : '';
               return (
-                <label className="pd-manual-field" key={field.id}>
-                  <span>{field.label}{field.required ? ' *' : ''}</span>
-                  <input
-                    name={`custom-${field.id}`}
-                    value={value || ''}
-                    onChange={(event) => onCustomChange(field.id, event.target.value)}
-                    placeholder={`Enter ${field.label.toLowerCase()}`}
-                  />
-                  {errors[errorKey] && <small>{errors[errorKey]}</small>}
-                </label>
+                <div className={`ig-ed-bar-col${on ? ' is-on' : ''}`} key={slot.time}>
+                  {!empty && <span className={`ig-ed-bar-val${isPeak && !active ? ' is-shown' : ''}`} style={{ bottom: `calc(${h}% + 4px)` }} aria-hidden="true">{formatNumber(scans)}</span>}
+                  {empty ? (
+                    <span className="ig-ed-bar is-empty" style={{ height: '100%' }} />
+                  ) : (
+                    <button
+                      type="button"
+                      className={`ig-ed-bar${isPeak ? ' is-peak' : ''}`}
+                      style={{ height: `${barH}%` }}
+                      aria-label={`${range}: ${plural(scans, 'check-in', 'check-ins')}${isPeak ? ', the busiest 30 minutes' : ''}`}
+                      aria-pressed={pinned === slot.time}
+                      onMouseEnter={() => setHovered(slot.time)}
+                      onFocus={() => setHovered(slot.time)}
+                      onBlur={() => setHovered(null)}
+                      onClick={() => setPinned((current) => (current === slot.time ? null : slot.time))}
+                    />
+                  )}
+                  {on && !empty && (
+                    <span className={`ig-db-tip ig-ed-tip${edge}`} role="status" style={{ bottom: `calc(${barH}% + 10px)` }}>
+                      <strong>{formatNumber(scans)}</strong>
+                      <span>{range} — {scans === 1 ? 'Check-in' : 'Check-ins'}</span>
+                      <em>{isPeak ? 'Busiest 30 minutes' : total > 0 ? `${percentOf(scans, total)} of all check-ins` : ''}</em>
+                    </span>
+                  )}
+                </div>
               );
             })}
           </div>
+        </div>
+      </div>
+      <div className="ig-ed-xaxis" aria-hidden="true">
+        <span />
+        <div>{shown.map((slot) => <span key={slot.time}>{shortTime(slot.time)}</span>)}</div>
+      </div>
+      {!empty && pages > 1 && (
+        <div className="ig-ed-pager">
+          <button type="button" className="ig-st-pill" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} aria-label="Show earlier times">{DashIcon.chevronLeft}Earlier</button>
+          <span><strong>{formatTimeRange(shown[0].time, shown[shown.length - 1].time)}</strong><span>{page + 1} of {pages}</span></span>
+          <button type="button" className="ig-st-pill" onClick={() => setPage(Math.min(pages - 1, page + 1))} disabled={page >= pages - 1} aria-label="Show later times">Later{DashIcon.chevronRight}</button>
+        </div>
+      )}
+    </section>
+  );
+}
 
-          <div className="pd-manual-actions">
-            <button type="button" className="pd-btn-cancel" onClick={onClose} disabled={submitting}>Cancel</button>
-            <button type="submit" className="pd-btn-submit-manual" disabled={submitting}>
-              {submitting ? 'Adding...' : `Add ${template.attendee.singular}`}
-            </button>
+function SponsorCard({ analytics, phase }) {
+  const sponsors = analytics?.sponsors || [];
+  const topClicks = Math.max(...sponsors.map((s) => s.clickCount || 0), 0);
+  const total = analytics?.totalClicks || 0;
+  const today = analytics?.todayClicks || 0;
+  return (
+    <section className="ig-db-card ig-ed-sponsors" aria-label="Sponsor engagement">
+      <div className="ig-ed-card-head">
+        <span className="ig-ed-sp-title">
+          <span className="ig-ed-sp-icon">{Icon.award}</span>
+          <span className="ig-db-card-title"><strong>Sponsor Engagement</strong><span>Clicks from the screen guests see after check-in</span></span>
+        </span>
+        <span className="ig-ed-sp-count">{sponsors.length} active</span>
+      </div>
+      <div className="ig-ed-sp-total">
+        <strong>{formatNumber(total)}</strong>
+        <span>{total === 1 ? 'sponsor link click' : 'sponsor link clicks'}{phase === 'live' && today > 0 && today !== total ? `, ${formatNumber(today)} today` : ''}</span>
+      </div>
+      <div className="ig-ed-sp-list">
+        {sponsors.map((sponsor, i) => {
+          const isTop = i === 0 && (sponsor.clickCount || 0) > 0;
+          return (
+            <div className={`ig-ed-sp${isTop ? ' is-top' : ''}`} key={sponsor.id}>
+              <span className="ig-ed-sp-name">
+                <span className="ig-ed-sp-badge" aria-hidden="true">{(String(sponsor.sponsorName || 'S').replace(/[^A-Za-z0-9]/g, '').charAt(0) || 'S').toUpperCase()}</span>
+                <strong title={sponsor.sponsorName}>{sponsor.sponsorName}</strong>
+                <span className="ig-ed-sp-rank">#{i + 1}</span>
+              </span>
+              <span className="ig-ed-sp-clicks">
+                <strong>{formatNumber(sponsor.clickCount || 0)}</strong><span>{sponsor.clickCount === 1 ? 'click' : 'clicks'}</span>
+                {isTop && <em>Top sponsor</em>}
+              </span>
+              <span className="ig-ed-sp-track"><span style={{ width: `${topClicks > 0 ? Math.round(((sponsor.clickCount || 0) / topClicks) * 100) : 0}%` }} /></span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Guest answers, shared by the panel and the CSV ---------------- */
+
+const FIELD_ORDER = ['fullName', 'emailAddress', 'phoneNumber', 'fellowship', 'sex', 'firstTimer', 'age', 'school', 'department', 'address', 'link', 'textarea'];
+const FIELD_LABELS = {
+  fullName: 'Full name', emailAddress: 'Email address', phoneNumber: 'Phone number', fellowship: 'Group', sex: 'Gender',
+  firstTimer: 'First-timer', age: 'Age', school: 'School', department: 'Department', address: 'Address', link: 'Link', textarea: 'Additional Response'
+};
+const FIELD_PLACEHOLDERS = {
+  fullName: 'Their full name', emailAddress: 'name@example.com', phoneNumber: '0803 000 0000', fellowship: 'Their group or community',
+  age: 'e.g. 24', school: 'Their school', department: 'Their department or unit', address: 'Where they are coming from', link: 'https://', textarea: 'Their answer'
+};
+// Matches what the server asks for when someone is added by hand.
+const OPTIONAL_MANUAL_FIELDS = ['fellowship', 'age'];
+
+const fieldLabel = (program, field) => (field === 'textarea' ? program?.dataFieldConfig?.textareaLabel || FIELD_LABELS.textarea : FIELD_LABELS[field]);
+const askedFields = (program) => FIELD_ORDER.filter((field) => program?.dataFields?.[field]);
+const fieldValue = (attendee, field) => {
+  if (field === 'firstTimer') return attendee.firstTimer ? 'Yes' : 'No';
+  if (field === 'link') return attendee.linkUrl || '';
+  if (field === 'textarea') return attendee.textareaResponse || '';
+  if (field === 'age') return attendee.age ? String(attendee.age) : '';
+  return attendee[field] ? String(attendee[field]) : '';
+};
+
+const howCheckedIn = (attendee) => {
+  const type = registrationTypeOf(attendee);
+  if (type === 'proxy') return 'Checked in by a friend';
+  if (type === 'manual') return 'Added by you';
+  if (type === 'rsvp') return 'RSVP pass';
+  return 'Own phone';
+};
+
+const fullDateTime = (value) => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+};
+
+/* ---------------- Guest details panel ---------------- */
+
+function GuestPanel({ attendee, program, onClose, onMarkGifted }) {
+  const panelRef = useRef(null);
+  useEffect(() => {
+    const opener = document.activeElement;
+    panelRef.current?.focus();
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+      if (opener && typeof opener.focus === 'function') opener.focus();
+    };
+  }, [onClose]);
+
+  const type = registrationTypeOf(attendee);
+  const answers = askedFields(program).map((field) => [fieldLabel(program, field), fieldValue(attendee, field), field]);
+  const custom = (program.customFormSchema || []).map((field) => [field.label, formatCustomAnswer(attendee.customResponses?.[field.id])]);
+  const facts = [
+    ['How', SOURCE_LABEL[type] || 'Walk-In'],
+    ['Attending', attendee.attendanceMode === 'virtual' ? 'Online' : 'In person'],
+    ['Time', clockTime(attendee.checkedInAt || attendee.scanTime)],
+    ['Phone', howCheckedIn(attendee)]
+  ];
+
+  return (
+    <div className="ig-ed-panel-wrap">
+      <button type="button" className="ig-ed-panel-scrim" aria-label="Close guest details" tabIndex={-1} onClick={onClose} />
+      <aside className="ig-ed-panel" ref={panelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="ig-ed-guest-name">
+        <div className="ig-ed-panel-top">
+          <span>Guest details</span>
+          <button type="button" className="ig-db-round-btn is-sm" aria-label="Close" onClick={onClose}>{DashIcon.close}</button>
+        </div>
+        <div className="ig-ed-panel-body">
+          <div className="ig-ed-panel-who">
+            <span className="ig-ed-panel-avatar" aria-hidden="true">{initialsOf(attendee.fullName || attendee.emailAddress || '?')}</span>
+            <span>
+              <h2 id="ig-ed-guest-name">{attendee.fullName || attendee.emailAddress || 'No name given'}</h2>
+              <span className="ig-ed-panel-tags">
+                <span className={`ig-ed-src is-${type}`}>{SOURCE_LABEL[type] || 'Walk-In'}</span>
+                <span>Checked in {clockTime(attendee.checkedInAt || attendee.scanTime)}</span>
+              </span>
+            </span>
           </div>
-        </form>
-      </section>
+
+          {answers.length > 0 && (
+            <section className="ig-ed-panel-sec">
+              <div className="ig-ed-panel-sec-head"><strong>Their answers</strong><span>Only what this event asks</span></div>
+              <dl className="ig-ed-answers">
+                {answers.map(([label, value, field]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{field === 'link' && /^https?:\/\//i.test(value) ? <a href={value} target="_blank" rel="noreferrer">{shortLink(value)}</a> : value || <span className="ig-ed-cell-muted">Not given</span>}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          {custom.length > 0 && (
+            <section className="ig-ed-panel-sec">
+              <div className="ig-ed-panel-sec-head"><strong>Your own questions</strong></div>
+              <dl className="ig-ed-answers">
+                {custom.map(([label, value]) => (
+                  <div key={label}><dt>{label}</dt><dd>{value && value !== '-' ? value : <span className="ig-ed-cell-muted">Not answered</span>}</dd></div>
+                ))}
+              </dl>
+            </section>
+          )}
+
+          <section className="ig-ed-panel-sec">
+            <div className="ig-ed-panel-sec-head"><strong>Check-in</strong></div>
+            <div className="ig-ed-facts">
+              {facts.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}
+            </div>
+          </section>
+
+          {program.giftingEnabled && attendee.isWinner && (
+            <div className={`ig-ed-winner${attendee.isGifted ? ' is-done' : ''}`}>
+              <span>
+                <strong>Gift winner</strong>
+                <span>{attendee.isGifted ? 'Gift handed out.' : 'Picked at random. Hand over the gift, then mark it.'}</span>
+              </span>
+              {attendee.isGifted
+                ? <span className="ig-ed-winner-done">Gifted</span>
+                : <button type="button" className="ig-db-btn-ink" onClick={() => onMarkGifted(attendee)}>Mark gifted</button>}
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
 
-function FingerprintWarningModal({ saving, onCancel, onConfirm }) {
+/* ---------------- Add someone by hand ---------------- */
+
+function ManualModal({ program, template, formData, errors, submitting, onField, onCustom, onClose, onSubmit }) {
+  const firstRef = useRef(null);
+  useEffect(() => {
+    firstRef.current?.focus();
+    const onKey = (event) => { if (event.key === 'Escape' && !submitting) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, submitting]);
+
+  const formRef = useRef(null);
+  const errorCount = Object.values(errors).filter(Boolean).length;
+  useEffect(() => {
+    if (errorCount === 0) return;
+    const first = formRef.current?.querySelector('.has-error input, .has-error textarea, .ig-st-error');
+    const target = first?.matches?.('.ig-st-error') ? first.closest('fieldset')?.querySelector('button, input') : first;
+    target?.focus?.();
+  }, [errorCount]);
+
+  const fields = askedFields(program);
+  const errorFor = (key) => (errors[key] ? <span className="ig-st-error" role="alert">{errors[key]}</span> : null);
+  const optional = (field) => (OPTIONAL_MANUAL_FIELDS.includes(field) ? <em> (optional)</em> : null);
+  let firstInputUsed = false;
+  const firstInputRef = () => {
+    if (firstInputUsed) return undefined;
+    firstInputUsed = true;
+    return firstRef;
+  };
+
   return (
-    <div className="pd-modal-overlay" role="presentation" onMouseDown={saving ? undefined : onCancel}>
-      <section
-        className="pd-fingerprint-warning-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pd-fingerprint-warning-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <span className="pd-manual-kicker">Attendance accuracy</span>
-        <h3 id="pd-fingerprint-warning-title">Disable Strict Fingerprinting?</h3>
-        <p>
-          Allowing multiple scans from the same device can help attendees with poor network connections,
-          but it risks skewing your total attendance metrics with duplicate entries.
-        </p>
-        <div className="pd-manual-actions">
-          <button type="button" className="pd-btn-cancel" onClick={onCancel} disabled={saving}>Cancel</button>
-          <button type="button" className="pd-btn-submit-manual" onClick={onConfirm} disabled={saving}>
-            {saving ? 'Saving...' : 'Confirm'}
+    <div className="ig-db-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) onClose(); }}>
+      <form ref={formRef} className="ig-db-dialog ig-pd-modal ig-ed-manual" role="dialog" aria-modal="true" aria-labelledby="ig-ed-manual-title" onSubmit={onSubmit} noValidate>
+        <div className="ig-pd-modal-head">
+          <span>
+            <h2 id="ig-ed-manual-title">Add {template.attendee.singular.toLowerCase()} manually</h2>
+            <p>For someone checking in without a smartphone.</p>
+          </span>
+          <button type="button" className="ig-db-round-btn is-sm" aria-label="Close" onClick={onClose} disabled={submitting}>{DashIcon.close}</button>
+        </div>
+
+        {fields.length === 0 && (program.customFormSchema || []).length === 0 && (
+          <p className="ig-pd-modal-note is-left">This {template.event.singular.toLowerCase()} doesn't ask for any details, so they are added with no name.</p>
+        )}
+
+        {fields.map((field) => {
+          const id = `ig-ed-manual-${field}`;
+          if (field === 'firstTimer') {
+            return (
+              <label className="ig-pd-check ig-ed-manual-check" key={field}>
+                <span>First timer</span>
+                <input type="checkbox" checked={Boolean(formData.firstTimer)} onChange={(event) => onField('firstTimer', event.target.checked)} disabled={submitting} />
+              </label>
+            );
+          }
+          if (field === 'sex') {
+            return (
+              <fieldset className="ig-pd-fieldset" key={field}>
+                <legend>Gender</legend>
+                <div className="ig-pd-types is-two" role="radiogroup" aria-label="Gender">
+                  {['Male', 'Female'].map((option) => (
+                    <button key={option} type="button" role="radio" aria-checked={formData.sex === option} className={formData.sex === option ? 'is-on' : ''} onClick={() => onField('sex', option)} disabled={submitting}>
+                      <strong>{option}</strong>
+                    </button>
+                  ))}
+                </div>
+                {errorFor('sex')}
+              </fieldset>
+            );
+          }
+          if (field === 'textarea') {
+            return (
+              <div className={`ig-st-field${errors.textareaResponse ? ' has-error' : ''}`} key={field}>
+                <label htmlFor={id}>{fieldLabel(program, field)}</label>
+                <textarea id={id} ref={firstInputRef()} className="ig-pd-textarea" value={formData.textareaResponse || ''} onChange={(event) => onField('textareaResponse', event.target.value)} placeholder={FIELD_PLACEHOLDERS.textarea} disabled={submitting} rows={3} maxLength={5000} />
+                {errorFor('textareaResponse')}
+              </div>
+            );
+          }
+          const valueKey = field === 'link' ? 'linkUrl' : field;
+          return (
+            <div className={`ig-st-field${errors[valueKey] ? ' has-error' : ''}`} key={field}>
+              <label htmlFor={id}>{fieldLabel(program, field)}{optional(field)}</label>
+              <input
+                id={id}
+                ref={firstInputRef()}
+                type={field === 'emailAddress' ? 'email' : field === 'age' ? 'number' : field === 'link' ? 'url' : field === 'phoneNumber' ? 'tel' : 'text'}
+                inputMode={field === 'age' ? 'numeric' : undefined}
+                value={formData[valueKey] || ''}
+                onChange={(event) => onField(valueKey, event.target.value)}
+                placeholder={FIELD_PLACEHOLDERS[field]}
+                disabled={submitting}
+                maxLength={field === 'emailAddress' ? 255 : 500}
+                aria-invalid={Boolean(errors[valueKey]) || undefined}
+              />
+              {errorFor(valueKey)}
+            </div>
+          );
+        })}
+
+        {(program.customFormSchema || []).map((field) => {
+          const value = formData.customResponses?.[field.id];
+          const key = getCustomFieldErrorKey(field.id);
+          const label = <>{field.label}{!field.required && <em> (optional)</em>}</>;
+          if (field.type === 'radio' || field.type === 'checkbox') {
+            const selected = field.type === 'checkbox' ? (Array.isArray(value) ? value : []) : value;
+            return (
+              <fieldset className="ig-pd-fieldset" key={field.id}>
+                <legend>{label}</legend>
+                <div className="ig-pd-checks">
+                  {(field.options || []).map((option) => (
+                    <label className="ig-pd-check" key={option}>
+                      <input
+                        type={field.type}
+                        name={`ig-ed-q-${field.id}`}
+                        checked={field.type === 'checkbox' ? selected.includes(option) : selected === option}
+                        onChange={(event) => onCustom(field.id, field.type === 'checkbox'
+                          ? (event.target.checked ? [...selected, option] : selected.filter((item) => item !== option))
+                          : option)}
+                        disabled={submitting}
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
+                </div>
+                {errorFor(key)}
+              </fieldset>
+            );
+          }
+          return (
+            <div className={`ig-st-field${errors[key] ? ' has-error' : ''}`} key={field.id}>
+              <label htmlFor={`ig-ed-q-${field.id}`}>{label}</label>
+              <input id={`ig-ed-q-${field.id}`} value={value || ''} onChange={(event) => onCustom(field.id, event.target.value)} placeholder="Their answer" disabled={submitting} maxLength={500} />
+              {errorFor(key)}
+            </div>
+          );
+        })}
+
+        <p className="ig-pd-modal-note is-left ig-ed-manual-note">Fields match this {template.event.singular.toLowerCase()}'s check-in form. The entry is marked "Manual" in your data.</p>
+
+        <div className="ig-db-dialog-actions">
+          <button type="button" className="ig-db-btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button type="submit" className="ig-db-btn-primary" disabled={submitting}>{submitting ? 'Checking in…' : 'Check them in'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ---------------- Export ---------------- */
+
+const csvCell = (value) => {
+  let text = value === null || value === undefined ? '' : String(value);
+  // Stops a spreadsheet from treating a guest's answer as a formula.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const safeFileName = (value) => String(value || 'event').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'event';
+
+const buildAttendeeCsv = (program, list) => {
+  const fields = askedFields(program);
+  const custom = program.customFormSchema || [];
+  const showMode = list.some((a) => Boolean(a.attendanceMode));
+  const header = [
+    ...fields.map((field) => fieldLabel(program, field)),
+    ...custom.map((field) => field.label),
+    'How they checked in',
+    ...(showMode ? ['Attendance mode'] : []),
+    ...(program.giftingEnabled ? ['Gift winner', 'Gift handed out'] : []),
+    'Checked in'
+  ];
+  const rows = list.map((attendee) => [
+    ...fields.map((field) => fieldValue(attendee, field)),
+    ...custom.map((field) => {
+      const answer = formatCustomAnswer(attendee.customResponses?.[field.id]);
+      return answer === '-' ? '' : answer;
+    }),
+    SOURCE_LABEL[registrationTypeOf(attendee)] || 'Walk-In',
+    ...(showMode ? [attendee.attendanceMode === 'virtual' ? 'Online' : 'In person'] : []),
+    ...(program.giftingEnabled ? [attendee.isWinner ? 'Yes' : 'No', attendee.isWinner ? (attendee.isGifted ? 'Yes' : 'Not yet') : ''] : []),
+    fullDateTime(attendee.checkedInAt || attendee.scanTime)
+  ]);
+  return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n');
+};
+
+const downloadText = (text, fileName, type) => {
+  // The leading mark helps Excel read names with accents correctly.
+  const blob = new Blob([`﻿${text}`], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+function ExportModal({ program, template, allCount, filteredCount, filterLabel, busy, onClose, onDownload }) {
+  const [format, setFormat] = useState('csv');
+  const [scope, setScope] = useState('all');
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, busy]);
+  const guests = template.attendee.plural.toLowerCase();
+  const hasFilter = filteredCount !== allCount;
+  const includes = [
+    ...askedFields(program).map((field) => fieldLabel(program, field).toLowerCase()),
+    ...((program.customFormSchema || []).length ? ['your own questions'] : []),
+    'check-in source',
+    ...(program.giftingEnabled ? ['gift status'] : []),
+    'check-in time'
+  ];
+  const includesText = includes.length > 1 ? `${includes.slice(0, -1).join(', ')} and ${includes[includes.length - 1]}` : includes[0];
+
+  return (
+    <div className="ig-db-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+      <div className="ig-db-dialog ig-pd-modal ig-ed-export-modal" role="dialog" aria-modal="true" aria-labelledby="ig-ed-export-title">
+        <div className="ig-pd-modal-head">
+          <span>
+            <h2 id="ig-ed-export-title">Export {template.attendee.singular.toLowerCase()} data</h2>
+            <p>{program.title}, saved to your device.</p>
+          </span>
+          <button type="button" className="ig-db-round-btn is-sm" aria-label="Close" onClick={onClose} disabled={busy}>{DashIcon.close}</button>
+        </div>
+
+        <fieldset className="ig-pd-fieldset">
+          <legend>Format</legend>
+          <div className="ig-ed-formats" role="radiogroup" aria-label="Format">
+            {[['csv', 'CSV', 'CSV file', 'Opens in Excel, Sheets or Numbers'], ['pdf', 'PDF', 'PDF report', 'Charts and totals to share']].map(([key, chip, name, note]) => (
+              <button key={key} type="button" role="radio" aria-checked={format === key} className={format === key ? 'is-on' : ''} onClick={() => setFormat(key)} disabled={busy}>
+                <span className={`ig-ed-format-chip is-${key}`} aria-hidden="true">{chip}</span>
+                <span><strong>{name}</strong><span>{note}</span></span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+
+        {format === 'csv' ? (
+          <>
+            <fieldset className="ig-pd-fieldset">
+              <legend>{template.attendee.plural}</legend>
+              <div className="ig-ed-scopes" role="radiogroup" aria-label={template.attendee.plural}>
+                {[['all', `All ${guests}`, allCount], ...(hasFilter ? [['filter', `Current filter: ${filterLabel}`, filteredCount]] : [])].map(([key, label, count]) => (
+                  <button key={key} type="button" role="radio" aria-checked={scope === key} className={scope === key ? 'is-on' : ''} onClick={() => setScope(key)} disabled={busy}>
+                    <span className="ig-ed-scope-dot" aria-hidden="true" />
+                    <span>{label}</span>
+                    <em>{formatNumber(count)}</em>
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <p className="ig-ed-export-note">Includes {includesText}.</p>
+          </>
+        ) : (
+          <p className="ig-ed-export-note">A report of the whole {template.event.singular.toLowerCase()}: attendance, the busiest times, first-timers, sponsors and the {guests} list.</p>
+        )}
+
+        <div className="ig-db-dialog-actions">
+          <button type="button" className="ig-db-btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+          <button type="button" className="ig-db-btn-ink" onClick={() => onDownload(format, scope)} disabled={busy || (format === 'csv' && allCount === 0)}>
+            {Icon.download}{busy ? 'Preparing…' : format === 'csv' ? 'Download CSV' : 'Download PDF'}
           </button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
 
-function RsvpQrScannerModal({ scanning, result, error, onClose, onSubmit, onReset }) {
-  const readerIdRef = useRef(`pd-rsvp-qr-reader-${Math.random().toString(36).slice(2)}`);
-  const scannerRef = useRef(null);
-  const submittedRef = useRef(false);
-  const [manualToken, setManualToken] = useState('');
-  const [cameraState, setCameraState] = useState('idle');
-  const [cameraMessage, setCameraMessage] = useState('Requesting camera access...');
-  const [muted, setMuted] = useState(isSoundMuted);
-
-  const handleToggleSound = () => {
-    const next = toggleSoundMuted();
-    setMuted(next);
-  };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    submittedRef.current = false;
-
-    const stopScanner = async () => {
-      const scanner = scannerRef.current;
-      if (!scanner) return;
-
-      try {
-        await scanner.stop();
-      } catch (stopError) {
-        // The scanner may already be stopped if camera permission failed or a scan just completed.
-      }
-
-      try {
-        await scanner.clear();
-      } catch (clearError) {
-        // Ignore cleanup errors from partially initialized scanner instances.
-      }
-
-      if (scannerRef.current === scanner) scannerRef.current = null;
-    };
-
-    const startScanner = async () => {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraState('unsupported');
-        setCameraMessage('Camera unavailable? Enter the attendee RSVP token below.');
-        return;
-      }
-
-      try {
-        setCameraState('starting');
-        setCameraMessage('Allow camera access to scan RSVP QR codes.');
-
-        const scanner = new Html5Qrcode(readerIdRef.current, { verbose: false });
-        scannerRef.current = scanner;
-
-        const config = {
-          fps: 10,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const size = Math.max(180, Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72));
-            return { width: size, height: size };
-          },
-          aspectRatio: 1
-        };
-
-        const handleSuccess = async (decodedText) => {
-          if (cancelled || submittedRef.current || !decodedText) return;
-          submittedRef.current = true;
-          setCameraState('detected');
-          setCameraMessage('QR detected. Checking in attendee...');
-          await stopScanner();
-          if (!cancelled) onSubmit(decodedText);
-        };
-
-        const handleScanError = () => {};
-
-        const startWithFallback = async () => {
-          try {
-            await scanner.start({ facingMode: { exact: 'environment' } }, config, handleSuccess, handleScanError);
-            return;
-          } catch (exactError) {
-            try {
-              await scanner.start({ facingMode: 'environment' }, config, handleSuccess, handleScanError);
-              return;
-            } catch (environmentError) {
-              const cameras = await Html5Qrcode.getCameras();
-              const preferredCamera = cameras.find(camera => /back|rear|environment/i.test(camera.label || ''))
-                || cameras[cameras.length - 1]
-                || cameras[0];
-              if (!preferredCamera?.id) throw environmentError;
-              await scanner.start(preferredCamera.id, config, handleSuccess, handleScanError);
-            }
-          }
-        };
-
-        await startWithFallback();
-        if (cancelled) {
-          await stopScanner();
-          return;
-        }
-        setCameraState('active');
-        setCameraMessage('Scanning RSVP QR code...');
-      } catch (cameraError) {
-        await stopScanner();
-        setCameraState('blocked');
-        setCameraMessage('Camera unavailable? Enter the attendee RSVP token below.');
-      }
-    };
-
-    if (!result) startScanner();
-    else setCameraMessage('Ready to scan the next RSVP QR code.');
-
-    return () => {
-      cancelled = true;
-      stopScanner();
-    };
-  }, [onSubmit, result]);
-
-  const submitManual = (event) => {
-    event.preventDefault();
-    if (!manualToken.trim() || scanning) return;
-    onSubmit(manualToken);
-  };
-
-  return (
-    <div className="pd-modal-overlay" role="presentation" onMouseDown={scanning ? undefined : onClose}>
-      <section
-        className="pd-rsvp-scanner-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="pd-rsvp-scanner-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="pd-manual-modal-header">
-          <div>
-            <span className="pd-manual-kicker">RSVP QR check-in</span>
-            <h3 id="pd-rsvp-scanner-title">Scan pre-registered attendee</h3>
-            <p>Use this for guests who brought the personalized QR code from their RSVP email.</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              className="rsvp-scanner-sound-toggle"
-              onClick={handleToggleSound}
-              title={muted ? "Sound is muted. Tap to unmute." : "Sound is active. Tap to mute."}
-              style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-            >
-              {muted ? '🔇 Muted' : '🔊 Sound On'}
-            </button>
-            <button type="button" className="pd-modal-close" onClick={onClose} disabled={scanning} aria-label="Close RSVP scanner">×</button>
-          </div>
-        </div>
-
-        <div className={`pd-rsvp-camera ${cameraState}`}>
-          <div id={readerIdRef.current} className="pd-rsvp-reader" aria-label="RSVP QR scanner camera preview" />
-          <div className="pd-rsvp-camera-frame" aria-hidden="true"></div>
-        </div>
-        <p className="pd-rsvp-camera-copy">{cameraMessage}</p>
-
-        {result && (
-          <div className="pd-rsvp-scan-result success">
-            <strong>{result.attendee?.fullName || result.attendee?.emailAddress || 'RSVP attendee'} checked in.</strong>
-            <span>This attendee is now reflected on the live event dashboard.</span>
-          </div>
-        )}
-
-        {error && (
-          <div className="pd-rsvp-scan-result error">
-            <strong>Check-in failed</strong>
-            <span>{error}</span>
-          </div>
-        )}
-
-        <form className="pd-rsvp-manual-form" onSubmit={submitManual}>
-          <label className="pd-manual-field">
-            <span>RSVP token</span>
-            <input
-              value={manualToken}
-              onChange={(event) => setManualToken(event.target.value)}
-              placeholder="A7K9Q2M4"
-              disabled={scanning}
-            />
-          </label>
-          <div className="pd-manual-actions">
-            {result ? (
-              <button type="button" className="pd-btn-submit-manual" onClick={() => { setManualToken(''); onReset(); }}>
-                Scan next
-              </button>
-            ) : (
-              <button type="submit" className="pd-btn-submit-manual" disabled={scanning || !manualToken.trim()}>
-                {scanning ? 'Checking in...' : 'Check in RSVP'}
-              </button>
-            )}
-            <button type="button" className="pd-btn-cancel" onClick={onClose} disabled={scanning}>Close</button>
-          </div>
-        </form>
-      </section>
-    </div>
-  );
-}
-
-/* ============================================
-   MAIN COMPONENT
-   ============================================ */
 function ProgramDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const compact = useCompact();
   const [program, setProgram] = useState(null);
   const [totalScans, setTotalScans] = useState(0);
   const [attendanceData, setAttendanceData] = useState([]);
@@ -910,13 +829,12 @@ function ProgramDetail() {
   const [sponsorAnalytics, setSponsorAnalytics] = useState({ sponsorCount: 0, totalClicks: 0, todayClicks: 0, topSponsor: null, sponsors: [] });
   const [sharedDeviceCheckins, setSharedDeviceCheckins] = useState(0);
   const [churchData, setChurchData] = useState({ name: '', branch: '', email: '', logo: null });
+  const [, setUnreadCount] = useState(0);
+  const [boot, setBoot] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [attendeeFilter, setAttendeeFilter] = useState('all');
   const [attendanceModeFilter, setAttendanceModeFilter] = useState('all');
   const [winnersGifted, setWinnersGifted] = useState(0);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('ingather-theme') === 'dark');
-  const [chartPage, setChartPage] = useState(0);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualFormData, setManualFormData] = useState({
     fullName: '',
@@ -935,62 +853,60 @@ function ProgramDetail() {
   });
   const [manualErrors, setManualErrors] = useState({});
   const [manualSubmitting, setManualSubmitting] = useState(false);
-  const [showRsvpScanner, setShowRsvpScanner] = useState(false);
-  const [rsvpQrSubmitting, setRsvpQrSubmitting] = useState(false);
-  const [rsvpQrResult, setRsvpQrResult] = useState(null);
-  const [rsvpQrError, setRsvpQrError] = useState('');
-  const rsvpQrSubmittingRef = useRef(false);
   const [rsvpScannerLinkLoading, setRsvpScannerLinkLoading] = useState(false);
   const [showFingerprintWarning, setShowFingerprintWarning] = useState(false);
   const [fingerprintSaving, setFingerprintSaving] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(null);
+  const [dialog, setDialog] = useState(null);
+  const [dialogBusy, setDialogBusy] = useState(false);
+  const [giftTarget, setGiftTarget] = useState(null);
+  const [guestId, setGuestId] = useState(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const moreRef = useRef(null);
   const toast = useToast();
   const { template, setTemplateKey } = useEventTemplate();
-  const BARS_PER_PAGE = 8;
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const profileMenuRef = useRef(null);
+  const setTemplateRef = useRef(setTemplateKey);
+  setTemplateRef.current = setTemplateKey;
 
-  // Theme
+  // Keeps the "starts in" countdown and the live / not started label current.
   useEffect(() => {
-    if (darkMode) document.documentElement.setAttribute('data-theme', 'dark');
-    else document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('ingather-theme', darkMode ? 'dark' : 'light');
-  }, [darkMode]);
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
-  // Close profile dropdown on outside click
+  // Sidebar counts and the live event callout.
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
-        setShowProfileMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    let alive = true;
+    const today = localToday();
+    getDashboardBootstrap(today, today, today)
+      .then((res) => { if (alive && res) setBoot(res); })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        setIsMobileMenuOpen(false);
-        setShowManualModal(false);
-        setShowRsvpScanner(false);
-        if (!fingerprintSaving) setShowFingerprintWarning(false);
-      }
-    };
+    if (!moreOpen) return undefined;
+    const onDown = (event) => { if (moreRef.current && !moreRef.current.contains(event.target)) setMoreOpen(false); };
+    const onKey = (event) => { if (event.key === 'Escape') setMoreOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!showManualModal) return undefined;
+    const handleEscape = (e) => { if (e.key === 'Escape') setShowManualModal(false); };
     const previousOverflow = document.body.style.overflow;
-
     document.addEventListener('keydown', handleEscape);
-    if (isMobileMenuOpen || showManualModal || showRsvpScanner || showFingerprintWarning) document.body.style.overflow = 'hidden';
-
+    document.body.style.overflow = 'hidden';
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = previousOverflow;
     };
-  }, [isMobileMenuOpen, showManualModal, showRsvpScanner, showFingerprintWarning, fingerprintSaving]);
-
-  const closeMobileMenu = () => setIsMobileMenuOpen(false);
-
-
+  }, [showManualModal]);
 
   // Socket.io real-time
   useEffect(() => {
@@ -1004,6 +920,9 @@ function ProgramDetail() {
       socket = io(process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000');
     socket.emit('join-program', id);
     socket.on(`program-${id}-update`, (data) => {
+      if (data.isActive === false) {
+        setProgram((prev) => (prev ? { ...prev, isActive: false, status: 'completed' } : prev));
+      }
       if (data.totalScans !== undefined) {
         setTotalScans(data.totalScans);
         // Re-fetch chart data and merge into skeleton
@@ -1150,16 +1069,6 @@ function ProgramDetail() {
       if (error.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/login'; }
       setLoading(false);
     }
-  };
-
-  const handleStopProgram = async () => {
-    toast.confirm(`Are you sure you want to end this ${template.event.singular.toLowerCase()}? The QR code will be disabled.`, async () => {
-      try {
-        await stopProgramAPI(id);
-        setProgram({ ...program, isActive: false, status: 'completed' });
-        toast.success(`${template.event.singular} ended successfully!`);
-      } catch (error) { toast.error(`Failed to stop ${template.event.singular.toLowerCase()}.`); }
-    });
   };
 
   const handleDownloadQR = () => {
@@ -1345,6 +1254,67 @@ function ProgramDetail() {
     printWindow.document.close();
   };
 
+  const copyCheckinLink = async () => {
+    setMoreOpen(false);
+    try {
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(program.qrCodeUrl);
+      else {
+        const input = document.createElement('input');
+        input.value = program.qrCodeUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+      }
+      toast.success('Check-in link copied');
+    } catch (error) {
+      toast.error('Could not copy the link. Press and hold it to copy instead.');
+    }
+  };
+
+  const endEvent = async () => {
+    setDialogBusy(true);
+    try {
+      await stopProgramAPI(id);
+      setProgram((prev) => (prev ? { ...prev, isActive: false, status: 'completed' } : prev));
+      setDialog(null);
+      toast.success(`${template.event.singular} ended. The check-in QR code no longer works.`);
+    } catch (error) {
+      toast.error(error.response?.data?.error || `Could not end this ${template.event.singular.toLowerCase()}. Try again.`);
+    } finally {
+      setDialogBusy(false);
+    }
+  };
+
+  const removeEvent = async () => {
+    setDialogBusy(true);
+    try {
+      await deleteProgram(id);
+      toast.success(`${template.event.singular} deleted.`);
+      navigate('/programs', { replace: true });
+    } catch (error) {
+      setDialogBusy(false);
+      toast.error(error.response?.data?.error || `Could not delete this ${template.event.singular.toLowerCase()}. Try again.`);
+    }
+  };
+
+  const confirmGifted = async () => {
+    const attendee = giftTarget;
+    if (!attendee) return;
+    setDialogBusy(true);
+    try {
+      await markWinnerGifted(id, attendee.id);
+      setAttendees((prev) => prev.map((a) => (a.id === attendee.id ? { ...a, isGifted: true } : a)));
+      setWinnersGifted((prev) => prev + 1);
+      setGiftTarget(null);
+      toast.success(`${attendee.fullName || 'Winner'} marked as gifted.`);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Could not mark this gift. Try again.');
+    } finally {
+      setDialogBusy(false);
+    }
+  };
+
   const resetManualForm = () => {
     setManualFormData({
       fullName: '',
@@ -1377,13 +1347,6 @@ function ProgramDetail() {
     if (manualSubmitting) return;
     setShowManualModal(false);
     setManualErrors({});
-  };
-
-  const closeRsvpScanner = () => {
-    if (rsvpQrSubmitting) return;
-    setShowRsvpScanner(false);
-    setRsvpQrResult(null);
-    setRsvpQrError('');
   };
 
   const getShareableRsvpScannerUrl = async () => {
@@ -1425,17 +1388,6 @@ function ProgramDetail() {
       toast.error(error.response?.data?.error || error.message || 'Unable to open RSVP scanner link.');
     } finally {
       setRsvpScannerLinkLoading(false);
-    }
-  };
-
-  const handleManualChange = (event) => {
-    const { name, value, type, checked } = event.target;
-    setManualFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    if (manualErrors[name]) {
-      setManualErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
@@ -1532,46 +1484,6 @@ function ProgramDetail() {
     }
   };
 
-  const handleRsvpQrCheckIn = useCallback(async (token) => {
-    if (!token || rsvpQrSubmittingRef.current) return;
-
-    rsvpQrSubmittingRef.current = true;
-    setRsvpQrSubmitting(true);
-    setRsvpQrError('');
-    setRsvpQrResult(null);
-
-    try {
-      const response = await checkInRsvpQr(id, token);
-
-      if (response.attendee) {
-        setAttendees(prev => [response.attendee, ...prev.filter(attendee => attendee.id !== response.attendee.id)]);
-      }
-      if (response.totalScans !== undefined) setTotalScans(response.totalScans);
-      if (response.attendeeMaleCount !== undefined) {
-        setCollectDataStats({
-          maleCount: response.attendeeMaleCount,
-          femaleCount: response.attendeeFemaleCount,
-          firstTimerCount: response.attendeeFirstTimerCount
-        });
-      }
-      if (response.attendeeTotal !== undefined) setFormsSubmitted(response.attendeeTotal);
-      if (response.sharedDeviceCheckins !== undefined) setSharedDeviceCheckins(response.sharedDeviceCheckins);
-
-      await refreshAttendanceChart();
-      setRsvpQrResult(response);
-      toast.success('RSVP attendee checked in.');
-      playSuccessSound();
-    } catch (error) {
-      const message = error.response?.data?.error || 'Unable to check in this RSVP QR.';
-      setRsvpQrError(message);
-      toast.error(message);
-      playErrorSound();
-    } finally {
-      rsvpQrSubmittingRef.current = false;
-      setRsvpQrSubmitting(false);
-    }
-  }, [id, refreshAttendanceChart, toast]);
-
   const saveStrictFingerprinting = async (enabled) => {
     if (!program || fingerprintSaving) return;
 
@@ -1584,21 +1496,26 @@ function ProgramDetail() {
       } : prev);
       setShowFingerprintWarning(false);
       toast.success(response.strictDeviceFingerprinting
-        ? 'Strict device fingerprinting enabled.'
-        : 'Multiple check-ins from the same device are now allowed.');
+        ? 'One check-in per phone is on.'
+        : 'Guests can now check in more than once from the same phone.');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to update device fingerprinting.');
+      toast.error(error.response?.data?.error || 'Could not change this setting. Try again.');
     } finally {
       setFingerprintSaving(false);
     }
   };
 
+  const setManualField = (name, value) => {
+    setManualFormData((prev) => ({ ...prev, [name]: value }));
+    if (manualErrors[name]) setManualErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
   const handleStrictFingerprintingToggle = () => {
+    if (fingerprintSaving) return;
     if (!program?.strictDeviceFingerprinting) {
       saveStrictFingerprinting(true);
       return;
     }
-
     setShowFingerprintWarning(true);
   };
 
@@ -1898,42 +1815,53 @@ function ProgramDetail() {
     } catch (error) { toast.error('Failed to export PDF: ' + error.message); }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const shellProps = {
+    active: 'events',
+    crumb: program?.title || template.event.singular,
+    church: boot?.church
+      ? { name: boot.church.churchName, email: boot.church.email, logoUrl: boot.church.logoUrl }
+      : churchData.name ? { name: churchData.name, email: churchData.email, logoUrl: churchData.logo } : null,
+    counts: { preEvents: boot?.stats?.preEventCount || 0, events: boot?.stats?.totalProgramsAllTime || 0 },
+    unreadCount: boot?.unreadCount || 0,
+    live: boot?.stats?.live && String(boot.stats.live.id) !== String(id) ? boot.stats.live : null,
+    template
   };
 
-  const handleLogout = () => {
-    toast.confirm('Are you sure you want to logout?', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('church');
-      window.location.href = '/';
-    });
-  };
+  if (loading || !program) {
+    return (
+      <IgDashShell {...shellProps}>
+        <div className="ig-db-page ig-ed">
+          {loading ? (
+            <div aria-busy="true" aria-label={`Loading ${template.event.singular.toLowerCase()}`} className="ig-ed-loading">
+              <div className="ig-db-skel is-head" />
+              <div className="ig-ed-row3">{[0, 1, 2].map((i) => <div key={i} className="ig-db-skel is-stat" />)}</div>
+              <div className="ig-ed-skel-row"><div className="ig-db-skel is-chart" /><div className="ig-db-skel is-chart is-narrow" /></div>
+            </div>
+          ) : (
+            <div className="ig-db-card ig-db-error" role="alert">
+              <strong>We couldn't find this {template.event.singular.toLowerCase()}</strong>
+              <span>It may have been deleted, or the link is wrong. Go back to see your other {template.event.plural?.toLowerCase?.() || 'events'}.</span>
+              <Link to="/programs" className="ig-db-btn-ghost">Back to {template.event.all}</Link>
+            </div>
+          )}
+        </div>
+      </IgDashShell>
+    );
+  }
 
-  const toggleTheme = () => setDarkMode(prev => !prev);
+  /* ---------- Derived values ---------- */
+  const phase = eventPhase(program, now);
+  const live = phase === 'live';
+  const ended = phase === 'ended';
+  const upcoming = phase === 'upcoming';
+  const isCollect = program.trackingMode !== 'count-only';
+  const stats = isCollect ? collectDataStats : countOnlyStats;
+  const hasCheckins = totalScans > 0;
+  const eventWord = template.event.singular;
+  const eventWordLower = eventWord.toLowerCase();
+  const guestsWord = template.attendee.plural.toLowerCase();
 
-  const churchInitials = churchData.name ? churchData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'IN';
-
-  // Get correct stats based on mode
-  const stats = program?.trackingMode === 'count-only' ? countOnlyStats : collectDataStats;
-  const showSharedDeviceMetric = program?.trackingMode === 'collect-data' && (program.strictDeviceFingerprinting === false || sharedDeviceCheckins > 0);
-  const getAttendeeRegistrationType = (attendee) => (
-    attendee.registrationType
-      || (attendee.proxyHostFingerprint ? 'proxy' : attendee.deviceFingerprint?.startsWith?.('manual-') ? 'manual' : 'walk_in')
-  );
-  const getAttendeeSourceLabel = (attendee) => {
-    const type = getAttendeeRegistrationType(attendee);
-    if (type === 'rsvp') return 'Pre-Registered';
-    if (type === 'manual') return 'Manual';
-    if (type === 'proxy') return 'Proxy';
-    return 'Walk-In';
-  };
-  const formatAttendanceMode = (mode) => {
-    if (mode === 'virtual') return 'Virtual';
-    if (mode === 'physical') return 'Physical';
-    return '-';
-  };
+  const getAttendeeRegistrationType = registrationTypeOf;
   const attendeeSourceCounts = attendees.reduce((counts, attendee) => {
     const type = getAttendeeRegistrationType(attendee);
     counts[type] = (counts[type] || 0) + 1;
@@ -1944,700 +1872,513 @@ function ProgramDetail() {
     counts[mode] = (counts[mode] || 0) + 1;
     return counts;
   }, {});
-  const hasAttendanceModeData = attendees.some(attendee => Boolean(attendee.attendanceMode));
-  const virtualCheckinCount = attendanceModeCounts.virtual || 0;
-  const attendeeFilterOptions = [
-    { key: 'all', label: 'All', count: attendees.length },
-    { key: 'rsvp', label: 'Pre-Registered', count: attendeeSourceCounts.rsvp || 0 },
-    { key: 'walk_in', label: 'Walk-In', count: attendeeSourceCounts.walk_in || 0 },
-    { key: 'manual', label: 'Manual', count: attendeeSourceCounts.manual || 0 },
-    { key: 'proxy', label: 'Proxy', count: attendeeSourceCounts.proxy || 0 }
-  ];
-  const attendanceModeFilterOptions = [
-    { key: 'all', label: 'All Modes', count: attendees.length },
-    { key: 'physical', label: 'Physical', count: attendanceModeCounts.physical || 0 },
-    { key: 'virtual', label: 'Virtual', count: attendanceModeCounts.virtual || 0 }
-  ];
-  const filteredAttendees = attendees.filter(attendee => {
+  const hasAttendanceModeData = attendees.some((attendee) => Boolean(attendee.attendanceMode));
+  const inPersonCount = attendanceModeCounts.physical || 0;
+  const onlineCount = attendanceModeCounts.virtual || 0;
+  const winnersCount = attendees.filter((a) => a.isWinner).length;
+  const filteredAttendees = attendees.filter((attendee) => {
     const matchesFilter = attendeeFilter === 'all' || getAttendeeRegistrationType(attendee) === attendeeFilter;
     const matchesAttendanceMode = attendanceModeFilter === 'all' || (attendee.attendanceMode || 'physical') === attendanceModeFilter;
-    const customSearchValues = Object.values(attendee.customResponses || {})
-      .flatMap(value => Array.isArray(value) ? value : [value]);
-    const matchesSearch = !searchQuery.trim()
-      || [attendee.fullName, attendee.emailAddress, attendee.school, attendee.linkUrl, attendee.textareaResponse, getAttendeeSourceLabel(attendee), formatAttendanceMode(attendee.attendanceMode), ...customSearchValues]
-        .some(value => String(value || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    const customSearchValues = Object.values(attendee.customResponses || {}).flatMap((value) => (Array.isArray(value) ? value : [value]));
+    const query = searchQuery.trim().toLowerCase();
+    const matchesSearch = !query
+      || [attendee.fullName, attendee.emailAddress, attendee.phoneNumber, attendee.fellowship, attendee.school, attendee.department, attendee.linkUrl, attendee.textareaResponse, SOURCE_LABEL[getAttendeeRegistrationType(attendee)], ...customSearchValues]
+        .some((value) => String(value || '').toLowerCase().includes(query));
     return matchesFilter && matchesAttendanceMode && matchesSearch;
   });
-  const attendeeTableColumnCount = [
-    program?.dataFields?.fullName,
-    program?.dataFields?.emailAddress,
-    program?.dataFields?.school,
-    program?.dataFields?.link,
-    program?.dataFields?.textarea,
-    program?.dataFields?.fellowship,
-    program?.dataFields?.age,
-    ...(program?.customFormSchema || []).map(() => true),
-    hasAttendanceModeData,
-    program?.giftingEnabled,
-    program?.giftingEnabled,
-    true,
-    true
-  ].filter(Boolean).length;
 
-  /* ---- LOADING ---- */
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <aside className="sidebar">
-          <div className="sidebar-logo"><a href="/dashboard" className="sidebar-logo-link"><span className="sidebar-logo-icon">{Icons.logo}</span><span className="sidebar-logo-text">Ingather</span></a></div>
-        </aside>
-        <main className="dashboard-main">
-          <div className="dashboard-loading"><div className="spinner"></div><p>Loading {template.event.singular.toLowerCase()}...</p></div>
-        </main>
+  const openGuest = guestId !== null ? attendees.find((a) => a.id === guestId) || null : null;
+  const closeGuest = () => setGuestId(null);
+  const downloadExport = async (format, scope) => {
+    if (format === 'pdf') {
+      setExportBusy(true);
+      try { await handleExportPDF(); } finally { setExportBusy(false); }
+      setExportOpen(false);
+      return;
+    }
+    const list = scope === 'filter' ? filteredAttendees : attendees;
+    try {
+      downloadText(buildAttendeeCsv(program, list), `${safeFileName(program.title)}-${safeFileName(template.attendee.plural).toLowerCase()}.csv`, 'text/csv;charset=utf-8');
+      setExportOpen(false);
+      toast.success(`${plural(list.length, template.attendee.singular.toLowerCase(), template.attendee.plural.toLowerCase())} exported.`);
+    } catch (error) {
+      toast.error('Could not create the file. Try again.');
+    }
+  };
+
+  const start = eventStart(program);
+  const countdown = upcoming && start ? countdownParts(start.getTime() - now) : null;
+  const statusText = upcoming
+    ? startsLabel(program, now)
+    : live ? (hasCheckins ? 'Live, accepting check-ins' : 'Live, waiting for first check-in') : 'Ended';
+  const liveTagText = upcoming ? 'Not started' : live ? 'Live' : 'Final';
+  const hasSponsors = (sponsorAnalytics?.sponsorCount || 0) > 0;
+  const showLinkedScanner = isCollect && program.linkedPreEventCount > 0;
+
+  const totalCard = (
+    <div className="ig-ed-total">
+      <div className="ig-ed-stat-head">
+        <span className="ig-ed-stat-icon is-orange-solid">{Icon.people}</span>
+        <span className="ig-ed-stat-label">Total Attendance</span>
+        <span className={`ig-ed-live-tag is-${phase}`}><span aria-hidden="true" />{liveTagText}</span>
+      </div>
+      <div className="ig-ed-stat-num"><strong>{formatNumber(totalScans)}</strong><span>{live ? 'live scans' : 'total scans'}</span></div>
+      {hasCheckins
+        ? <Sparkline data={attendanceData} />
+        : <span className="ig-ed-total-wait">{upcoming ? 'Early arrivals count here' : live ? 'Waiting for the first scan' : 'No one checked in'}</span>}
+    </div>
+  );
+
+  const infoProps = { openId: infoOpen, setOpenId: setInfoOpen };
+  const featureCards = [];
+  if (isCollect && program.dataFields?.sex) {
+    const genderTotal = stats.maleCount + stats.femaleCount;
+    featureCards.push(
+      <div className="ig-ed-feature" key="gender">
+        <div className="ig-ed-stat-head"><span className="ig-ed-stat-icon is-pink">{Icon.person}</span><span className="ig-ed-stat-label">Gender</span></div>
+        <div className="ig-ed-pair">
+          <div className="is-male"><span>{Icon.male}Male</span><span><strong>{formatNumber(stats.maleCount)}</strong><span>{percentOf(stats.maleCount, genderTotal)}</span></span></div>
+          <div className="is-female"><span>{Icon.female}Female</span><span><strong>{formatNumber(stats.femaleCount)}</strong><span>{percentOf(stats.femaleCount, genderTotal)}</span></span></div>
+        </div>
+      </div>
+    );
+  }
+  if (isCollect && program.giftingEnabled) {
+    featureCards.push(
+      <div className="ig-ed-feature" key="gifting">
+        <div className="ig-ed-stat-head"><span className="ig-ed-stat-icon is-gold">{Icon.gift}</span><span className="ig-ed-stat-label">Gifting</span></div>
+        <div className="ig-ed-pair">
+          <div><span>Winners</span><span><strong>{formatNumber(winnersCount)}</strong><span>{winnersCount > 0 || formsSubmitted > 0 ? `of ${formatNumber(formsSubmitted)}` : 'picked from forms'}</span></span></div>
+          <div><span>Gifted</span><span><strong>{formatNumber(winnersGifted)}</strong><span>{winnersCount > 0 ? `of ${formatNumber(winnersCount)}` : 'handed out'}</span></span></div>
+        </div>
+      </div>
+    );
+  }
+  if (isCollect) {
+    featureCards.push(
+      <div className="ig-ed-feature" key="shared">
+        <div className="ig-ed-stat-head"><span className="ig-ed-stat-icon is-red">{Icon.phone}</span><span className="ig-ed-stat-label">Shared phones</span></div>
+        <div className="ig-ed-pair is-one">
+          <div><span>Phone used twice</span><span><strong>{formatNumber(sharedDeviceCheckins)}</strong><span>{sharedDeviceCheckins === 1 ? 'guest' : 'guests'}</span></span></div>
+        </div>
+      </div>
+    );
+  }
+  if (isCollect && hasAttendanceModeData) {
+    featureCards.push(
+      <div className="ig-ed-feature" key="mode">
+        <div className="ig-ed-stat-head"><span className="ig-ed-stat-icon is-teal">{Icon.screen}</span><span className="ig-ed-stat-label">Attendance mode</span></div>
+        <div className="ig-ed-pair">
+          <div><span>In person</span><span><strong>{formatNumber(inPersonCount)}</strong><span className={inPersonCount >= onlineCount && inPersonCount > 0 ? 'is-up' : ''}>{inPersonCount >= onlineCount && inPersonCount > 0 && Icon.up}{percentOf(inPersonCount, attendees.length)}</span></span></div>
+          <div><span>Online</span><span><strong>{formatNumber(onlineCount)}</strong><span>{percentOf(onlineCount, attendees.length)}</span></span></div>
+        </div>
       </div>
     );
   }
 
-  if (!program) {
-    return (
-      <div className="dashboard">
-        <aside className="sidebar">
-          <div className="sidebar-logo"><a href="/dashboard" className="sidebar-logo-link"><span className="sidebar-logo-icon">{Icons.logo}</span><span className="sidebar-logo-text">Ingather</span></a></div>
-        </aside>
-        <main className="dashboard-main">
-          <div className="dashboard-loading"><p>{template.event.singular} not found</p></div>
-        </main>
+  const qrCard = (
+    <section className={`ig-db-card ig-ed-qr${ended ? ' is-ended' : ''}`} aria-label="Check-in QR code">
+      <span className="ig-db-card-title"><strong>Check-in QR Code</strong><span>Put this at your entrance or check-in desk</span></span>
+      <div className="ig-ed-qr-frame">
+        <div className="ig-ed-qr-code">
+          <React.Suspense fallback={<div className="ig-ed-qr-wait" aria-hidden="true" />}>
+            <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={200} level="H" includeMargin={false} />
+          </React.Suspense>
+        </div>
+        {ended && <span className="ig-ed-qr-closed">Scanning closed</span>}
       </div>
-    );
-  }
-
-  const hasSponsorDashboard = sponsorAnalytics?.sponsorCount > 0;
-
-  const chartCard = (
-    <div className="pd-chart-card">
-      <h3 className="pd-chart-title">Attendance Over Time</h3>
-      <div className="pd-chart-area">
-        {(() => {
-          const startIdx = chartPage * BARS_PER_PAGE;
-          const slicedData = attendanceData.slice(startIdx, startIdx + BARS_PER_PAGE);
-          return <AttendanceBarChart data={slicedData} />;
-        })()}
+      <div className="ig-ed-qr-name"><strong>{program.title}</strong><span>Scan to check in</span></div>
+      <div className="ig-ed-qr-link">
+        <span title={program.qrCodeUrl}>{shortLink(program.qrCodeUrl)}</span>
+        <button type="button" className="ig-db-round-btn is-xs is-line" aria-label="Copy check-in link" onClick={copyCheckinLink}>{Icon.copy}</button>
       </div>
-      <div className="pd-chart-pagination">
-        <button
-          title="Previous"
-          disabled={chartPage === 0}
-          onClick={() => setChartPage(p => Math.max(0, p - 1))}
-        >{Icons.arrowLeftSmall}</button>
-        <button
-          title="Next"
-          disabled={(chartPage + 1) * BARS_PER_PAGE >= attendanceData.length}
-          onClick={() => setChartPage(p => p + 1)}
-        >{Icons.arrowRight}</button>
+      <div className="ig-ed-qr-actions">
+        <button type="button" className="ig-db-btn-ink" onClick={handleDownloadQR}>{Icon.download}Download</button>
+        <button type="button" className="ig-db-btn-ghost" onClick={handlePrintQR}>{Icon.print}Print</button>
       </div>
-    </div>
+      <span className={`ig-ed-qr-status is-${phase}`}><span aria-hidden="true" />{upcoming ? 'QR code ready, guests can check in now' : live ? 'QR code active, accepting scans' : 'QR code disabled'}</span>
+    </section>
   );
 
-  const qrCodeCard = (
-    <div className={`pd-qr-card ${hasSponsorDashboard ? 'pd-qr-card-horizontal' : ''}`}>
-      <div className="pd-qr-card-heading">
-        <h3 className="pd-qr-card-title">QR Code</h3>
-        <p className="pd-qr-card-sub">Deploy this QR code at your event entrance or check-in desk</p>
-      </div>
-      <div className="pd-qr-canvas" id="qr-print-area">
-        <React.Suspense fallback={<div style={{ width: 160, height: 160 }} aria-hidden="true"></div>}>
-          <QRCodeCanvas id="qr-code-canvas" value={program.qrCodeUrl} size={160} level="H" includeMargin={true} />
-        </React.Suspense>
-      </div>
-      <div className="pd-qr-card-details">
-        <h4 className="pd-qr-program-title">{program.title}</h4>
-        <p className="pd-qr-scan-text">Scan to check in</p>
-        <div className="pd-qr-link-row">
-          <p className="pd-qr-link">{program.qrCodeUrl}</p>
-          <button
-            className="pd-copy-btn"
-            title="Copy link"
-            onClick={(e) => {
-              navigator.clipboard.writeText(program.qrCodeUrl);
-              const btn = e.currentTarget;
-              btn.classList.add('copied');
-              setTimeout(() => btn.classList.remove('copied'), 1500);
-            }}
-          >
-            <svg className="copy-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-              <path d="M10.5 5.5V3.5a1.5 1.5 0 00-1.5-1.5H3.5A1.5 1.5 0 002 3.5V9A1.5 1.5 0 003.5 10.5H5.5" />
-            </svg>
-            <svg className="check-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3,8 7,12 13,4" />
-            </svg>
-          </button>
-        </div>
-      </div>
-      <div className="pd-qr-card-actions">
-        <button className="pd-qr-btn-download" onClick={handleDownloadQR}>
-          {Icons.download} Download QR Code
-        </button>
-        <button className="pd-qr-btn-print" onClick={handlePrintQR}>
-          {Icons.printer} Print QR Code
-        </button>
-        {program.isActive ? (
-          <span className="pd-qr-status active"><span className="status-dot"></span> QR Code is Active - Accepting Scans</span>
-        ) : (
-          <span className="pd-qr-status inactive"><span className="status-dot"></span> QR Code is Disabled</span>
-        )}
-      </div>
-    </div>
-  );
-
-  /* ---- MAIN RENDER ---- */
-  return (
-    <div className="dashboard">
-      {/* ====== SIDEBAR ====== */}
-      <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-drawer-open' : ''}`}>
-        <div className="sidebar-logo">
-          <a href="/dashboard" className="sidebar-logo-link">
-            <span className="sidebar-logo-icon">{Icons.logo}</span>
-            <span className="sidebar-logo-text">Ingather</span>
-          </a>
-          <button className="sidebar-collapse-btn" title="Toggle sidebar">{Icons.collapse}</button>
-        </div>
-        <nav className="sidebar-nav">
-          <a href="/dashboard" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.dashboard}</span><span>Dashboard</span></a>
-          <a href="/pre-events" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>Pre-Events</span></a>
-          <a href="/create-program" className="nav-item active" onClick={closeMobileMenu}><span className="nav-icon">{Icons.createProgram}</span><span>{template.event.create}</span></a>
-          <a href="/programs" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.allPrograms}</span><span>{template.event.all}</span></a>
-          <a href="/settings" className="nav-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.settings}</span><span>Settings</span></a>
-        </nav>
-        <div className="sidebar-footer">
-          <a href="/settings?tab=notifications" className="sidebar-footer-item" onClick={closeMobileMenu}><span className="nav-icon">{Icons.notification}</span><span>Notification</span>{unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}</a>
-          <button className="btn-logout" onClick={() => { closeMobileMenu(); handleLogout(); }}><span className="nav-icon">{Icons.logout}</span><span>Log out</span></button>
-        </div>
-        <div className="sidebar-profile" onClick={() => { closeMobileMenu(); window.location.href = '/settings'; }}>
-          <div className="sidebar-profile-avatar">
-            {churchData.logo ? <img src={churchData.logo} alt={churchData.name} /> : <span className="sidebar-profile-avatar-fallback">{churchInitials}</span>}
-          </div>
-          <div className="sidebar-profile-info">
-            <div className="sidebar-profile-name">{churchData.name}</div>
-            <div className="sidebar-profile-email">{churchData.email}</div>
-          </div>
-          <span className="sidebar-profile-chevron">{Icons.chevronRight}</span>
-        </div>
-      </aside>
-      {isMobileMenuOpen && (
-        <button
-          type="button"
-          className="mobile-sidebar-backdrop"
-          aria-label="Close navigation menu"
-          onClick={closeMobileMenu}
-        />
-      )}
-
-      {/* ====== MAIN ====== */}
-      <main className="dashboard-main">
-        {/* Top Navbar */}
-        <header className="top-navbar">
-          <div className="navbar-left" style={{ gap: '12px' }}>
-            <button
-              type="button"
-              className="mobile-menu-btn"
-              aria-label="Open navigation menu"
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-            <button className="btn-back-arrow" onClick={() => window.location.href = '/dashboard'} title="Back">{Icons.arrowLeft}</button>
-          </div>
-          <div className="navbar-right">
-            <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-              <span className="theme-toggle-label">{darkMode ? 'Night Mode' : 'Day Mode'}</span>
-              <span className="theme-toggle-icon">{darkMode ? Icons.moon : Icons.sun}</span>
-            </button>
-            {program.isActive ? (
-              <button className="btn-end-program" onClick={handleStopProgram}>End Current {template.event.singular}</button>
-            ) : (
-              <button className="btn-end-program" disabled>{template.event.singular} Ended</button>
-            )}
-            <button className="navbar-icon-btn" title="Notifications" onClick={() => window.location.href = '/settings?tab=notifications'}>{Icons.notification}{unreadCount > 0 && <span className="icon-badge"></span>}</button>
-            <button className="navbar-icon-btn" title="Settings" onClick={() => window.location.href = '/settings'}>{Icons.gear}</button>
-            <div className="navbar-avatar-dropdown" ref={profileMenuRef}>
-              <div className="navbar-avatar" onClick={() => window.location.href = '/settings'} title="View Profile">
-                {churchData.logo ? <img src={churchData.logo} alt={churchData.name} /> : <div className="navbar-avatar-fallback">{churchInitials}</div>}
-              </div>
-              <span className={`chevron-toggle ${showProfileMenu ? 'open' : ''}`} onClick={() => setShowProfileMenu(prev => !prev)}>
-                {Icons.chevronDown}
-              </span>
-              {showProfileMenu && (
-                <div className="profile-dropdown-menu">
-                  <button className="profile-dropdown-item" onClick={() => { setShowProfileMenu(false); window.location.href = '/settings'; }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="7" r="3" /><path d="M3 18v-1a5 5 0 0110 0v1" /><path d="M14 3.5a3 3 0 010 5.5" /><path d="M17 18v-1a5 5 0 00-3-4.5" /></svg>
-                    View Profile
-                  </button>
-                  <div className="profile-dropdown-divider"></div>
-                  <button className="profile-dropdown-item logout-item" onClick={() => { setShowProfileMenu(false); handleLogout(); }}>
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17H4a1 1 0 01-1-1V4a1 1 0 011-1h3" /><polyline points="11,14 17,10 11,6" /><line x1="17" y1="10" x2="7" y2="10" /></svg>
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <div className="dashboard-content">
-          {/* Program Header */}
-          <div className="pd-header">
-            <h2 className="pd-title">{program.title}</h2>
-            <div className="pd-pills">
-              <span className="pd-pill">{Icons.calendar} {formatDate(program.date)}</span>
-              <span className="pd-pill">{Icons.clock} {program.startTime} - {program.endTime}</span>
-            </div>
-          </div>
-
-          {/* ====== COUNT-ONLY MODE — 4 Stat Cards ====== */}
-          {program.trackingMode === 'count-only' && (
-            <div className="pd-stats-grid">
-              <div className="pd-stat-card primary">
-                <div className="stat-icon-box">{Icons.people}</div>
-                <div className="pd-stat-info">
-                  <div className="pd-stat-label">Total Attendance</div>
-                  <div className="pd-stat-value">{totalScans.toLocaleString()}</div>
-                  <div className="pd-stat-sub">{program.isActive ? 'Live scans' : 'Total scans'}</div>
-                </div>
-                {program.isActive && <div className="live-dot"></div>}
-              </div>
-              <div className="pd-stat-card">
-                <div className="stat-icon-box icon-blue">{Icons.male}</div>
-                <div className="pd-stat-info">
-                  <div className="pd-stat-label">Male</div>
-                  <div className="pd-stat-value">{stats.maleCount}</div>
-                </div>
-                <InfoTooltip
-                  className="stat-info-icon"
-                  label="Male attendance metric information"
-                  content="Attendees counted in this gender group."
-                />
-              </div>
-              <div className="pd-stat-card">
-                <div className="stat-icon-box icon-pink">{Icons.female}</div>
-                <div className="pd-stat-info">
-                  <div className="pd-stat-label">Female</div>
-                  <div className="pd-stat-value">{stats.femaleCount}</div>
-                </div>
-                <InfoTooltip
-                  className="stat-info-icon"
-                  label="Female attendance metric information"
-                  content="Attendees counted in this gender group."
-                />
-              </div>
-              <div className="pd-stat-card">
-                <div className="stat-icon-box icon-purple">{Icons.star}</div>
-                <div className="pd-stat-info">
-                  <div className="pd-stat-label">First Timer</div>
-                  <div className="pd-stat-value">{stats.firstTimerCount}</div>
-                </div>
-                <InfoTooltip
-                  className="stat-info-icon"
-                  label="First timer metric information"
-                  content="Attendees marked as first-timers from submitted forms."
-                />
-              </div>
-            </div>
-          )}
-
-          {/* ====== COLLECT-DATA MODE — Dynamic Stat Layout ====== */}
-          {program.trackingMode === 'collect-data' && (
+  const menu = (
+    <span className="ig-ed-more" ref={moreRef}>
+      <button type="button" className={`ig-ed-more-btn${moreOpen ? ' is-open' : ''}`} aria-label="More actions" aria-haspopup="menu" aria-expanded={moreOpen} onClick={() => setMoreOpen((v) => !v)}>{Icon.more}</button>
+      {moreOpen && (
+        <div className="ig-ed-menu" role="menu" aria-label={`${eventWord} actions`}>
+          <Link role="menuitem" to={`/program/${program.id}/edit`} onClick={() => setMoreOpen(false)}>{Icon.pencil}Edit {eventWordLower}</Link>
+          <button type="button" role="menuitem" onClick={copyCheckinLink}>{Icon.copy}Copy check-in link</button>
+          <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); handleDownloadQR(); }}>{Icon.download}Download QR code</button>
+          {!ended && (compact || upcoming) && (
             <>
-              {/* Row 1: Total Attendance + Form Submitted + (optional First Timer) */}
-              <div className={`pd-stats-grid pd-stats-row1 ${program.dataFields?.firstTimer ? 'cols-3' : 'cols-2'}`}>
-                {/* Total Attendance — Primary */}
-                <div className="pd-stat-card primary">
-                  <div className="stat-icon-box">{Icons.people}</div>
-                  <div className="pd-stat-info">
-                    <div className="pd-stat-label">Total Attendance</div>
-                    <div className="pd-stat-value">{totalScans.toLocaleString()}</div>
-                    <div className="pd-stat-sub">{program.isActive ? 'Live scans' : 'Total scans'}</div>
-                  </div>
-                  {program.isActive && <div className="live-dot"></div>}
-                </div>
-                {/* Form Submitted */}
-                <div className="pd-stat-card">
-                  <div className="stat-icon-box icon-orange-outline">{Icons.formDoc}</div>
-                  <div className="pd-stat-info">
-                    <div className="pd-stat-label">Form Submitted</div>
-                    <div className="pd-stat-value">{formsSubmitted}</div>
-                  </div>
-                  <InfoTooltip
-                    className="stat-info-icon"
-                    label="Form submitted metric information"
-                    content="Completed attendee forms for this event."
-                  />
-                </div>
-                {/* First Timer (conditional) */}
-                {program.dataFields?.firstTimer && (
-                  <div className="pd-stat-card">
-                    <div className="stat-icon-box icon-purple">{Icons.starOutline}</div>
-                    <div className="pd-stat-info">
-                      <div className="pd-stat-label">First Timer</div>
-                      <div className="pd-stat-value">{stats.firstTimerCount}</div>
-                    </div>
-                    <InfoTooltip
-                      className="stat-info-icon"
-                      label="First timer metric information"
-                      content="Attendees marked as first-timers from submitted forms."
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Row 2: Secondary Metrics — Gender / Gifting (conditional) */}
-              {(program.dataFields?.sex || program.giftingEnabled || showSharedDeviceMetric || (hasAttendanceModeData && virtualCheckinCount > 0)) && (
-                <div className="pd-secondary-metrics">
-                  {/* Gender Card */}
-                  {program.dataFields?.sex && (
-                    <div className="pd-metric-card">
-                      <span className="pd-metric-pill purple">Gender</span>
-                      <div className="pd-metric-row">
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon male">{Icons.maleSymbol}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Male</div>
-                            <div className="pd-metric-item-value">{stats.maleCount}</div>
-                          </div>
-                        </div>
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon female">{Icons.femaleSymbol}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Female</div>
-                            <div className="pd-metric-item-value">{stats.femaleCount}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {/* Gifting Card */}
-                  {program.giftingEnabled && (
-                    <div className="pd-metric-card">
-                      <span className="pd-metric-pill orange">Gifting</span>
-                      <div className="pd-metric-row">
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon gift">{Icons.giftBox}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Winner Selected</div>
-                            <div className="pd-metric-item-value">{attendees.filter(a => a.isWinner).length}/{attendees.length}</div>
-                          </div>
-                        </div>
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon gifted">{Icons.checkDouble}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Winner Gifted</div>
-                            <div className="pd-metric-item-value">{winnersGifted}/{attendees.length}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {showSharedDeviceMetric && (
-                    <div className="pd-metric-card pd-shared-device-card">
-                      <span className="pd-metric-pill orange">Device Intelligence</span>
-                      <div className="pd-metric-row">
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon shared-device">{Icons.people}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Shared Device Check-ins</div>
-                            <div className="pd-metric-item-value">{sharedDeviceCheckins.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="pd-shared-device-copy">
-                        {sharedDeviceCheckins.toLocaleString()} {sharedDeviceCheckins === 1 ? 'attendee checked' : 'attendees checked'} in from devices already used before.
-                      </p>
-                    </div>
-                  )}
-                  {hasAttendanceModeData && virtualCheckinCount > 0 && (
-                    <div className="pd-metric-card pd-virtual-mode-card">
-                      <span className="pd-metric-pill blue">Attendance Mode</span>
-                      <div className="pd-metric-row">
-                        <div className="pd-metric-item">
-                          <span className="pd-metric-icon virtual">{Icons.people}</span>
-                          <div>
-                            <div className="pd-metric-item-label">Virtual Check-ins</div>
-                            <div className="pd-metric-item-value">{virtualCheckinCount.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="pd-shared-device-copy">
-                        {virtualCheckinCount.toLocaleString()} {virtualCheckinCount === 1 ? 'attendee is' : 'attendees are'} marked as virtual.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
+              <span className="ig-ed-menu-rule" />
+              <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setDialog('end'); }}>{Icon.stop}End {eventWordLower}</button>
             </>
           )}
+          <span className="ig-ed-menu-rule" />
+          <button type="button" role="menuitem" className="is-danger" onClick={() => { setMoreOpen(false); setDialog('delete'); }}>{DashIcon.trash}Delete {eventWordLower}</button>
+        </div>
+      )}
+    </span>
+  );
 
-          {/* Middle Row: Chart + QR Code */}
-          <div className={`pd-middle-row ${hasSponsorDashboard ? 'pd-middle-row-sponsored' : ''}`}>
-            {hasSponsorDashboard ? (
-              <div className="pd-sponsored-insights-stack">
-                {chartCard}
-                <SponsorEngagementCard analytics={sponsorAnalytics} />
-              </div>
-            ) : (
-              chartCard
+  const sourceTag = (attendee) => {
+    const type = getAttendeeRegistrationType(attendee);
+    return <span className={`ig-ed-src is-${type}`}>{SOURCE_LABEL[type] || 'Walk-In'}</span>;
+  };
+
+  const giftCell = (attendee) => {
+    if (!attendee.isWinner) return <span className="ig-ed-gift-no">No</span>;
+    if (attendee.isGifted) return <span className="ig-ed-gift is-done">Gifted</span>;
+    return <button type="button" className="ig-ed-gift" onClick={() => setGiftTarget(attendee)}>Mark gifted</button>;
+  };
+
+  const emptyTable = (
+    <div className="ig-ed-empty">
+      <span className="ig-ed-empty-icon">{Icon.scan}</span>
+      <strong>{upcoming ? 'No one has checked in yet' : ended ? `No one checked in at this ${eventWordLower}` : 'No check-ins yet'}</strong>
+      <span>
+        {upcoming
+          ? `Guests can check in as soon as they arrive, even before ${formatTime(program.startTime)}.${isCollect ? ' You can also add someone manually.' : ''}`
+          : ended ? 'The QR code is closed now.' : 'The QR code is live. The first guest to scan will show up here straight away.'}
+      </span>
+      {!ended && isCollect && (
+        <span className="ig-ed-empty-actions">
+          {showLinkedScanner && <button type="button" className="ig-db-btn-ink" onClick={openRsvpScannerLink} disabled={rsvpScannerLinkLoading}>Open Scanner</button>}
+          <button type="button" className="ig-db-btn-ghost" onClick={openManualModal}>Add Manually</button>
+        </span>
+      )}
+    </div>
+  );
+
+  const showMode = hasAttendanceModeData;
+  const showGift = Boolean(program.giftingEnabled);
+  const showEmail = Boolean(program.dataFields?.emailAddress);
+  const showGroup = Boolean(program.dataFields?.fellowship);
+
+  return (
+    <IgDashShell {...shellProps}>
+      <div className="ig-db-page ig-ed">
+        {/* ---------- Header ---------- */}
+        <div className="ig-ed-head">
+          <div className="ig-ed-head-text">
+            <div className="ig-ed-back-row">
+              <Link to="/programs" className="ig-pd-back">{Icon.back}{template.event.all}</Link>
+              {compact && menu}
+            </div>
+            <div className="ig-ed-title-row">
+              <h1>{program.title}</h1>
+              <span className={`ig-ed-status is-${phase}`}><span aria-hidden="true" />{statusText}</span>
+            </div>
+            <div className="ig-ed-chips">
+              <span>{DashIcon.calendar}{fullDate(program.date) ? `${weekdayShortDate(program.date).split(',')[0]}, ${fullDate(program.date)}` : ''}</span>
+              <span>{DashIcon.clock}{formatTimeRange(program.startTime, program.endTime)}</span>
+              <span>{isCollect ? 'Collects guest details' : 'Count only'}</span>
+              {!ended && autoEndAt(program) && (
+                <span title={`Check-in closes and the link stops working ${AUTO_END_HOURS} hours after the end time.`}>Closes automatically {autoEndLabel(autoEndAt(program))}</span>
+              )}
+            </div>
+          </div>
+          <div className="ig-ed-head-actions">
+            {live && !compact && <button type="button" className="ig-ed-end" onClick={() => setDialog('end')}>End {eventWord}</button>}
+            {ended && <button type="button" className="ig-db-btn-primary ig-ed-report" onClick={handleExportPDF}>{Icon.upload}Export Report (PDF)</button>}
+            {!compact && menu}
+          </div>
+        </div>
+
+        {upcoming && countdown && (
+          <section className="ig-ed-soon" aria-label={`Before the ${eventWordLower}`}>
+            <span className="ig-ed-soon-icon">{Icon.clock}</span>
+            <span className="ig-ed-soon-text">
+              <strong>Starts at {formatTime(program.startTime)}, in {countdownWords(countdown)}</strong>
+              <span>Your QR code already works, so early arrivals can check in before the start time. Print it or put it on a screen at the entrance{showLinkedScanner ? ', and share the scanner link with your ushers' : ''}.</span>
+            </span>
+            <span className="ig-ed-soon-count" aria-hidden="true">
+              {countdown.days > 0 ? (
+                <>
+                  <span><strong>{String(countdown.days).padStart(2, '0')}</strong><span>{countdown.days === 1 ? 'day' : 'days'}</span></span>
+                  <span><strong>{String(countdown.hours).padStart(2, '0')}</strong><span>hours</span></span>
+                </>
+              ) : (
+                <>
+                  <span><strong>{String(countdown.hours).padStart(2, '0')}</strong><span>hours</span></span>
+                  <span><strong>{String(countdown.minutes).padStart(2, '0')}</strong><span>minutes</span></span>
+                </>
+              )}
+            </span>
+          </section>
+        )}
+
+        {/* ---------- Numbers ---------- */}
+        {isCollect ? (
+          <>
+            <div className={`ig-ed-row3${program.dataFields?.firstTimer ? '' : ' is-two'}`}>
+              {totalCard}
+              <StatCard
+                icon={Icon.form}
+                tone="blue"
+                label="Form Submitted"
+                value={formsSubmitted}
+                sub={formsSubmitted > 0 ? `${percentOf(formsSubmitted, totalScans)} of check-ins` : 'none yet'}
+                info={<InfoButton id="form" title="Form Submitted" text={`${template.attendee.plural} who filled in your check-in form, plus anyone you added manually or scanned in from an RSVP pass.`} {...infoProps} />}
+              />
+              {program.dataFields?.firstTimer && (
+                <StatCard
+                  icon={Icon.firstTimer}
+                  tone="peach"
+                  label="First Timer"
+                  value={stats.firstTimerCount}
+                  sub={stats.firstTimerCount > 0 ? `${percentOf(stats.firstTimerCount, formsSubmitted)} of forms` : 'none yet'}
+                  info={<InfoButton id="first" title="First Timer" text={`${template.attendee.plural} who ticked "first-timer" on the check-in form. A good list for a welcome message after the ${eventWordLower}.`} {...infoProps} />}
+                />
+              )}
+            </div>
+            {featureCards.length > 0 && <div className={`ig-ed-features is-${featureCards.length}`}>{featureCards}</div>}
+          </>
+        ) : (
+          <div className="ig-ed-row4">
+            {totalCard}
+            <StatCard icon={Icon.male} tone="ink" label="Male" value={stats.maleCount} sub={percentOf(stats.maleCount, totalScans)}
+              info={<InfoButton id="male" title="Male" text={`${template.attendee.plural} who chose Male on the quick check-in. Anyone who skipped the question is left out.`} {...infoProps} />} />
+            <StatCard icon={Icon.female} tone="peach" label="Female" value={stats.femaleCount} sub={percentOf(stats.femaleCount, totalScans)}
+              info={<InfoButton id="female" title="Female" text={`${template.attendee.plural} who chose Female on the quick check-in. Anyone who skipped the question is left out.`} {...infoProps} />} />
+            <StatCard icon={Icon.firstTimer} tone="peach" label="First Timer" value={stats.firstTimerCount} sub={percentOf(stats.firstTimerCount, totalScans)}
+              info={<InfoButton id="first" title="First Timer" text={`${template.attendee.plural} who said this is their first time. A good number to watch from one ${eventWordLower} to the next.`} {...infoProps} />} />
+          </div>
+        )}
+
+        {/* ---------- Chart, sponsors, QR ---------- */}
+        <div className="ig-ed-middle">
+          <div className="ig-ed-middle-main">
+            <AttendanceChart data={attendanceData} phase={phase} compact={compact} key={compact ? 'c' : 'w'} />
+            {hasSponsors && <SponsorCard analytics={sponsorAnalytics} phase={phase} />}
+          </div>
+          {qrCard}
+        </div>
+
+        {/* ---------- One check-in per phone ---------- */}
+        {isCollect && (
+          <section className="ig-db-card ig-ed-rule" aria-label={`Live ${eventWordLower} settings`}>
+            <span className="ig-ed-rule-text">
+              <strong>One check-in per phone</strong>
+              <span>Stops the same phone from checking in twice for this {eventWordLower}. Turn it off if families share one phone at the door.</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(program.strictDeviceFingerprinting)}
+              aria-label="One check-in per phone"
+              className="ig-ed-rule-switch"
+              onClick={handleStrictFingerprintingToggle}
+              disabled={fingerprintSaving || ended}
+            >
+              {program.strictDeviceFingerprinting ? 'On' : 'Off'}
+              <span className={`ig-db-switch${program.strictDeviceFingerprinting ? ' is-on' : ''}`}><span /></span>
+            </button>
+          </section>
+        )}
+
+        {/* ---------- Attendees ---------- */}
+        <section className="ig-db-card ig-ed-people" aria-label={`${template.attendee.singular} data`}>
+          <div className="ig-ed-people-head">
+            <span className="ig-db-card-title">
+              <strong>{template.attendee.singular} Data</strong>
+              <span>{isCollect ? 'People who submitted the check-in form' : 'People who completed the quick check-in'}</span>
+            </span>
+            {isCollect && (
+              <span className="ig-ed-people-actions">
+                {showLinkedScanner && (
+                  <>
+                    <button type="button" className="ig-st-pill" onClick={copyRsvpScannerLink} disabled={ended || rsvpScannerLinkLoading}>{Icon.copy}{rsvpScannerLinkLoading ? 'Preparing…' : 'RSVP Scanner Link'}</button>
+                    <button type="button" className="ig-st-pill" onClick={openRsvpScannerLink} disabled={ended || rsvpScannerLinkLoading}>{Icon.scan}Open Scanner</button>
+                  </>
+                )}
+                <button type="button" className="ig-st-pill" onClick={openManualModal} disabled={ended}>{DashIcon.plus}Add Manually</button>
+                <button type="button" className="ig-db-btn-ink ig-ed-export" onClick={() => setExportOpen(true)}>{Icon.upload}Export Data</button>
+              </span>
             )}
-
-            {qrCodeCard}
           </div>
 
-          {program.trackingMode === 'collect-data' && (
-            <section className="pd-event-settings-card" aria-label="Live event settings">
-              <div className="pd-event-settings-copy">
-                <span className="pd-event-settings-kicker">Live event settings</span>
-                <h3>Device Fingerprint Control</h3>
-                <p>Control whether one attendee device can submit more than one check-in for this {template.event.singular.toLowerCase()}.</p>
-              </div>
-              <button
-                type="button"
-                className={`pd-fingerprint-toggle ${program.strictDeviceFingerprinting ? 'checked' : ''}`}
-                onClick={handleStrictFingerprintingToggle}
-                disabled={fingerprintSaving}
-                aria-pressed={program.strictDeviceFingerprinting}
-              >
-                <span className="pd-fingerprint-switch" aria-hidden="true"></span>
-                <span>Strict Device Fingerprinting (1 Scan Per Device)</span>
-              </button>
-            </section>
-          )}
-
-          {/* Attendee Data Table — Count Only Mode */}
-          {program.trackingMode === 'count-only' && countOnlyScans.length > 0 && (
-            <div className="pd-attendee-card">
-              <div className="pd-attendee-header">
-                <div>
-                  <h3 className="pd-attendee-title">{template.attendee.singular} Data</h3>
-                  <p className="pd-attendee-sub">People who completed check-in details</p>
-                </div>
-              </div>
-              <div className="pd-table-container">
-                <table className="pd-table">
-                  <thead><tr><th>Gender</th><th>First Timer</th><th>Scan Time</th></tr></thead>
-                  <tbody>
-                    {countOnlyScans.map((scan) => (
-                      <tr key={scan.id}>
-                        <td data-label="Gender"><strong>{scan.gender ? scan.gender.charAt(0).toUpperCase() + scan.gender.slice(1) : '-'}</strong></td>
-                        <td data-label="First Timer">{scan.firstTimer ? <span className="pd-badge-yes">Yes</span> : <span className="pd-badge-no">No</span>}</td>
-                        <td data-label="Scan Time">{new Date(scan.scanTime).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Attendee Data Table — Collect Data Mode */}
-          {program.trackingMode === 'collect-data' && (
-            <div className="pd-attendee-card">
-              <div className="pd-attendee-header">
-                <div>
-                  <h3 className="pd-attendee-title">{template.attendee.singular} Data</h3>
-                  <p className="pd-attendee-sub">People who submitted the form</p>
-                </div>
-              </div>
-              <div className="pd-attendee-toolbar">
-                <div className="pd-search-box">
-                  {Icons.search}
-                  <input type="text" placeholder={`Search ${template.attendee.plural.toLowerCase()}...`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                </div>
-                <div className="pd-attendee-actions">
-                  {program.linkedPreEventCount > 0 && (
-                    <>
-                      <button className="pd-btn-manual pd-btn-rsvp-scan" type="button" onClick={copyRsvpScannerLink} disabled={!program.isActive || rsvpScannerLinkLoading}>
-                        {Icons.copy} {rsvpScannerLinkLoading ? 'Preparing...' : 'Copy RSVP Scanner Link'}
-                      </button>
-                      <button className="pd-btn-manual pd-btn-rsvp-scan" type="button" onClick={openRsvpScannerLink} disabled={!program.isActive || rsvpScannerLinkLoading}>
-                        {Icons.search} Open Scanner
-                      </button>
-                    </>
-                  )}
-                  <button className="pd-btn-manual" type="button" onClick={openManualModal} disabled={!program.isActive}>{Icons.plus} Add Manually</button>
-                  <button className="pd-btn-export" type="button" onClick={handleExportPDF}>{Icons.exportIcon} Export Data</button>
-                </div>
-              </div>
-              <div className="pd-attendee-filter-row" role="tablist" aria-label="Filter attendee source">
-                {attendeeFilterOptions.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className={`pd-attendee-filter ${attendeeFilter === option.key ? 'active' : ''}`}
-                    onClick={() => setAttendeeFilter(option.key)}
-                  >
-                    {option.label} <span>{option.count}</span>
-                  </button>
-                ))}
-              </div>
-              {hasAttendanceModeData && (
-                <div className="pd-attendee-filter-row pd-attendance-mode-filter-row" role="tablist" aria-label="Filter attendance mode">
-                  {attendanceModeFilterOptions.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={`pd-attendee-filter ${attendanceModeFilter === option.key ? 'active' : ''}`}
-                      onClick={() => setAttendanceModeFilter(option.key)}
-                    >
-                      {option.label} <span>{option.count}</span>
+          {isCollect ? (
+            <>
+              <div className="ig-ed-tools">
+                <label className="ig-ed-search">
+                  {Icon.search}
+                  <input type="search" placeholder={`Search ${guestsWord}`} aria-label={`Search ${guestsWord}`} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                </label>
+                <div className="ig-ed-seg" role="group" aria-label="Filter by how they checked in">
+                  {ATTENDEE_SOURCES.map(([key, label]) => (
+                    <button key={key} type="button" aria-pressed={attendeeFilter === key} className={attendeeFilter === key ? 'is-on' : ''} onClick={() => setAttendeeFilter(key)}>
+                      {label}<span>{formatNumber(key === 'all' ? attendees.length : attendeeSourceCounts[key] || 0)}</span>
                     </button>
                   ))}
                 </div>
-              )}
-              <div className="pd-table-container">
-                <table className="pd-table">
-                  <thead>
-                    <tr>
-                      {program.dataFields?.fullName && <th>Name</th>}
-                      {program.dataFields?.emailAddress && <th>Email</th>}
-                      {program.dataFields?.school && <th>School</th>}
-                      {program.dataFields?.link && <th>Link</th>}
-                      {program.dataFields?.textarea && <th>{program.dataFieldConfig?.textareaLabel || 'Additional Response'}</th>}
-                      {program.dataFields?.fellowship && <th>Group</th>}
-                      {program.dataFields?.age && <th>Age</th>}
-                      {(program.customFormSchema || []).map(field => (
-                        <th key={field.id}>{field.label}</th>
-                      ))}
-                      {hasAttendanceModeData && <th>Attendance Mode</th>}
-                      {program.giftingEnabled && <th>Winner</th>}
-                      {program.giftingEnabled && <th>Gifted</th>}
-                      <th>Source</th>
-                      <th>Scan Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAttendees.length === 0 ? (
-                      <tr>
-                        <td colSpan={attendeeTableColumnCount}>
-                          <div className="pd-empty-table">
-                            <strong>No {template.attendee.plural.toLowerCase()} yet.</strong>
-                            <span>Use Add Manually when someone checks in without a smartphone.</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : filteredAttendees.map(attendee => (
-                      <tr key={attendee.id}>
-                        {program.dataFields?.fullName && (
-                          <td data-label="Name">
-                            <strong>{attendee.fullName || '-'}</strong>
-                            <span className={`pd-source-badge pd-source-${getAttendeeRegistrationType(attendee)}`}>
-                              {getAttendeeSourceLabel(attendee)}
-                            </span>
-                          </td>
-                        )}
-                        {program.dataFields?.emailAddress && <td data-label="Email">{attendee.emailAddress || '-'}</td>}
-                        {program.dataFields?.school && <td data-label="School">{attendee.school || '-'}</td>}
-                        {program.dataFields?.link && (
-                          <td data-label="Link">
-                            {attendee.linkUrl ? (
-                              <a className="pd-table-link" href={attendee.linkUrl} target="_blank" rel="noreferrer">Open link</a>
-                            ) : '-'}
-                          </td>
-                        )}
-                        {program.dataFields?.textarea && <td data-label={program.dataFieldConfig?.textareaLabel || 'Additional Response'}>{attendee.textareaResponse || '-'}</td>}
-                        {program.dataFields?.fellowship && <td data-label="Group">{attendee.fellowship || '-'}</td>}
-                        {program.dataFields?.age && <td data-label="Age">{attendee.age ? `${attendee.age} Years` : '-'}</td>}
-                        {(program.customFormSchema || []).map(field => (
-                          <td key={field.id} data-label={field.label}>
-                            {formatCustomAnswer(attendee.customResponses?.[field.id])}
-                          </td>
-                        ))}
-                        {hasAttendanceModeData && (
-                          <td data-label="Attendance Mode">
-                            <span className={`pd-mode-badge ${attendee.attendanceMode || 'physical'}`}>
-                              {formatAttendanceMode(attendee.attendanceMode || 'physical')}
-                            </span>
-                          </td>
-                        )}
-                        {program.giftingEnabled && (
-                          <td data-label="Winner">
-                            {attendee.isWinner ? <span className="pill-winner">✓ Completed</span> : <span className="pill-dash">-</span>}
-                          </td>
-                        )}
-                        {program.giftingEnabled && (
-                          <td data-label="Gifted">
-                            {attendee.isWinner ? (
-                              attendee.isGifted ? (
-                                <span className="pill-gifted">✓ Gifted</span>
-                              ) : (
-                                <span className="pill-pending" onClick={() => {
-                                  toast.confirm(`Mark ${attendee.fullName || 'this winner'} as gifted?`, async () => {
-                                    try {
-                                      await markWinnerGifted(id, attendee.id);
-                                      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, isGifted: true } : a));
-                                      setWinnersGifted(prev => prev + 1);
-                                      toast.success(`${attendee.fullName || 'Winner'} marked as gifted!`);
-                                    } catch (err) { toast.error('Failed to mark as gifted.'); }
-                                  });
-                                }}>Pending...</span>
-                              )
-                            ) : <span className="pill-dash">-</span>}
-                          </td>
-                        )}
-                        <td data-label="Source">
-                          <span className={`pd-source-badge pd-source-${getAttendeeRegistrationType(attendee)}`}>
-                            {getAttendeeSourceLabel(attendee)}
-                          </span>
-                        </td>
-                        <td data-label="Scan Time">{new Date(attendee.checkedInAt || attendee.scanTime).toLocaleString()}</td>
-                      </tr>
+                {hasAttendanceModeData && (
+                  <div className="ig-ed-seg" role="group" aria-label="Filter by attendance mode">
+                    {[['all', 'All modes'], ['physical', 'In person'], ['virtual', 'Online']].map(([key, label]) => (
+                      <button key={key} type="button" aria-pressed={attendanceModeFilter === key} className={attendanceModeFilter === key ? 'is-on' : ''} onClick={() => setAttendanceModeFilter(key)}>
+                        {label}<span>{formatNumber(key === 'all' ? attendees.length : attendanceModeCounts[key] || 0)}</span>
+                      </button>
                     ))}
-                  </tbody>
-                </table>
+                  </div>
+                )}
               </div>
+              {attendees.length === 0 ? emptyTable : filteredAttendees.length === 0 ? (
+                <div className="ig-ed-empty is-small">
+                  <strong>No {guestsWord} match</strong>
+                  <span>Try another name or clear the filter.</span>
+                </div>
+              ) : (
+                <div className="ig-ed-table-wrap">
+                  <table className="ig-ed-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Name</th>
+                        {showEmail && <th scope="col">Email</th>}
+                        {showGroup && <th scope="col">Group</th>}
+                        {showMode && <th scope="col">Mode</th>}
+                        {showGift && <th scope="col">Gift</th>}
+                        <th scope="col">Checked in</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAttendees.map((attendee) => (
+                        <tr key={attendee.id} className={`ig-ed-row${guestId === attendee.id ? ' is-open' : ''}`} onClick={(event) => { if (!event.target.closest('button, a')) setGuestId(attendee.id); }}>
+                          <td>
+                            <button type="button" className="ig-ed-person" onClick={() => setGuestId(attendee.id)} aria-label={`See details for ${attendee.fullName || attendee.emailAddress || 'this guest'}`}>
+                              <span className="ig-ed-avatar" aria-hidden="true">{initialsOf(attendee.fullName || attendee.emailAddress || '?')}</span>
+                              <span className="ig-ed-person-text"><strong>{attendee.fullName || 'No name given'}</strong>{sourceTag(attendee)}</span>
+                            </button>
+                          </td>
+                          {showEmail && <td className="ig-ed-cell-muted ig-ed-hide-sm" data-label="Email">{attendee.emailAddress || '-'}</td>}
+                          {showGroup && <td className="ig-ed-hide-sm" data-label="Group">{attendee.fellowship || '-'}</td>}
+                          {showMode && <td className="ig-ed-hide-sm" data-label="Mode"><span className={`ig-ed-mode${attendee.attendanceMode === 'virtual' ? ' is-online' : ''}`}>{attendee.attendanceMode === 'virtual' ? 'Online' : 'In person'}</span></td>}
+                          {showGift && <td data-label="Gift">{giftCell(attendee)}</td>}
+                          <td className="ig-ed-cell-muted" data-label="Checked in">{clockTime(attendee.checkedInAt || attendee.scanTime)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : countOnlyScans.length === 0 ? emptyTable : (
+            <div className="ig-ed-table-wrap">
+              <table className="ig-ed-table is-count">
+                <thead><tr><th scope="col">Gender</th><th scope="col">First timer</th><th scope="col">Checked in</th></tr></thead>
+                <tbody>
+                  {countOnlyScans.map((scan) => (
+                    <tr key={scan.id}>
+                      <td><strong>{scan.gender ? scan.gender.charAt(0).toUpperCase() + scan.gender.slice(1) : '-'}</strong></td>
+                      <td data-label="First timer">{scan.firstTimer ? <span className="ig-ed-yes">Yes</span> : <span className="ig-ed-cell-muted">No</span>}</td>
+                      <td className="ig-ed-cell-muted" data-label="Checked in">{clockTime(scan.scanTime)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
-        </div>
-      </main>
+        </section>
+      </div>
 
-      {showManualModal && program?.trackingMode === 'collect-data' && (
-        <ManualAttendeeModal
+      {showManualModal && isCollect && (
+        <ManualModal
           program={program}
           template={template}
           formData={manualFormData}
           errors={manualErrors}
           submitting={manualSubmitting}
-          onChange={handleManualChange}
-          onCustomChange={handleManualCustomChange}
+          onField={setManualField}
+          onCustom={handleManualCustomChange}
           onClose={closeManualModal}
           onSubmit={handleManualSubmit}
         />
       )}
 
-      {showRsvpScanner && (
-        <RsvpQrScannerModal
-          scanning={rsvpQrSubmitting}
-          result={rsvpQrResult}
-          error={rsvpQrError}
-          onClose={closeRsvpScanner}
-          onSubmit={handleRsvpQrCheckIn}
-          onReset={() => {
-            setRsvpQrResult(null);
-            setRsvpQrError('');
-          }}
+      {openGuest && (
+        <GuestPanel attendee={openGuest} program={program} onClose={closeGuest} onMarkGifted={setGiftTarget} />
+      )}
+
+      {exportOpen && (
+        <ExportModal
+          program={program}
+          template={template}
+          allCount={attendees.length}
+          filteredCount={filteredAttendees.length}
+          filterLabel={[
+            attendeeFilter !== 'all' ? SOURCE_LABEL[attendeeFilter] : '',
+            attendanceModeFilter !== 'all' ? (attendanceModeFilter === 'virtual' ? 'Online' : 'In person') : '',
+            searchQuery.trim() ? `"${searchQuery.trim()}"` : ''
+          ].filter(Boolean).join(', ') || 'All'}
+          busy={exportBusy}
+          onClose={() => { if (!exportBusy) setExportOpen(false); }}
+          onDownload={downloadExport}
         />
       )}
 
       {showFingerprintWarning && (
-        <FingerprintWarningModal
-          saving={fingerprintSaving}
-          onCancel={() => {
-            if (!fingerprintSaving) setShowFingerprintWarning(false);
-          }}
+        <DashDialog
+          icon={Icon.phone}
+          title="Turn off one check-in per phone?"
+          cancelLabel="Cancel"
+          confirmLabel="Turn it off"
+          busy={fingerprintSaving}
+          onCancel={() => { if (!fingerprintSaving) setShowFingerprintWarning(false); }}
           onConfirm={() => saveStrictFingerprinting(false)}
-        />
+        >
+          Allowing multiple scans from the same device can help attendees with poor network connections, but it risks skewing your total attendance metrics with duplicate entries.
+        </DashDialog>
       )}
-    </div>
+
+      {dialog === 'end' && (
+        <DashDialog
+          icon={Icon.stop}
+          tone="danger"
+          title={`End ${program.title}?`}
+          cancelLabel="Keep it running"
+          confirmLabel={`End ${eventWordLower}`}
+          busy={dialogBusy}
+          onCancel={() => { if (!dialogBusy) setDialog(null); }}
+          onConfirm={endEvent}
+        >
+          The check-in QR code stops working and no one else can check in. Your {plural(totalScans, 'check-in', 'check-ins')} and the report stay saved.
+        </DashDialog>
+      )}
+
+      {dialog === 'delete' && (
+        <DashDialog
+          icon={DashIcon.trash}
+          tone="danger"
+          title={`Delete ${program.title}?`}
+          cancelLabel={`Keep ${eventWordLower}`}
+          confirmLabel={`Delete ${eventWordLower}`}
+          busy={dialogBusy}
+          onCancel={() => { if (!dialogBusy) setDialog(null); }}
+          onConfirm={removeEvent}
+        >
+          {hasCheckins
+            ? `This removes the ${eventWordLower}, its QR code and all ${plural(totalScans, 'check-in', 'check-ins')}. Export your data first if you need it. This can't be undone.`
+            : `This removes the ${eventWordLower} and its QR code. This can't be undone.`}
+          {!ended && (
+            <span className="ig-ed-dialog-warn">{Icon.warn}{upcoming ? `Anyone who already has the QR code won't be able to check in.` : `This ${eventWordLower} is live. Guests scanning the QR code right now won't be able to check in.`}</span>
+          )}
+        </DashDialog>
+      )}
+
+      {giftTarget && (
+        <DashDialog
+          icon={Icon.gift}
+          tone="primary"
+          title={`Mark ${giftTarget.fullName || 'this winner'} as gifted?`}
+          cancelLabel="Not yet"
+          confirmLabel="Mark gifted"
+          busy={dialogBusy}
+          onCancel={() => { if (!dialogBusy) setGiftTarget(null); }}
+          onConfirm={confirmGifted}
+        >
+          Do this once you have handed over the gift. It can't be changed later.
+        </DashDialog>
+      )}
+    </IgDashShell>
   );
 }
 
