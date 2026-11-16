@@ -23,6 +23,7 @@ const RsvpCheckinPage = lazy(() => import('./pages/RsvpCheckinPage'));
 const RsvpScannerPage = lazy(() => import('./pages/RsvpScannerPage'));
 const WaitlistPage = lazy(() => import('./pages/WaitlistPage'));
 const AdminWaitlistPage = lazy(() => import('./pages/AdminWaitlistPage'));
+const AdminApp = lazy(() => import('./pages/admin/AdminApp'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
@@ -67,6 +68,7 @@ function App() {
                 <Route path="/rsvp-scanner/:scannerToken" element={<RsvpScannerPage />} />
                 <Route path="/waitlist" element={<WaitlistPage />} />
                 <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
+                <Route path="/admin/*" element={<AdminApp />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />

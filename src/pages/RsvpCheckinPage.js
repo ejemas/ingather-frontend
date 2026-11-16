@@ -154,7 +154,7 @@ function RsvpCheckinPage() {
                   <strong className="ig-ps-qr-title">Show this at the entrance</strong>
                   <span className="ig-ps-qr-text">An usher scans it to check you in. It works once, so don't share it.</span>
                   <span className="ig-ps-code">
-                    <span>Backup code if scanning fails</span>
+                    <span>Pass code, for fast check-in or if scanning fails</span>
                     <strong>{pass?.code || code}</strong>
                   </span>
                 </>

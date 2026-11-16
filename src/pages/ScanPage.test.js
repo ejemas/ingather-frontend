@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ScanPage from './ScanPage';
 import { EventTemplateProvider } from '../context/EventTemplateContext';
-import { getProgramInfo, submitScan, submitFormData, submitProxyAttendee, trackSponsorClick, updateScanData } from '../api/scanService';
+import { getProgramInfo, submitScan, submitFormData, submitFastTrackRsvp, submitProxyAttendee, trackSponsorClick, updateScanData } from '../api/scanService';
 
 const mockToast = { error: jest.fn(), success: jest.fn(), warning: jest.fn(), info: jest.fn() };
 
@@ -223,4 +223,28 @@ test('with the phone rule off, a phone that checked in before can check in anoth
   fireEvent.click(screen.getByRole('button', { name: 'Complete check-in' }));
   await waitFor(() => expect(submitFormData).toHaveBeenCalledWith('12', 'fp-1', expect.any(Object), 't2', 's2'));
   expect(await screen.findByRole('heading', { name: /You're in,\s*Chiamaka/ })).toBeInTheDocument();
+});
+
+test('fast-track asks for the pass code, keeps the guest on screen when it does not match, then checks them in', async () => {
+  getProgramInfo.mockResolvedValue(program({ customFormSchema: [], fastTrackRsvpEnabled: true }));
+  window.scrollTo = jest.fn();
+  renderPage();
+  fireEvent.change(await screen.findByLabelText('Email address'), { target: { value: 'Bola@Mail.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Check in fast' }));
+  expect(screen.getByText('Enter the pass code from your RSVP email')).toBeInTheDocument();
+  expect(submitFastTrackRsvp).not.toHaveBeenCalled();
+
+  const miss = new Error('x');
+  miss.response = { status: 404, data: { error: 'We could not match that email and pass code.', fastTrackNotFound: true } };
+  submitFastTrackRsvp.mockRejectedValueOnce(miss);
+  fireEvent.change(screen.getByLabelText('Pass code'), { target: { value: 'abcd2345' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Check in fast' }));
+  expect(await screen.findByText('We could not match that email and pass code.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Pass code')).toBeInTheDocument();
+
+  submitFastTrackRsvp.mockResolvedValueOnce({ attendee: { fullName: 'Bola Adeyemi', firstTimer: false }, giftingEnabled: false });
+  fireEvent.change(screen.getByLabelText('Pass code'), { target: { value: 'm3xq-7pka' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Check in fast' }));
+  await waitFor(() => expect(submitFastTrackRsvp).toHaveBeenLastCalledWith('12', 'fp-1', 'bola@mail.com', 't1', 's1', 'M3XQ7PKA'));
+  expect(await screen.findByRole('heading', { name: /You're in,\s*Bola/ })).toBeInTheDocument();
 });

@@ -917,6 +917,8 @@ function ScanPage() {
   const [programData, setProgramData] = useState(null);
   const [showFastTrackLookup, setShowFastTrackLookup] = useState(false);
   const [fastTrackEmail, setFastTrackEmail] = useState('');
+  const [fastTrackCode, setFastTrackCode] = useState('');
+  const [fastTrackCodeError, setFastTrackCodeError] = useState('');
   const [fastTrackError, setFastTrackError] = useState('');
   const [submittingFastTrack, setSubmittingFastTrack] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -1304,28 +1306,30 @@ function ScanPage() {
       return;
     }
 
+    // The 8-character pass code from the RSVP email proves the guest is who they say they are.
+    const code = fastTrackCode.trim().toUpperCase().replace(/[\s-]+/g, '');
+    if (!/^[A-Z0-9]{8}$/.test(code)) {
+      setFastTrackCodeError(code ? 'The pass code has 8 letters and numbers' : 'Enter the pass code from your RSVP email');
+      return;
+    }
+
     if (sendingRef.current || checkedInRef.current) return;
     sendingRef.current = true;
     setSubmittingFastTrack(true);
     setFastTrackError('');
+    setFastTrackCodeError('');
 
     try {
       const fingerprint = deviceFingerprintRef.current || await getDeviceFingerprint();
       deviceFingerprintRef.current = fingerprint;
-      const response = await submitFastTrackRsvp(programId, fingerprint, email, scanSessionTokenRef.current, scanSessionIdRef.current);
+      const response = await submitFastTrackRsvp(programId, fingerprint, email, scanSessionTokenRef.current, scanSessionIdRef.current, code);
+      // The server only sends back the guest's name and whether they are a first-timer.
       const attendee = response.attendee || {};
       const attendeeFormData = {
+        ...formData,
         fullName: attendee.fullName || '',
-        emailAddress: attendee.emailAddress || email,
-        school: attendee.school || '',
-        address: attendee.address || '',
-        firstTimer: Boolean(attendee.firstTimer),
-        phoneNumber: attendee.phoneNumber || '',
-        department: attendee.department || '',
-        fellowship: attendee.fellowship || '',
-        age: attendee.age || '',
-        sex: attendee.sex || '',
-        customResponses: attendee.customResponses || {}
+        emailAddress: email,
+        firstTimer: Boolean(attendee.firstTimer)
       };
 
       setFormData(attendeeFormData);
@@ -1337,8 +1341,10 @@ function ScanPage() {
     } catch (error) {
       const payload = error.response?.data || {};
       if (payload.fastTrackNotFound) {
-        toast.info('No RSVP found for that email. Please complete the quick check-in form.');
-        revealWalkInForm();
+        // Stay on this screen so a mistyped code can be fixed; the form is one tap away.
+        setFastTrackCodeError(payload.error || 'We could not match that email and pass code.');
+      } else if (payload.passCodeRequired) {
+        setFastTrackCodeError(payload.error);
       } else {
         setFastTrackError(payload.error || 'Unable to complete fast-track check-in');
       }
@@ -1636,7 +1642,7 @@ function ScanPage() {
   if (showFastTrackLookup && programData && !result) {
     return (
       <GuestShell programData={programData}>
-        <GuestIntro tag="Fast-track" tagText="For guests who RSVP'd" title="Already" highlight="registered?" lead="Enter the email you used to RSVP and you're checked in instantly. No form to fill." />
+        <GuestIntro tag="Fast-track" tagText="For guests who RSVP'd" title="Already" highlight="registered?" lead="Enter the email you used to RSVP and the pass code from your RSVP email. You're checked in instantly, with no form to fill." />
         <form className="ig-gs-card" onSubmit={handleFastTrackSubmit} noValidate>
           <GuestInput
             id="fastTrackEmail"
@@ -1653,10 +1659,28 @@ function ScanPage() {
             placeholder="name@example.com"
             error={fastTrackError}
           />
+          <GuestInput
+            id="fastTrackCode"
+            label="Pass code"
+            type="text"
+            autoComplete="one-time-code"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
+            maxLength={12}
+            value={fastTrackCode}
+            onChange={(event) => {
+              setFastTrackCode(event.target.value.toUpperCase());
+              if (fastTrackCodeError) setFastTrackCodeError('');
+            }}
+            placeholder="8 letters and numbers, e.g. K7PM2XQA"
+            error={fastTrackCodeError}
+          />
+          <p className="ig-gs-hint-line">It's under the QR code in your RSVP email.</p>
           <button type="submit" className="ig-gs-btn" disabled={submittingFastTrack}>
             {submittingFastTrack ? 'Finding your RSVP…' : 'Check in fast'}
           </button>
-          <button type="button" className="ig-gs-btn is-ghost" onClick={revealWalkInForm} disabled={submittingFastTrack}>I didn't RSVP</button>
+          <button type="button" className="ig-gs-btn is-ghost" onClick={revealWalkInForm} disabled={submittingFastTrack}>No pass code? Fill in the form</button>
           <GuestFinePrint host={programData.churchName} />
         </form>
         <div className="ig-gs-note">{GuestIcon.qr}<span>Have your QR pass from the RSVP email? Show it to an usher at the door instead.</span></div>

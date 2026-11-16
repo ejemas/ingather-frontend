@@ -31,10 +31,11 @@ export const submitFormData = async (programId, deviceFingerprint, formData, sca
   return response.data;
 };
 
-export const submitFastTrackRsvp = async (programId, deviceFingerprint, emailAddress, scanSessionToken, scanSessionId) => {
+export const submitFastTrackRsvp = async (programId, deviceFingerprint, emailAddress, scanSessionToken, scanSessionId, passCode) => {
   const response = await SCAN_API.post(`/program/${programId}/fast-track`, {
     deviceFingerprint,
     emailAddress,
+    passCode,
     scanSessionToken,
     scanSessionId
   });
