@@ -649,19 +649,23 @@ function PersonalFlyerPreview({ parts }) {
 
 function FullScreenViewer({ title, subtitle, onClose, children }) {
   const closeRef = useRef(null);
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const opener = document.activeElement;
     closeRef.current?.focus();
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    const onKey = (event) => { if (event.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = previous;
       document.removeEventListener('keydown', onKey);
       if (opener && typeof opener.focus === 'function') opener.focus();
     };
-  }, [onClose]);
+  }, []);
   return (
     <div className="ig-gs-viewer" role="dialog" aria-modal="true" aria-label={title}>
       <div className="ig-gs-viewer-inner">

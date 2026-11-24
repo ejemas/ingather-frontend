@@ -92,14 +92,18 @@ function TicketPanel({ number, canAct, team, onClose, onChanged, toast }) {
 
   useEffect(() => { threadEnd.current?.scrollIntoView({ block: 'nearest' }); }, [data?.messages?.length]);
 
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape') onCloseRef.current(); };
     window.addEventListener('keydown', onKey);
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = previous; };
-  }, [onClose]);
+  }, []);
 
   const t = data?.ticket;
   const [bg, fg] = avatarFor(t?.orgId);

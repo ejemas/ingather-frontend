@@ -268,12 +268,18 @@ function ManualRsvpModal({ preEvent, customFormSchema, qrEmailQuota, submitting,
   const [errors, setErrors] = useState({});
   const firstRef = useRef(null);
 
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const submittingRef = useRef(submitting);
+  submittingRef.current = submitting;
   useEffect(() => {
     firstRef.current?.focus();
-    const onKey = (event) => { if (event.key === 'Escape' && !submitting) onClose(); };
+    const onKey = (event) => { if (event.key === 'Escape' && !submittingRef.current) onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, submitting]);
+  }, []);
 
   const selectedFields = useMemo(() => {
     const fields = ['emailAddress'];

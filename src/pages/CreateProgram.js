@@ -150,12 +150,16 @@ function SponsorModal({ sponsor, split, onClose, onSave }) {
   const createdUrlRef = useRef('');
   const savedRef = useRef(false);
 
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     nameRef.current?.focus();
-    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    const onKey = (event) => { if (event.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, []);
 
   // A preview made here but never saved is released when the popup closes.
   useEffect(() => () => {

@@ -448,10 +448,14 @@ const fullDateTime = (value) => {
 
 function GuestPanel({ attendee, program, onClose, onMarkGifted }) {
   const panelRef = useRef(null);
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const opener = document.activeElement;
     panelRef.current?.focus();
-    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
+    const onKey = (event) => { if (event.key === 'Escape') onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -460,7 +464,7 @@ function GuestPanel({ attendee, program, onClose, onMarkGifted }) {
       document.body.style.overflow = previous;
       if (opener && typeof opener.focus === 'function') opener.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const type = registrationTypeOf(attendee);
   const answers = askedFields(program).map((field) => [fieldLabel(program, field), fieldValue(attendee, field), field]);
@@ -545,12 +549,18 @@ function GuestPanel({ attendee, program, onClose, onMarkGifted }) {
 
 function ManualModal({ program, template, formData, errors, submitting, onField, onCustom, onClose, onSubmit }) {
   const firstRef = useRef(null);
+  // Keep the latest close handler without re-running this effect: re-running it on every
+  // redraw moved the cursor back to the first field while people were typing.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const submittingRef = useRef(submitting);
+  submittingRef.current = submitting;
   useEffect(() => {
     firstRef.current?.focus();
-    const onKey = (event) => { if (event.key === 'Escape' && !submitting) onClose(); };
+    const onKey = (event) => { if (event.key === 'Escape' && !submittingRef.current) onCloseRef.current(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, submitting]);
+  }, []);
 
   const formRef = useRef(null);
   const errorCount = Object.values(errors).filter(Boolean).length;

@@ -35,7 +35,9 @@
 
 /* Camera */
 .ig-us-camera { position: relative; height: 400px; border-radius: 24px; overflow: hidden; background: #0F0D0B; }
-.ig-us-reader { position: absolute; inset: 0; }
+/* The QR library sets position: relative on this box when the camera starts, which collapsed it
+   (and the video) to zero height. Keep it filling the camera area. */
+.ig-us-reader { position: absolute !important; inset: 0; width: 100%; height: 100%; }
 .ig-us-reader video { position: absolute; inset: 0; width: 100% !important; height: 100% !important; object-fit: cover; }
 .ig-us-reader canvas, .ig-us-reader img, .ig-us-reader #qr-shaded-region { display: none !important; }
 .ig-us-shade { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.18); pointer-events: none; }
