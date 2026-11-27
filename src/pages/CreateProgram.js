@@ -367,9 +367,15 @@ function CreateProgram() {
   const split = form.sponsorMode === 'distribution';
   // Editing after guests have checked in: date, start time, check-in method and the form stay as they are.
   const locked = isEdit && editData?.locked === true;
+  // A Count only event can still switch to Collect details after check-ins (one way only), so names
+  // can be collected and an RSVP form linked mid-event. Then the form can be set up in the same save.
+  const canSwitchToCollect = locked && editData?.trackingMode === 'count-only';
+  const switchingToCollect = canSwitchToCollect && collect;
+  const modeLocked = locked && !canSwitchToCollect;
+  const formLocked = locked && !switchingToCollect;
   const checkinsCount = editData?.checkinsCount || 0;
   const winnersFloor = isEdit ? Math.max(1, editData?.winnersSelected || 0) : 1;
-  const personalBlocked = locked && !editData?.dataFields?.fullName;
+  const personalBlocked = formLocked && !editData?.dataFields?.fullName;
 
   useEffect(() => {
     if (!localStorage.getItem('token')) navigate('/login', { replace: true });
@@ -478,7 +484,7 @@ function CreateProgram() {
 
   /* ---------- Check-in mode ---------- */
   const setMode = (mode) => {
-    if (locked) return;
+    if (modeLocked) return;
     setForm((prev) => ({
       ...prev,
       trackingMode: mode,
@@ -493,7 +499,7 @@ function CreateProgram() {
   };
 
   const toggleField = (key) => {
-    if (locked) return;
+    if (formLocked) return;
     if (personal && key === 'fullName') {
       toast.info('Full Name stays on while you use the personalized flyer.');
       return;
@@ -595,7 +601,7 @@ function CreateProgram() {
     if (!form.startTime) next.startTime = 'Pick a start time';
     if (!form.endTime) next.endTime = 'Pick an end time';
     else if (form.startTime && form.startTime >= form.endTime) next.endTime = 'Must be after the start time';
-    if (!locked && collect && !Object.values(form.dataFields).some(Boolean) && form.customFormSchema.length === 0) {
+    if (!formLocked && collect && !Object.values(form.dataFields).some(Boolean) && form.customFormSchema.length === 0) {
       next.dataFields = 'Add at least one field, or switch to Count only';
     }
     if (personal && parseMessages(form.messages).length === 0) next.messages = 'Add at least one message for the personalized flyer';
@@ -916,8 +922,15 @@ function CreateProgram() {
           </Step>
 
           {/* 2. How guests check in */}
-          <Step n={2} title="How guests check in" sub="This locks once the first guest checks in" labelledBy="ig-ce-s2" locked={locked}>
-            {locked && <div className="ig-ce-locknote">{checkinsCount} {checkinsCount === 1 ? 'guest has' : 'guests have'} already checked in with this method, so it can't change now.</div>}
+          <Step n={2} title="How guests check in" sub={canSwitchToCollect ? 'You can still switch to Collect details' : 'This locks once the first guest checks in'} labelledBy="ig-ce-s2" locked={modeLocked}>
+            {modeLocked && <div className="ig-ce-locknote">{checkinsCount} {checkinsCount === 1 ? 'guest has' : 'guests have'} already checked in with this method, so it can't change now.</div>}
+            {canSwitchToCollect && (
+              <div className="ig-ce-locknote">
+                {switchingToCollect
+                  ? `After you save, guests fill in the form below when they check in, and you can link an RSVP form so QR passes work. The ${checkinsCount} ${checkinsCount === 1 ? 'check-in' : 'check-ins'} so far stay in your total, without names. You can't switch back to Count only after saving.`
+                  : `${checkinsCount} ${checkinsCount === 1 ? 'guest has' : 'guests have'} checked in with Count only. You can still switch to Collect details to get names from now on and link an RSVP form.`}
+              </div>
+            )}
             <div className="ig-ce-modes" role="radiogroup" aria-labelledby="ig-ce-s2">
               {[
                 ['count-only', 'Fastest', 'Count only', 'Guests scan and they are counted. No form, no names.', 'Best for large crowds and services'],
@@ -925,7 +938,7 @@ function CreateProgram() {
               ].map(([value, tag, name, body, note]) => {
                 const on = form.trackingMode === value;
                 return (
-                  <button key={value} type="button" role="radio" aria-checked={on} className={`ig-ce-mode${on ? ' is-on' : ''}`} onClick={() => setMode(value)} disabled={locked}>
+                  <button key={value} type="button" role="radio" aria-checked={on} className={`ig-ce-mode${on ? ' is-on' : ''}`} onClick={() => setMode(value)} disabled={modeLocked}>
                     <span className="ig-ce-mode-top"><em>{tag}</em><span className="ig-ce-radio" aria-hidden="true" /></span>
                     <strong>{name}</strong>
                     <span>{body}</span>
@@ -939,14 +952,14 @@ function CreateProgram() {
           {collect && (
             <>
               {/* 3. What guests fill in */}
-              <Step n={3} title="What guests fill in" sub="Tap a field to add it to the check-in form. Added fields are required." labelledBy="ig-ce-s3" locked={locked}>
-                {locked && <div className="ig-ce-locknote">Guests have already filled in this form. To keep your data consistent, fields and questions can't change mid-{eventWord}.</div>}
+              <Step n={3} title="What guests fill in" sub="Tap a field to add it to the check-in form. Added fields are required." labelledBy="ig-ce-s3" locked={formLocked}>
+                {formLocked && <div className="ig-ce-locknote">Guests have already filled in this form. To keep your data consistent, fields and questions can't change mid-{eventWord}.</div>}
                 <div className={`ig-cp-tiles${errors.dataFields ? ' has-error' : ''}`} id="ig-ce-fields" tabIndex={-1}>
                   {FIELD_TILES.map(([key, label, sub]) => {
                     const on = Boolean(form.dataFields[key]);
                     const neededForFlyer = personal && key === 'fullName';
                     return (
-                      <button key={key} type="button" className={`ig-cp-tile${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggleField(key)} disabled={locked}>
+                      <button key={key} type="button" className={`ig-cp-tile${on ? ' is-on' : ''}`} aria-pressed={on} onClick={() => toggleField(key)} disabled={formLocked}>
                         <span className="ig-cp-tile-top"><strong>{label}</strong><em>{neededForFlyer ? 'Needed' : on ? 'Added' : 'Add'}</em></span>
                         <span>{neededForFlyer ? 'Used on the personalized flyer.' : sub}</span>
                       </button>
@@ -958,13 +971,13 @@ function CreateProgram() {
                 {form.dataFields.textarea && (
                   <div className="ig-st-field">
                     <label htmlFor="ig-ce-textareaLabel">Your longer question</label>
-                    <input id="ig-ce-textareaLabel" value={form.textareaLabel} onChange={(e) => update('textareaLabel', e.target.value)} placeholder="e.g. What do you hope to get from today?" maxLength={120} disabled={locked} />
+                    <input id="ig-ce-textareaLabel" value={form.textareaLabel} onChange={(e) => update('textareaLabel', e.target.value)} placeholder="e.g. What do you hope to get from today?" maxLength={120} disabled={formLocked} />
                   </div>
                 )}
 
                 <div className="ig-pd-q-head ig-cp-q-head">
                   <span className="ig-db-card-title"><strong>Your own questions</strong><span>{form.customFormSchema.length} of {MAX_CUSTOM_FIELDS} questions. Short answer, pick one or pick many.</span></span>
-                  {!locked && <button type="button" className="ig-st-pill ig-pd-pill" onClick={() => openQuestion()} disabled={form.customFormSchema.length >= MAX_CUSTOM_FIELDS}>{DashIcon.plus}Add Question</button>}
+                  {!formLocked && <button type="button" className="ig-st-pill ig-pd-pill" onClick={() => openQuestion()} disabled={form.customFormSchema.length >= MAX_CUSTOM_FIELDS}>{DashIcon.plus}Add Question</button>}
                 </div>
                 {form.customFormSchema.length > 0 && (
                   <ul className="ig-pd-questions">
@@ -978,8 +991,8 @@ function CreateProgram() {
                             {field.options?.length ? ` · ${field.options.join(', ')}` : ''}
                           </span>
                         </span>
-                        {!locked && <button type="button" className="ig-db-round-btn is-xs is-line" aria-label={`Edit ${field.label}`} onClick={() => openQuestion(field)}>{Icon.pencil}</button>}
-                        {!locked && <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label={`Delete ${field.label}`} onClick={() => removeQuestion(field.id)}>{DashIcon.trash}</button>}
+                        {!formLocked && <button type="button" className="ig-db-round-btn is-xs is-line" aria-label={`Edit ${field.label}`} onClick={() => openQuestion(field)}>{Icon.pencil}</button>}
+                        {!formLocked && <button type="button" className="ig-db-round-btn is-xs is-line ig-pd-danger" aria-label={`Delete ${field.label}`} onClick={() => removeQuestion(field.id)}>{DashIcon.trash}</button>}
                       </li>
                     ))}
                   </ul>
